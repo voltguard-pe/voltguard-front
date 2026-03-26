@@ -1,0 +1,34 @@
+import clientAxios from '../shared/config/clientAxios'
+
+export const login = async (email: string, password: string) => {
+    try {
+        const { data } = await clientAxios.post('/auth/login', { email, password })
+        return data
+    } catch (error) {
+        throw new Error('Error al iniciar sesión' + error)
+    }
+}
+
+export const logout = async () => {
+    try {
+        await clientAxios.post('/auth/logout')
+    } catch (error) {
+        throw new Error('Error al cerrar sesión' + error)
+    }
+}
+
+export const forgotPassword = async (email: string) => {
+    const { data } = await clientAxios.post(`/auth/forgot-password?email=${encodeURIComponent(email)}`)
+    return data
+}
+
+export const resetPassword = async (token: string, newPassword: string) => {
+    try {
+        await clientAxios.post('/auth/reset-password', {
+            token,
+            newPassword
+        })
+    } catch (error) {
+        throw new Error('No se pudo cambiar la contraseña')
+    }
+}

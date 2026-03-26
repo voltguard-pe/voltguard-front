@@ -1,0 +1,25 @@
+import type { Role } from "./AuthProps"
+
+export type UserProps = {
+  id: number
+  firstname: string
+  lastname: string
+  email: string
+  isActive: boolean
+  role: Role
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateUserDTO {
+  firstname: string;
+  lastname: string;
+  email: string;
+  password: string;
+}
+
+export interface UpdateUserDTO {
+  firstname: string;
+  lastname: string;
+  email: string;
+}

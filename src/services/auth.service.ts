@@ -2,10 +2,12 @@ import clientAxios from '../shared/config/clientAxios'
 
 export const login = async (email: string, password: string) => {
     try {
+        console.log("URL FINAL:", clientAxios.defaults.baseURL + "/auth/login");
         const { data } = await clientAxios.post('/auth/login', { email, password })
         return data
     } catch (error) {
-        throw new Error('Error al iniciar sesión' + error)
+        console.error("LOGIN ERROR:", error);
+        throw new Error('Error al iniciar sesión')
     }
 }
 

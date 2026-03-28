@@ -1,51 +1,69 @@
-// Archivo: src/shared/types/BoardTypes.ts
+export interface CompanySummaryDTO {
+  _id: string;
+  name: string;
+  publicCode?: string;
+}
 
-// ========================
-// DTO de archivos
-// ========================
-export interface BoardFileDTO {
-    id: number;
-    filename: string;
-    url: string;
-    fileType: "DIAGRAMA" | "LEYENDA" | "GALERIA";
-    fileSize: number;
-  }
-  
-  // ========================
-  // DTO de respuesta de board
-  // ========================
-  export interface BoardResponseDTO {
-    id: number;
-    userId: number;
+export interface UserSummaryDTO {
+  _id: string;
+  name: string;
+  email: string;
+}
+
+export interface BoardResponseDTO {
+  _id: string;
+  code: string;
+  name: string;
+  location: string;
+  description: string;
+  images: string[];
+  company: string | CompanySummaryDTO;
+  createdBy: string | UserSummaryDTO;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BoardCreateDTO {
+  name: string;
+  location?: string;
+  description?: string;
+  images?: string[];
+}
+
+export interface BoardUpdateDTO {
+  name?: string;
+  location?: string;
+  description?: string;
+  images?: string[];
+}
+
+export interface PublicCompanyBoardsItemDTO {
+  code: string;
+  name: string;
+  location: string;
+  description: string;
+  images: string[];
+  createdAt: string;
+}
+
+export interface PublicCompanyBoardsResponseDTO {
+  company: {
     name: string;
-    type: string;
-    tensionNominal: number;
-    numeroFases: number;
-    incluyeNeutro: boolean;
-    createdAt: string; // string ISO desde backend
-    updatedAt: string;
-    files: BoardFileDTO[];
-  }
-  
-  // ========================
-  // DTO para crear board
-  // ========================
-  export interface BoardCreateDTO {
+    publicCode: string;
+  };
+  boards: PublicCompanyBoardsItemDTO[];
+}
+
+export interface PublicBoardByCodeResponseDTO {
+  board: {
     name: string;
-    type: string;
-    tensionNominal: number;
-    numeroFases: number;
-    incluyeNeutro: boolean;
-  }
-  
-  // ========================
-  // DTO para actualizar board
-  // ========================
-  export interface BoardUpdateDTO {
+    location: string;
+    description: string;
+    images: string[];
+    createdAt: string;
+  };
+  company: {
     name: string;
-    type: string;
-    tensionNominal: number;
-    numeroFases: number;
-    incluyeNeutro: boolean;
-  }
-  
+    publicCode: string;
+  };
+}

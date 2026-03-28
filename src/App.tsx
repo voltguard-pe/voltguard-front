@@ -23,6 +23,7 @@ import BoardsCreatePage from './pages/dashboard/board/BoardCreatePage'
 import BoardsEditPage from './pages/dashboard/board/BoardEditPage'
 import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
 import TechnicalSheetPage from './pages/landing/TechnicalSheetPage'
+import PublicBoardsPage from './pages/public/PublicBoardsPage'
 
 function App() {
   return (
@@ -31,7 +32,8 @@ function App() {
         <Routes>
           <Route path='/' element={<LandingLayout />}>
             <Route index element={<HomePage />} />
-            <Route path="/qr/:id" element={<TechnicalSheetPage />} />
+            <Route path="/public/boards" element={<PublicBoardsPage />} />
+            <Route path="/public/boards/:publicCode" element={<PublicBoardsPage />} />
           </Route>
 
           <Route element={<PublicRoute />}>
@@ -43,7 +45,7 @@ function App() {
             </Route>
           </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={["ADMIN", "USER"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]} />}>
             <Route path='/dashboard' element={<DashboardLayout />}>
               <Route index element={<HomeDashboardPage />} />
               <Route path="settings" element={<ConfigurationDashboardPage />} />
@@ -57,7 +59,7 @@ function App() {
                 <Route path="users/:id" element={<UserDetailPage />} />
                 <Route path="users/:id/edit" element={<UserEditPage />} />
               </Route>
-              <Route element={<ProtectedRoute allowedRoles={["ADMIN", "USER"]} />}>
+              <Route element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]} />}>
                 <Route path="boards" element={<BoardDashboardPage />} />
                 <Route path="boards/create" element={<BoardsCreatePage />} />
                 <Route path="boards/:id/edit" element={<BoardsEditPage />} />

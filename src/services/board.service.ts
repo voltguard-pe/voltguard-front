@@ -1,85 +1,61 @@
 import clientAxios from "../shared/config/clientAxios";
-import type { BoardCreateDTO, BoardResponseDTO, BoardUpdateDTO } from "../shared/types/BoardProps";
-import type { PageProps } from "../shared/types/PageProps";
+import type {
+  BoardCreateDTO,
+  BoardResponseDTO,
+  BoardUpdateDTO,
+  PublicBoardByCodeResponseDTO,
+  PublicCompanyBoardsResponseDTO,
+} from "../shared/types/BoardProps";
 
-// Obtener todos los boards paginados
-export const getAllBoards = async (page = 0, size = 10): Promise<PageProps<BoardResponseDTO>> => {
-  const { data } = await clientAxios.get<PageProps<BoardResponseDTO>>("/boards", { params: { page, size } });
-  console.log("error boards", data)
+// Privado: obtener tableros de la empresa del admin autenticado
+export const getCompanyBoards = async (): Promise<BoardResponseDTO[]> => {
+  const { data } = await clientAxios.get<BoardResponseDTO[]>("/board");
   return data;
 };
 
-// Obtener un board por id
-export const getBoardById = async (id: number): Promise<BoardResponseDTO> => {
-  const { data } = await clientAxios.get<BoardResponseDTO>(`/boards/${id}`);
+// Privado: obtener un tablero por id, solo si pertenece a la empresa del admin
+export const getCompanyBoardById = async (id: string): Promise<BoardResponseDTO> => {
+  const { data } = await clientAxios.get<BoardResponseDTO>(`/board/${id}`);
   return data;
 };
 
-// Crear un board
-export const createBoard = async (
-  board: BoardCreateDTO,
-  // diagrama?: File | null,
-  // leyenda?: File | null,
-  diagrama?: File[],
-  leyenda?: File[],
-  galeria?: File[]
-): Promise<BoardResponseDTO> => {
-  const formData = new FormData();
-  formData.append("board", new Blob([JSON.stringify(board)], { type: "application/json" }));
-  // if (diagrama) formData.append("diagrama", diagrama);
-  // if (leyenda) formData.append("leyenda", leyenda);
-  diagrama?.forEach(file => formData.append("diagrama", file));
-  leyenda?.forEach(file => formData.append("leyenda", file));
-  galeria?.forEach(file => formData.append("galeria", file));
-
-  const { data } = await clientAxios.post<BoardResponseDTO>(`/boards`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-
+// Privado: crear tablero para la empresa del admin autenticado
+export const createBoard = async (board: BoardCreateDTO): Promise<{ message: string; board: BoardResponseDTO }> => {
+  const { data } = await clientAxios.post<{ message: string; board: BoardResponseDTO }>("/board", board);
   return data;
 };
 
-// Actualizar un board (incluye eliminación de archivos existentes)
+// Privado: actualizar tablero si luego implementas esa ruta en backend
 export const updateBoard = async (
-  id: number,
-  board: BoardUpdateDTO,
-  // diagrama?: File | null,
-  // leyenda?: File | null,
-  diagrama?: File[],
-  leyenda?: File[],
-  galeria?: File[],
-  filesToDelete?: number[]
+  id: string,
+  board: BoardUpdateDTO
 ): Promise<BoardResponseDTO> => {
-  const formData = new FormData();
-  const payload = {
-    ...board,
-    filesToDelete,
-  };
-  formData.append("board", new Blob([JSON.stringify(payload)], { type: "application/json" }));
-  // if (diagrama) formData.append("diagrama", diagrama);
-  // if (leyenda) formData.append("leyenda", leyenda);
-  diagrama?.forEach(file => formData.append("diagrama", file));
-  leyenda?.forEach(file => formData.append("leyenda", file));
-  galeria?.forEach(file => formData.append("galeria", file));
-
-  // // Enviar los ids de los archivos que se quieren eliminar
-  // if (filesToDelete && filesToDelete.length > 0) {
-  //   formData.append("filesToDelete", JSON.stringify(filesToDelete));
-  // }
-
-  const { data } = await clientAxios.put<BoardResponseDTO>(`/boards/${id}`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-
+  const { data } = await clientAxios.put<BoardResponseDTO>(`/board/${id}`, board);
   return data;
 };
 
-// Eliminar un board completo
-export const deleteBoard = async (id: number): Promise<void> => {
-  await clientAxios.delete(`/boards/${id}`);
+// Privado: eliminar tablero de la empresa del admin
+export const deleteBoard = async (id: string): Promise<{ message: string }> => {
+  const { data } = await clientAxios.delete<{ message: string }>(`/board/${id}`);
+  return data;
 };
 
-// Eliminar un archivo específico de un board
-export const deleteBoardFile = async (fileId: number): Promise<void> => {
-  await clientAxios.delete(`/boards/file/${fileId}`);
+// Público: obtener tableros de una empresa por publicCode
+export const publicGetCompanyBoards = async (
+  publicCode: string
+): Promise<PublicCompanyBoardsResponseDTO> => {
+  const { data } = await clientAxios.get<PublicCompanyBoardsResponseDTO>(
+    `/board/public/company/${publicCode}`
+  );
+  return data;
+};
+
+// Público: obtener detalle público de un tablero por code
+export const publicGetCompanyBoardByCode = async (
+  code: string
+): Promise<PublicBoardByCodeResponseDTO> => {
+  const { data } = await clientAxios.get<PublicBoardByCodeResponseDTO>(
+    `/board/public/board/${code}`
+  );
+  return data;
 };

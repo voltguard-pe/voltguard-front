@@ -44,12 +44,21 @@ const NavbarComponent = () => {
                             </div>
                         </NavLink>
                     ) : (
-                        <NavLink
-                            to="/auth"
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition"
-                        >
-                            Iniciar sesión
-                        </NavLink>
+                        <>
+                            <NavLink
+                                to="/public/boards"
+                                className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm hover:bg-blue-100 transition"
+                            >
+                                Explorar tableros
+                            </NavLink>
+                            <NavLink
+                                to="/auth"
+                                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition"
+                            >
+                                Iniciar sesión
+                            </NavLink>
+                        </>
+
                     )}
 
                 </nav>

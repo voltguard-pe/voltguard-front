@@ -1,10 +1,22 @@
 import clientAxios from '../shared/config/clientAxios'
 
-export const login = async (email: string, password: string) => {
+export interface LoginData {
+    email: string;
+    password: string;
+}
+
+export interface User {
+    id: string;
+    name: string;
+    role: "SUPERADMIN" | "ADMIN";
+}
+
+export const login = async (data: LoginData) => {
     try {
-        console.log("URL FINAL:", clientAxios.defaults.baseURL + "/auth/login");
-        const { data } = await clientAxios.post('/auth/login', { email, password })
-        return data
+        console.log("Data enviada", data)
+        const response = await clientAxios.post('/auth/login', data)
+        console.log("Respuesta", response)
+        return response
     } catch (error) {
         console.error("LOGIN ERROR:", error);
         throw new Error('Error al iniciar sesión')
@@ -16,6 +28,15 @@ export const logout = async () => {
         await clientAxios.post('/auth/logout')
     } catch (error) {
         throw new Error('Error al cerrar sesión' + error)
+    }
+}
+
+export const getProfile = async () => {
+    try {
+        const response = await clientAxios.get('/auth/profile')
+        return response.data
+    } catch (error) {
+        throw new Error('Error al ver perfil' + error)
     }
 }
 

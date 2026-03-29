@@ -37,7 +37,7 @@ const NavbarComponent = () => {
                 {fullName}
               </span>
               <span className="text-xs">
-                {auth.role === "ADMIN" ? "Administrador" : "Usuario"}
+                {auth.role === "SUPERADMIN" ? "Super Administrador" : "Administrador"}
               </span>
             </div>
           </NavLink>

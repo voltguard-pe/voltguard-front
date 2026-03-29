@@ -1,30 +1,21 @@
-import { Pencil, QrCode, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import DeleteFileModal from "../../../components/dashboard/modals/DeleteFileModal";
-import QrModal from "../../../components/dashboard/modals/QrModal";
 import {
   deleteBoard,
-  getCompanyBoards,
+  getBoards
 } from "../../../services/board.service";
-import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 
 const BoardDashboardPage = () => {
-  const navigate = useNavigate();
-
-  const [boards, setBoards] = useState<BoardResponseDTO[]>([]);
+  const [boards, setBoards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedBoard, setSelectedBoard] = useState<BoardResponseDTO | null>(null);
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [selectedQrBoard, setSelectedQrBoard] = useState<BoardResponseDTO | null>(null);
+  const navigate = useNavigate();
 
   const fetchBoards = async () => {
     try {
-      const response = await getCompanyBoards();
-      setBoards(response);
-    } catch (error) {
-      console.error("Error obteniendo boards", error);
+      setLoading(true);
+      const data = await getBoards();
+      setBoards(data);
     } finally {
       setLoading(false);
     }
@@ -34,23 +25,10 @@ const BoardDashboardPage = () => {
     fetchBoards();
   }, []);
 
-  const handleDelete = async () => {
-    if (!selectedBoard) return;
-
-    try {
-      await deleteBoard(selectedBoard._id);
-      await fetchBoards();
-    } catch (error) {
-      console.error("Error eliminando board", error);
-    } finally {
-      setShowDeleteModal(false);
-      setSelectedBoard(null);
-    }
-  };
-
-  const handleOpenQr = (board: BoardResponseDTO) => {
-    setSelectedQrBoard(board);
-    setShowQrModal(true);
+  const handleDelete = async (id: string) => {
+    if (!confirm("¿Eliminar tablero?")) return;
+    await deleteBoard(id);
+    fetchBoards();
   };
 
   if (loading) {
@@ -92,12 +70,12 @@ const BoardDashboardPage = () => {
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex justify-end gap-3">
-                    <button
+                    {/* <button
                       className="cursor-pointer text-blue-600 hover:text-blue-700"
                       onClick={() => handleOpenQr(board)}
                     >
                       <QrCode size={18} />
-                    </button>
+                    </button> */}
 
                     <button
                       className="cursor-pointer text-yellow-600 hover:text-yellow-700"
@@ -108,10 +86,7 @@ const BoardDashboardPage = () => {
 
                     <button
                       className="cursor-pointer text-red-600 hover:text-red-700"
-                      onClick={() => {
-                        setSelectedBoard(board);
-                        setShowDeleteModal(true);
-                      }}
+                      onClick={() => handleDelete(board._id)}
                     >
                       <Trash2 size={18} />
                     </button>
@@ -123,7 +98,7 @@ const BoardDashboardPage = () => {
         </table>
       </div>
 
-      {showQrModal && selectedQrBoard && (
+      {/* {showQrModal && selectedQrBoard && (
         <QrModal
           boardName={selectedQrBoard.name}
           qrUrl={`${import.meta.env.VITE_FRONT_URL}/board/${selectedQrBoard.code}`}
@@ -136,7 +111,7 @@ const BoardDashboardPage = () => {
           onClose={() => setShowDeleteModal(false)}
           onConfirm={handleDelete}
         />
-      )}
+      )} */}
     </section>
   );
 };

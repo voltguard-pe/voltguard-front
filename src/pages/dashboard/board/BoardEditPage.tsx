@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  getCompanyBoardById,
+  getBoardById,
   updateBoard,
 } from "../../../services/board.service";
 import Input from "../../../shared/components/Input";
@@ -29,7 +29,7 @@ const BoardsEditPage = () => {
     const fetchBoard = async () => {
       try {
         setLoading(true);
-        const data = await getCompanyBoardById(id);
+        const data = await getBoardById(id);
         setBoard(data);
         setName(data.name);
         setLocation(data.location || "");

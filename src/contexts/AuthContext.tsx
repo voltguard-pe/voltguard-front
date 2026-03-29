@@ -1,6 +1,6 @@
 import { createContext, useEffect, useState } from "react";
 import { logout } from "../services/auth.service";
-import { getMe } from "../services/users.service";
+import { getProfile } from "../services/auth.service";
 import type { UserProps } from "../shared/types/UserProps";
 
 interface AuthContextType {
@@ -19,7 +19,8 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const authentication = async () => {
       try {
-        const user = await getMe()
+        const user = await getProfile()
+        console.log("Datos del usuario", user)
         setAuth(user)
       } catch {
         setAuth(null)

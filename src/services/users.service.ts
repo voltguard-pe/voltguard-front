@@ -12,10 +12,10 @@ interface GetUsersParams {
 // 🔹 PERFIL USUARIO AUTENTICADO
 //
 
-export const getMe = async (): Promise<UserProps> => {
-  const { data } = await clientAxios.get<UserProps>('/user/profile')
-  return data
-}
+// export const getMe = async (): Promise<UserProps> => {
+//   const { data } = await clientAxios.get<UserProps>('/user/profile')
+//   return data
+// }
 
 export const updateMe = async (
   formData: Partial<UpdateUserDTO>

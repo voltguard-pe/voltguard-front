@@ -2,20 +2,16 @@ import { KeyRound, Mail } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { login } from "../../services/auth.service";
-import { getMe } from "../../services/users.service";
+import { getProfile } from "../../services/auth.service";
 import Input from "../../shared/components/Input";
 import { useAuth } from "../../shared/hooks/useAuth";
-
-type LoginProps = {
-    email: string,
-    password: string
-}
+import { type LoginData } from "../../services/auth.service"
 
 const LoginPage = () => {
     const { setAuth } = useAuth();
     const navigate = useNavigate()
 
-    const [formData, setFormData] = useState<LoginProps>({
+    const [formData, setFormData] = useState<LoginData>({
         email: "",
         password: ""
     });
@@ -34,9 +30,11 @@ const LoginPage = () => {
         setLoading(true);
 
         try {
-            await login(formData.email, formData.password)
+            await login(formData)
 
-            const user = await getMe()
+            const user = await getProfile()
+
+            console.log("Usuario logueado", user)
 
             setAuth(user)
             navigate("/dashboard")

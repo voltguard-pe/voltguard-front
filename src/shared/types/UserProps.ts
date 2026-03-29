@@ -7,6 +7,7 @@ export type UserProps = {
   email: string
   isActive: boolean
   role: Role
+  company: string
   createdAt: string
   updatedAt: string
 }

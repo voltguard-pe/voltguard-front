@@ -24,7 +24,7 @@ const NavbarComponent = () => {
         </button> */}
 
         {/* Profile (solo ADMIN) */}
-        {auth.id && (
+        {auth._id && (
           <NavLink
             to="/dashboard/profile"
             className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-blue-600 bg-blue-100 hover:bg-blue-200 transition"

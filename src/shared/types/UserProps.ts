@@ -1,7 +1,7 @@
 import type { Role } from "./AuthProps"
 
 export type UserProps = {
-  id: number
+  _id: number | string
   firstname: string
   lastname: string
   email: string

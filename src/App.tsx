@@ -24,6 +24,7 @@ import BoardsEditPage from './pages/dashboard/board/BoardEditPage'
 import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
 import TechnicalSheetPage from './pages/landing/TechnicalSheetPage'
 import PublicBoardsPage from './pages/public/PublicBoardsPage'
+import BoardFormPage from './pages/dashboard/board/BoardFromPage'
 
 function App() {
   return (
@@ -53,16 +54,18 @@ function App() {
                 <Route index element={<ProfileDashboardPage />} />
                 <Route path="edit" element={<EditProfilePage />} />
               </Route>
-              <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
+              <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                 <Route path="users" element={<UserDashboardPage />} />
                 <Route path="users/create" element={<UserCreatePage />} />
                 <Route path="users/:id" element={<UserDetailPage />} />
                 <Route path="users/:id/edit" element={<UserEditPage />} />
               </Route>
-              <Route element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]} />}>
+              <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
                 <Route path="boards" element={<BoardDashboardPage />} />
-                <Route path="boards/create" element={<BoardsCreatePage />} />
-                <Route path="boards/:id/edit" element={<BoardsEditPage />} />
+                {/* <Route path="boards/create" element={<BoardsCreatePage />} />
+                <Route path="boards/:id/edit" element={<BoardsEditPage />} /> */}
+                <Route path="boards/create" element={<BoardFormPage />} />
+                <Route path="boards/:id/edit" element={<BoardFormPage />} />
                 {/* <Route path="/dashboard/upload" element={<BoardFileUploaderPage />} /> */}
               </Route>
             </Route>

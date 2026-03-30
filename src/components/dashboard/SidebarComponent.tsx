@@ -26,13 +26,13 @@ const navItems: NavItem[] = [
     label: "Usuarios",
     path: "/dashboard/users",
     icon: Users,
-    roles: ["ADMIN"], // 👈 solo admin
+    roles: ["SUPERADMIN"], // 👈 solo admin
   },
   {
     label: "Tableros",
     path: "/dashboard/boards",
     icon: BarChart2,
-    roles: ["ADMIN", "USER"],
+    roles: ["ADMIN"],
   },
   // {
   //   label: "Configuración",

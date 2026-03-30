@@ -1,4 +1,5 @@
 import { Download, X } from "lucide-react";
+import QRCode from "react-qr-code";
 
 interface Props {
   boardName: string;
@@ -7,17 +8,10 @@ interface Props {
 }
 
 const QrModal = ({ boardName, qrUrl, onClose }: Props) => {
-  const handleDownload = () => {
-    const link = document.createElement("a");
-    link.href = qrUrl;
-    link.download = `${boardName}-qr.png`;
-    link.click();
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
 
-      <div className="bg-white rounded-xl shadow-lg w-[400px] p-6 relative">
+      <div className="bg-white rounded-xl shadow-lg w-full max-w-sm p-6 relative">
 
         {/* cerrar */}
         <button
@@ -34,34 +28,20 @@ const QrModal = ({ boardName, qrUrl, onClose }: Props) => {
           </h2>
 
           <p className="text-sm text-gray-500 text-center">
-            Escanea este código para ver la ficha técnica del tablero
+            Escanea este código para ver los tableros
           </p>
 
-          {/* QR */}
-
+          {/* ✅ QR REAL */}
           <div className="bg-gray-100 p-4 rounded-lg">
-            <img
-              src={qrUrl}
-              alt="QR Code"
-              className="w-52 h-52 object-contain"
-            />
+            <QRCode value={qrUrl} size={200} />
           </div>
 
           {/* acciones */}
-
-          <div className="flex gap-3 mt-2">
-
-            <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
-            >
-              <Download size={16} />
-              Descargar
-            </button>
+          <div className="flex gap-3 mt-2 w-full">
 
             <button
               onClick={onClose}
-              className="border px-4 py-2 rounded-lg text-sm hover:bg-gray-100"
+              className="w-full border px-4 py-2 rounded-lg text-sm hover:bg-gray-100"
             >
               Cerrar
             </button>
@@ -71,7 +51,6 @@ const QrModal = ({ boardName, qrUrl, onClose }: Props) => {
         </div>
 
       </div>
-
     </div>
   );
 };

@@ -25,6 +25,8 @@ import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
 import TechnicalSheetPage from './pages/landing/TechnicalSheetPage'
 import PublicBoardsPage from './pages/public/PublicBoardsPage'
 import BoardFormPage from './pages/dashboard/board/BoardFromPage'
+import CompanyDashboardPage from './pages/dashboard/company/CompanyDashboardPage'
+import CompanyFormPage from './pages/dashboard/company/CompanyFormPage'
 
 function App() {
   return (
@@ -55,6 +57,10 @@ function App() {
                 <Route path="edit" element={<EditProfilePage />} />
               </Route>
               <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
+                <Route path="companies" element={<CompanyDashboardPage />} />
+                <Route path="companies/create" element={<CompanyFormPage />} />
+                <Route path="companies/:id/edit" element={<CompanyFormPage />} />
+                
                 <Route path="users" element={<UserDashboardPage />} />
                 <Route path="users/create" element={<UserCreatePage />} />
                 <Route path="users/:id" element={<UserDetailPage />} />

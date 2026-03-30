@@ -1,4 +1,5 @@
 import type { BoardResponseDTO } from "../types/BoardProps";
+import type { CompanyResponseDTO } from "../types/CompanyProps";
 
 // src/mock/data.ts
 export const mockAdmins = [
@@ -20,6 +21,23 @@ export const mockAdmins = [
         role: "ADMIN",
         company: "Volvo"
     },
+];
+
+export const mockCompanies: CompanyResponseDTO[] = [
+  {
+    _id: "1",
+    name: "Recoleta",
+    publicCode: "recoleta",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    _id: "2",
+    name: "Volvo",
+    publicCode: "volvo",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
 ];
 
 export const mockBoards: Record<string, BoardResponseDTO[]> = {

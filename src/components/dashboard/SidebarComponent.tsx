@@ -5,6 +5,7 @@ import {
   Users,
   Settings,
   LogOut,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "../../shared/hooks/useAuth";
 import type { Role } from "../../shared/types/AuthProps";
@@ -26,6 +27,12 @@ const navItems: NavItem[] = [
     label: "Usuarios",
     path: "/dashboard/users",
     icon: Users,
+    roles: ["SUPERADMIN"], // 👈 solo admin
+  },
+  {
+    label: "Empresas",
+    path: "/dashboard/companies",
+    icon: Building2,
     roles: ["SUPERADMIN"], // 👈 solo admin
   },
   {

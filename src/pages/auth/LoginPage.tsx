@@ -37,9 +37,9 @@ const LoginPage = () => {
                     lastname: "Torres",
                     // email: "gustavo.torres@recoleta.edu.pe",
                     // password: "gustavo1234",
-                    email: "admin@gmail.com",
-                    password: "admin",
-                    role: "ADMIN" as const, // cambia a "superadmin" para probar
+                    email: "superadmin@gmail.com",
+                    password: "superadmin",
+                    role: "SUPERADMIN" as const, // cambia a "superadmin" para probar
                     isActive: true,
                     company: "Recoleta"
                 };

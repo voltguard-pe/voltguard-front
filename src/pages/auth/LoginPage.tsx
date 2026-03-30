@@ -30,6 +30,25 @@ const LoginPage = () => {
         setLoading(true);
 
         try {
+            // 🔥 MODO DEMO
+            if (`${import.meta.env.DEMO_MODE}`) {
+                const fakeUser = {
+                    firstname: "Gustavo",
+                    lastname: "Torres",
+                    email: "gustavo.torres@recoleta.edu.pe",
+                    password: "gustavo1234",
+                    role: "ADMIN" as const, // cambia a "superadmin" para probar
+                    isActive: true,
+                    company: "Recoleta"
+                };
+
+                console.log("Usuario demo", fakeUser);
+
+                setAuth(fakeUser);
+                navigate("/dashboard");
+                return;
+            }
+
             await login(formData)
 
             const user = await getProfile()

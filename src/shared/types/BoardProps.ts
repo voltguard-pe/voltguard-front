@@ -18,6 +18,7 @@ export interface BoardResponseDTO {
   description: string;
   images: string[];
   company: string | CompanySummaryDTO;
+  thermalReportUrl: string;
   createdBy: string | UserSummaryDTO;
   createdAt: string;
   updatedAt: string;
@@ -44,6 +45,7 @@ export interface PublicCompanyBoardsItemDTO {
   description: string;
   images: string[];
   createdAt: string;
+  thermalReportUrl: string;
 }
 
 export interface PublicCompanyBoardsResponseDTO {

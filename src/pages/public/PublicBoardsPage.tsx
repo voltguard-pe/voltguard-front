@@ -1,18 +1,15 @@
 import { QrCode } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { publicGetCompanies } from "../../services/company.service";
-import { publicGetCompanyBoards } from "../../services/board.service";
 import PublicQrModal from "../../components/dashboard/modal/QRModal";
-import type { PublicCompanyDTO } from "../../shared/types/CompanyProps";
-import type {
-  PublicCompanyBoardsItemDTO,
-  PublicCompanyBoardsResponseDTO,
-} from "../../shared/types/BoardProps";
+import type { CompanyResponseDTO } from "../../shared/types/CompanyProps";
+import type { PublicCompanyBoardsItemDTO } from "../../shared/types/BoardProps";
+import { mockBoards, mockCompanies } from "../../shared/mocks/data";
 
 const PublicBoardsPage = () => {
-  const [companies, setCompanies] = useState<PublicCompanyDTO[]>([]);
-  const [selectedCompany, setSelectedCompany] = useState<PublicCompanyDTO | null>(null);
+  const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
+  const [selectedCompany, setSelectedCompany] =
+    useState<CompanyResponseDTO | null>(null);
   const [boards, setBoards] = useState<PublicCompanyBoardsItemDTO[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingBoards, setLoadingBoards] = useState(false);
@@ -27,13 +24,11 @@ const PublicBoardsPage = () => {
     return `${window.location.origin}/public/boards/${selectedCompany.publicCode}`;
   }, [selectedCompany]);
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = () => {
     try {
       setLoadingCompanies(true);
       setError(null);
-
-      const data = await publicGetCompanies();
-      setCompanies(data);
+      setCompanies(mockCompanies);
     } catch (err) {
       setError("No se pudieron cargar las empresas.");
     } finally {
@@ -41,15 +36,13 @@ const PublicBoardsPage = () => {
     }
   };
 
-  const fetchBoardsByCompany = async (companyPublicCode: string) => {
+  const fetchBoardsByCompany = (companyName: string) => {
     try {
       setLoadingBoards(true);
       setError(null);
 
-      const data: PublicCompanyBoardsResponseDTO =
-        await publicGetCompanyBoards(companyPublicCode);
-
-      setBoards(data.boards);
+      const data = mockBoards[companyName] || [];
+      setBoards(data);
     } catch (err) {
       setBoards([]);
       setError("No se pudieron cargar los tableros de la empresa.");
@@ -69,18 +62,18 @@ const PublicBoardsPage = () => {
       return;
     }
 
-    const company = companies.find((c) => c.publicCode === publicCode);
+    const company = mockCompanies.find((c: any) => c.publicCode === publicCode);
     setSelectedCompany(company || null);
-  }, [publicCode, companies]);
+  }, [publicCode]);
 
   useEffect(() => {
-    if (!publicCode) {
+    if (!selectedCompany) {
       setBoards([]);
       return;
     }
 
-    fetchBoardsByCompany(publicCode);
-  }, [publicCode]);
+    fetchBoardsByCompany(selectedCompany.name);
+  }, [selectedCompany]);
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -131,11 +124,10 @@ const PublicBoardsPage = () => {
                       onClick={() =>
                         navigate(`/public/boards/${company.publicCode}`)
                       }
-                      className={`mb-2 rounded-xl border p-4 text-left transition ${
-                        isActive
+                      className={`mb-2 rounded-xl border p-4 text-left transition ${isActive
                           ? "border-indigo-500 bg-indigo-50 shadow-sm"
                           : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                      }`}
+                        }`}
                     >
                       <div>
                         <p className="text-sm font-semibold text-slate-900">
@@ -179,9 +171,8 @@ const PublicBoardsPage = () => {
                     <div className="rounded-xl bg-slate-100 px-4 py-2 text-sm text-slate-600">
                       {loadingBoards
                         ? "Cargando..."
-                        : `${boards.length} tablero${
-                            boards.length !== 1 ? "s" : ""
-                          }`}
+                        : `${boards.length} tablero${boards.length !== 1 ? "s" : ""
+                        }`}
                     </div>
                   </div>
                 )}
@@ -253,7 +244,17 @@ const PublicBoardsPage = () => {
                         </p>
                       </div>
 
-                      <div className="mt-5 flex items-center justify-end">
+                      <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+                        {board.thermalReportUrl && (
+                          <button
+                            type="button"
+                            onClick={() => window.open(board.thermalReportUrl, "_blank", "noopener,noreferrer")}
+                            className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+                          >
+                            Descargar informe termográfico
+                          </button>
+                        )}
+
                         <button
                           type="button"
                           onClick={() => navigate(`/public/board/${board.code}`)}

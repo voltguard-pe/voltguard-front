@@ -1,15 +1,15 @@
 import type { Role } from "./AuthProps"
 
 export type UserProps = {
-  _id?: number | string
+  _id: number | string
   firstname: string
   lastname: string
   email: string
   isActive: boolean
   role: Role
   company: string
-  createdAt?: string
-  updatedAt?: string
+  createdAt: string
+  updatedAt: string
 }
 
 export interface CreateUserDTO {

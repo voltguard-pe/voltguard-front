@@ -20,7 +20,7 @@ interface GetUsersParams {
 export const updateMe = async (
   formData: Partial<UpdateUserDTO>
 ): Promise<UserProps> => {
-  const { data } = await clientAxios.put<UserProps>('/user/profile', formData)
+  const { data } = await clientAxios.put<UserProps>('/admin/profile', formData)
   return data
 }
 
@@ -30,7 +30,7 @@ export const updateMe = async (
 
 export const getAllUsers = async (params: GetUsersParams): Promise<PageProps<UserProps>> => {
   try {
-    const { data } = await clientAxios.get<PageProps<UserProps>>('/user', {
+    const { data } = await clientAxios.get<PageProps<UserProps>>('/admin', {
       params: {
         page: params.page ?? 0,
         size: params.size ?? 10
@@ -42,9 +42,9 @@ export const getAllUsers = async (params: GetUsersParams): Promise<PageProps<Use
   }
 }
 
-export const getUserById = async (id: number): Promise<UserProps> => {
+export const getUserById = async (id: string): Promise<UserProps> => {
   try {
-    const { data } = await clientAxios.get<UserProps>(`/user/${id}`);
+    const { data } = await clientAxios.get<UserProps>(`/admin/${id}`);
     return data;
   } catch (error) {
     throw new Error('Error al obtener el usuario por id' + error);
@@ -53,7 +53,7 @@ export const getUserById = async (id: number): Promise<UserProps> => {
 
 export const createUser = async (formData: CreateUserDTO): Promise<UserProps> => {
   try {
-    const { data } = await clientAxios.post<UserProps>('/user', formData);
+    const { data } = await clientAxios.post<UserProps>('/admin', formData);
     return data;
   } catch (error) {
     throw new Error('Error al crear el usuario' + error);
@@ -62,16 +62,16 @@ export const createUser = async (formData: CreateUserDTO): Promise<UserProps> =>
 
 export const updateUser = async (formData: Partial<UpdateUserDTO>): Promise<UserProps> => {
   try {
-    const { data } = await clientAxios.put<UserProps>('/user/profile', formData);
+    const { data } = await clientAxios.put<UserProps>('/admin/profile', formData);
     return data;
   } catch (error) {
     throw new Error('Error al actualizar el usuario' + error);
   }
 }
 
-export const deleteUser = async (id: number): Promise<void> => {
+export const deleteUser = async (id: string): Promise<void> => {
   try {
-    await clientAxios.delete(`/user/${id}`);
+    await clientAxios.delete(`/admin/${id}`);
   } catch (error) {
     throw new Error('Error al eliminar el usuario' + error);
   }

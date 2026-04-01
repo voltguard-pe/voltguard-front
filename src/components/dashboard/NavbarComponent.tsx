@@ -1,43 +1,51 @@
-import { Bell, UserCircle } from "lucide-react";
+import { Bell, Menu, UserCircle } from "lucide-react";
 import { NavLink } from 'react-router-dom';
 import { useAuth } from "../../shared/hooks/useAuth";
 import { getInitials } from "../../shared/utils/initialsName";
 
-const NavbarComponent = () => {
-
+const NavbarComponent = ({ onOpenSidebar }: { onOpenSidebar: () => void }) => {
   const { auth } = useAuth();
 
-  if (!auth) return null; // ⛔ evita renders raros
+  if (!auth) return null;
 
   const fullName = `${auth.firstname} ${auth.lastname}`;
 
   return (
-    <header className="h-16 bg-white flex items-center justify-end px-6">
-      {/* <h1 className="text-lg font-semibold text-gray-700">
-        Dashboard
-      </h1> */}
+    <header className="h-16 bg-white flex items-center  px-4 md:px-6">
 
-      <div className="flex items-center gap-4">
-        {/* <button className="relative">
-          <Bell size={20} className="text-gray-500" />
-          <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
-        </button> */}
+      <button
+        className="md:hidden"
+        onClick={onOpenSidebar}
+      >
+        <Menu size={22} />
+      </button>
 
-        {/* Profile (solo ADMIN) */}
+      <div className="flex items-center gap-3 md:gap-4 ml-auto">
+
+        {/* Profile */}
         {auth._id && (
           <NavLink
             to="/dashboard/profile"
-            className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-blue-600 bg-blue-100 hover:bg-blue-200 transition"
+            className="flex items-center gap-2 md:gap-3 px-2 md:px-4 py-2 rounded-lg text-sm text-blue-600 bg-blue-100 hover:bg-blue-200 transition"
           >
-            <div className="w-9 h-9 rounded-full bg-indigo-500 text-white flex items-center justify-center text-sm font-semibold">
+            {/* Avatar */}
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs md:text-sm font-semibold">
               {getInitials(auth.firstname, auth.lastname)}
             </div>
-            <div className="flex flex-col">
-              <span className="font-medium">
+
+            <span className="md:hidden text-sm font-medium text-gray-700">
+              {auth.firstname}
+            </span>
+
+            {/* 👇 Oculto en mobile */}
+            <div className="hidden md:flex flex-col leading-tight">
+              <span className="font-medium text-gray-800">
                 {fullName}
               </span>
-              <span className="text-xs">
-                {auth.role === "SUPERADMIN" ? "Super Administrador" : "Administrador"}
+              <span className="text-xs text-gray-500">
+                {auth.role === "SUPERADMIN"
+                  ? "Super Administrador"
+                  : "Administrador"}
               </span>
             </div>
           </NavLink>

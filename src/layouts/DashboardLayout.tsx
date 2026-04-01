@@ -2,18 +2,24 @@ import { Outlet } from "react-router-dom";
 import SidebarComponent from "../components/dashboard/SidebarComponent";
 import NavbarComponent from "../components/dashboard/NavbarComponent";
 import FooterComponent from "../components/dashboard/FooterComponent";
+import { useState } from "react";
 
 const DashboardLayout = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   return (
-    <section className="min-h-screen flex bg-slate-100">
+    <section className="h-screen flex bg-slate-100">
       {/* Sidebar */}
-      <SidebarComponent />
+      <SidebarComponent
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
 
       {/* Content */}
-      <div className="flex flex-col flex-1">
-        <NavbarComponent />
+      <div className="flex flex-col flex-1 w-full">
+        <NavbarComponent onOpenSidebar={() => setIsSidebarOpen(true)} />
 
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-4 md:p-6">
           <Outlet />
         </main>
 

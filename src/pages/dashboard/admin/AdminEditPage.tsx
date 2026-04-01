@@ -4,9 +4,9 @@ import Select from "../../../shared/components/Select";
 import { useNavigate, useParams } from "react-router-dom";
 import type { User } from "../../../shared/mocks/users.mock";
 import { getUserById, updateUser } from "../../../services/users.service";
-import UserForm from "./UserForm";
+import UserForm from "./AdminForm";
 
-const UserEditPage = () => {
+const AdminEditPage = () => {
     // const { id } = useParams();
     // const navigate = useNavigate();
 
@@ -93,4 +93,4 @@ const UserEditPage = () => {
     );
 };
 
-export default UserEditPage;
+export default AdminEditPage;

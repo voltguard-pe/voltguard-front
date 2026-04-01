@@ -2,7 +2,6 @@ import {
   BarChart2,
   Building2,
   Home,
-  LogOut,
   Users
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
@@ -53,7 +52,7 @@ interface SidebarComponentProps {
 }
 
 const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
-  const { auth, handleLogout } = useAuth();
+  const { auth } = useAuth();
 
   if (!auth) return null;
 
@@ -111,7 +110,7 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
         </nav>
 
         {/* Logout */}
-        <div className="p-4">
+        {/* <div className="p-4">
           <button
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-red-600 hover:bg-red-50"
             onClick={handleLogout}
@@ -119,7 +118,7 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
             <LogOut size={18} />
             Cerrar sesión
           </button>
-        </div>
+        </div> */}
       </aside>
     </>
   );

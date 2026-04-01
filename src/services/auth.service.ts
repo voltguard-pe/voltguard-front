@@ -8,7 +8,7 @@ export interface LoginData {
 export interface User {
     id: string;
     name: string;
-    role: "SUPERADMIN" | "ADMIN";
+    role: "SUPERADMIN" | "ADMIN" | "USER";
 }
 
 export const login = async (data: LoginData) => {
@@ -52,6 +52,6 @@ export const resetPassword = async (token: string, newPassword: string) => {
             newPassword
         })
     } catch (error) {
-        throw new Error('No se pudo cambiar la contraseña')
+        throw new Error('No se pudo cambiar la contraseña' + error)
     }
 }

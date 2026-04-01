@@ -2,31 +2,30 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import AuthLayout from './layouts/AuthLayout'
 import DashboardLayout from './layouts/DashboardLayout'
+import LandingLayout from './layouts/LandingLayout'
 import ChangePasswordPage from './pages/auth/ChangePasswordPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
-import BoardDashboardPage from './pages/dashboard/board/BoardDashboardPage'
-import ConfigurationDashboardPage from './pages/dashboard/ConfigurationDashboardPage'
-import HomeDashboardPage from './pages/dashboard/HomeDashboardPage'
-import ProfileDashboardPage from './pages/dashboard/profile/ProfileDashboardPage'
-import UserCreatePage from './pages/dashboard/user/UserCreatePage'
-import UserDashboardPage from './pages/dashboard/user/UserDashboardPage'
-import UserDetailPage from './pages/dashboard/user/UserDetailPage'
-import UserEditPage from './pages/dashboard/user/UserEditPage'
-import NotFoundPage from './pages/NotFoundPage'
-import ProtectedRoute from './routes/ProtectedRoute'
-import LandingLayout from './layouts/LandingLayout'
-import HomePage from './pages/landing/HomePage'
-import PublicRoute from './routes/PublicRouter'
+import AdminCreatePage from './pages/dashboard/admin/AdminCreatePage'
+import AdminDashboardPage from './pages/dashboard/admin/AdminDashboardPage'
+import AdminDetailPage from './pages/dashboard/admin/AdminDetailPage'
+import AdminEditPage from './pages/dashboard/admin/AdminEditPage'
 import BoardsCreatePage from './pages/dashboard/board/BoardCreatePage'
+import BoardDashboardPage from './pages/dashboard/board/BoardDashboardPage'
 import BoardsEditPage from './pages/dashboard/board/BoardEditPage'
-import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
-import TechnicalSheetPage from './pages/landing/TechnicalSheetPage'
-import PublicBoardsPage from './pages/public/PublicBoardsPage'
-import CompanyDashboardPage from './pages/dashboard/company/CompanyDashboardPage'
 import CompanyCreatePage from './pages/dashboard/company/CompanyCreatePage'
+import CompanyDashboardPage from './pages/dashboard/company/CompanyDashboardPage'
 import CompanyEditPage from './pages/dashboard/company/CompanyEditPage'
+import ConfigurationDashboardPage from './pages/dashboard/ConfigurationDashboardPage'
+import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
+import ProfileDashboardPage from './pages/dashboard/profile/ProfileDashboardPage'
+import HomePage from './pages/landing/HomePage'
+import NotFoundPage from './pages/NotFoundPage'
+import PublicBoardsPage from './pages/public/PublicBoardsPage'
+import DashboardRouter from './routes/DashboardRouter'
+import ProtectedRoute from './routes/ProtectedRoute'
+import PublicRoute from './routes/PublicRouter'
 
 function App() {
   return (
@@ -48,9 +47,9 @@ function App() {
             </Route>
           </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN", "ADMIN"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN", "ADMIN", "USER"]} />}>
             <Route path='/dashboard' element={<DashboardLayout />}>
-              <Route index element={<HomeDashboardPage />} />
+              <Route index element={<DashboardRouter />} />
               <Route path="settings" element={<ConfigurationDashboardPage />} />
               <Route path="profile">
                 <Route index element={<ProfileDashboardPage />} />
@@ -60,10 +59,10 @@ function App() {
               <Route path="boards" element={<BoardDashboardPage />} />
 
               <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
-                <Route path="users" element={<UserDashboardPage />} />
-                <Route path="users/create" element={<UserCreatePage />} />
-                <Route path="users/:id" element={<UserDetailPage />} />
-                <Route path="users/:id/edit" element={<UserEditPage />} />
+                <Route path="users" element={<AdminDashboardPage />} />
+                <Route path="users/create" element={<AdminCreatePage />} />
+                <Route path="users/:id" element={<AdminDetailPage />} />
+                <Route path="users/:id/edit" element={<AdminEditPage />} />
 
                 <Route path="company" element={<CompanyDashboardPage />} />
                 <Route path="company/create" element={<CompanyCreatePage />} />
@@ -77,7 +76,6 @@ function App() {
               </Route>
             </Route>
           </Route>
-
 
           <Route path='*' element={<NotFoundPage />} />
         </Routes>

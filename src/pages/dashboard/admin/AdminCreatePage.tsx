@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { createUser } from "../../../services/users.service";
 import Input from "../../../shared/components/Input";
 import Select from "../../../shared/components/Select";
-import UserForm from "./UserForm";
+import UserForm from "./AdminForm";
+import AdminForm from "./AdminForm";
 
-const UserCreatePage = () => {
+const AdminCreatePage = () => {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -50,7 +51,7 @@ const UserCreatePage = () => {
       </div>
 
       {/* Form */}
-      <UserForm
+      <AdminForm
         initialValues={{
           name: "",
           email: "",
@@ -66,4 +67,4 @@ const UserCreatePage = () => {
   );
 };
 
-export default UserCreatePage;
+export default AdminCreatePage;

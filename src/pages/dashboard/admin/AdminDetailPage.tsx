@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getUserById } from "../../../services/users.service";
 import type { UserProps } from "../../../shared/types/UserProps";
 
-const UserDetailPage = () => {
+const AdminDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [user, setUser] = useState<UserProps | null>(null);
@@ -74,4 +74,4 @@ const Info = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
-export default UserDetailPage;
+export default AdminDetailPage;

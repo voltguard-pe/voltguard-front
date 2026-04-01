@@ -1,70 +1,134 @@
 import { NavLink } from "react-router-dom";
 import { getInitials } from "../../shared/utils/initialsName";
 import { useAuth } from "../../shared/hooks/useAuth";
+import { useState, useEffect, useRef } from "react";
+import { User, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
 
 const NavbarComponent = () => {
-    const { auth } = useAuth();
+    const { auth, handleLogout } = useAuth();
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // if (!auth) return null; // ⛔ evita renders raros
+    const fullName = `${auth?.firstname || ""} ${auth?.lastname || ""}`;
 
-    const fullName = `${auth?.firstname} ${auth?.lastname}`;
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+            setIsOpen(false);
+            }
+        };
+
+        const handleScroll = () => {
+            if (isOpen) setIsOpen(false);
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        window.addEventListener("scroll", handleScroll, true); // 👈 importante
+
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            window.removeEventListener("scroll", handleScroll, true);
+        };
+    }, [isOpen]);
+
     return (
         <header className="w-full bg-white/80 backdrop-blur border-b border-slate-200">
-            <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-                <NavLink
-                    to="/"
-                    className="text-xl font-bold text-blue-600"
-                >
+            <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+
+                {/* Logo */}
+                <NavLink to="/" className="text-lg md:text-xl font-bold text-blue-600">
                     PanelQR
                 </NavLink>
 
-                <nav className="flex items-center gap-4">
-                    {/* <NavLink
-                        to="/"
-                        className="text-sm text-slate-600 hover:text-indigo-500"
-                    >
-                        Tableros
-                    </NavLink> */}
+                <nav className="flex items-center gap-2 md:gap-4">
 
-                    {auth?.id ? (
-                        <NavLink
-                            to="/dashboard/profile"
-                            className="flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-blue-600 bg-blue-100 hover:bg-blue-200 transition"
-                        >
-                            <div className="w-9 h-9 rounded-full bg-indigo-500 text-white flex items-center justify-center text-sm font-semibold">
-                                {getInitials(auth.firstname, auth.lastname)}
-                            </div>
-                            <div className="flex flex-col">
-                                <span className="font-medium">
-                                    {fullName}
+                    {auth?._id ? (
+                        <div className="relative" ref={dropdownRef}>
+
+                            {/* Botón avatar */}
+                            <button
+                                onClick={() => setIsOpen(!isOpen)}
+                                className="flex items-center gap-2 md:gap-3 px-2 md:px-4 py-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 transition"
+                            >
+                                <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs md:text-sm font-semibold">
+                                    {getInitials(auth.firstname, auth.lastname)}
+                                </div>
+
+                                {/* Mobile */}
+                                <span className="md:hidden text-sm font-medium text-gray-700">
+                                    {auth.firstname}
                                 </span>
-                                <span className="text-xs">
-                                    {auth.role === "ADMIN" ? "Administrador" : "Usuario"}
-                                </span>
-                            </div>
-                        </NavLink>
+
+                                {/* Desktop */}
+                                <div className="hidden md:flex flex-col leading-tight text-left">
+                                    <span className="font-medium text-gray-800">
+                                        {fullName}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        {auth.role === "SUPERADMIN"
+                                            ? "Super Administrador"
+                                            : auth.role === "ADMIN"
+                                                ? "Administrador"
+                                                : "Usuario"}
+                                    </span>
+                                </div>
+                                <ChevronDown size={16} />
+                            </button>
+
+                            {/* Dropdown */}
+                            {isOpen && (
+                                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-md py-2 z-50">
+
+                                    <NavLink
+                                        to="/dashboard"
+                                        onClick={() => setIsOpen(false)}
+                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                        <LayoutDashboard size={16} />
+                                        Dashboard
+                                    </NavLink>
+                                    <NavLink
+                                        to="/dashboard/profile"
+                                        onClick={() => setIsOpen(false)}
+                                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                    >
+                                        <User size={16} />
+                                        Mi Perfil
+                                    </NavLink>
+
+                                    <button
+                                        onClick={handleLogout}
+                                        className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                    >
+                                        <LogOut size={16} />
+                                        Cerrar sesión
+                                    </button>
+
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <>
                             <NavLink
                                 to="/public/boards"
-                                className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm hover:bg-blue-100 transition"
+                                className="hidden sm:inline-block text-blue-600 px-3 md:px-4 py-2 rounded-lg text-sm hover:bg-blue-100 transition"
                             >
-                                Explorar tableros
+                                Explorar
                             </NavLink>
+
                             <NavLink
                                 to="/auth"
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition"
+                                className="bg-blue-600 text-white px-3 md:px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition"
                             >
                                 Iniciar sesión
                             </NavLink>
                         </>
-
                     )}
 
                 </nav>
             </div>
         </header>
-    )
-}
+    );
+};
 
 export default NavbarComponent;

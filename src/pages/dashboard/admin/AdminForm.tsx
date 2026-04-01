@@ -7,7 +7,7 @@ interface UserFormProps {
   onCancel?: () => void;
 }
 
-export default function UserForm({ user, onSubmit, onCancel }: UserFormProps) {
+export default function AdminForm({ user, onSubmit, onCancel }: UserFormProps) {
   const [firstname, setFirstname] = useState(user?.firstname || "");
   const [lastname, setLastname] = useState(user?.lastname || "");
   const [email, setEmail] = useState(user?.email || "");

@@ -44,10 +44,10 @@ const ProfileDashboardPage = () => {
 
         {/* Info */}
         <div className="flex-1">
-          <h2 className="text-xl font-semibold text-gray-800">
+          <h2 className="text-xl font-semibold text-gray-800 text-center md:text-start">
             {auth.firstname} {auth.lastname}
           </h2>
-          <p className="text-sm text-gray-500">{auth.role === "SUPERADMIN" ? "Super Administrador" : "Administrador"}</p>
+          <p className="text-sm text-gray-500 text-center md:text-start">{auth.role === "SUPERADMIN" ? "Super Administrador" : auth.role === "ADMIN" ? "Administrador" : " Usuario"}</p>
 
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
             {stats.map((stat, index) => (
@@ -80,7 +80,7 @@ const ProfileDashboardPage = () => {
             </li>
             <li className="flex items-center gap-3 text-gray-600">
               <Shield size={18} />
-              Rol: {auth.role === "SUPERADMIN" ? "Super Administrador" : "Administrador"}
+              Rol: {auth.role === "SUPERADMIN" ? "Super Administrador" : auth.role === "ADMIN" ? "Administrador" : " Usuario"}
             </li>
             <li className="flex items-center gap-3 text-gray-600">
               <Calendar size={18} />

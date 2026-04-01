@@ -1,4 +1,4 @@
-import { Eye, Pencil, Trash2, UserPlus } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import DeleteUserModal from "../../../components/dashboard/modals/DeleteUserModal";
@@ -105,7 +105,7 @@ const UserDashboardPage = () => {
         </div>
 
         <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition" onClick={() => navigate("/dashboard/users/create")}>
-          <UserPlus size={18} />
+          <Plus size={18} />
           Nuevo usuario
         </button>
       </div>

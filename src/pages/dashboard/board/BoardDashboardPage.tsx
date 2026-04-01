@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -40,14 +40,12 @@ const BoardDashboardPage = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Tableros</h1>
-          <p className="text-sm text-gray-500">Lista de tableros de tu empresa</p>
+          <p className="text-sm text-gray-500">Lista de todos los tableros eléctricos registrados en el sistema</p>
         </div>
 
-        <button
-          onClick={() => navigate("/dashboard/boards/create")}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
-        >
-          Crear tablero
+        <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition" onClick={() => navigate("/dashboard/boards/create")}>
+          <Plus size={18} />
+          Nuevo tablero
         </button>
       </div>
 

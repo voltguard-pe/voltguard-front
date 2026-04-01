@@ -24,6 +24,9 @@ import BoardsEditPage from './pages/dashboard/board/BoardEditPage'
 import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
 import TechnicalSheetPage from './pages/landing/TechnicalSheetPage'
 import PublicBoardsPage from './pages/public/PublicBoardsPage'
+import CompanyDashboardPage from './pages/dashboard/company/CompanyDashboardPage'
+import CompanyCreatePage from './pages/dashboard/company/CompanyCreatePage'
+import CompanyEditPage from './pages/dashboard/company/CompanyEditPage'
 
 function App() {
   return (
@@ -45,7 +48,7 @@ function App() {
             </Route>
           </Route>
 
-          <Route element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN", "ADMIN"]} />}>
             <Route path='/dashboard' element={<DashboardLayout />}>
               <Route index element={<HomeDashboardPage />} />
               <Route path="settings" element={<ConfigurationDashboardPage />} />
@@ -53,14 +56,21 @@ function App() {
                 <Route index element={<ProfileDashboardPage />} />
                 <Route path="edit" element={<EditProfilePage />} />
               </Route>
-              <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
+
+              <Route path="boards" element={<BoardDashboardPage />} />
+
+              <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                 <Route path="users" element={<UserDashboardPage />} />
                 <Route path="users/create" element={<UserCreatePage />} />
                 <Route path="users/:id" element={<UserDetailPage />} />
                 <Route path="users/:id/edit" element={<UserEditPage />} />
+
+                <Route path="company" element={<CompanyDashboardPage />} />
+                <Route path="company/create" element={<CompanyCreatePage />} />
+                {/* <Route path="company/:id" element={<CompanyDetailPage />} /> */}
+                <Route path="company/:id/edit" element={<CompanyEditPage />} />
               </Route>
-              <Route element={<ProtectedRoute allowedRoles={["ADMIN", "SUPERADMIN"]} />}>
-                <Route path="boards" element={<BoardDashboardPage />} />
+              <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
                 <Route path="boards/create" element={<BoardsCreatePage />} />
                 <Route path="boards/:id/edit" element={<BoardsEditPage />} />
                 {/* <Route path="/dashboard/upload" element={<BoardFileUploaderPage />} /> */}

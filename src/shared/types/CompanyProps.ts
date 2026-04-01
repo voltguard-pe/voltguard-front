@@ -1,12 +1,13 @@
-// export interface PublicCompanyDTO {
-//   _id: string;
-//   name: string;
-//   publicCode: string;
-// }
+export interface PublicCompanyDTO {
+  _id: string;
+  name: string;
+  publicCode: string;
+}
 
 export interface CompanyResponseDTO {
   _id: string;
   name: string;
+  ruc: string;
   publicCode: string;
   createdAt: string;
   updatedAt: string;

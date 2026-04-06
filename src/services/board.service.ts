@@ -89,3 +89,15 @@ export const publicGetCompanyBoardByCode = async (
   );
   return data;
 };
+
+export const uploadFile = async (file: File, userId: string): Promise<{ url: string }> => {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("userId", userId);
+  const res = await clientAxios.post("/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return res.data;
+};

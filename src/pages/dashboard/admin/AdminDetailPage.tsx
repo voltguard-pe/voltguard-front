@@ -12,7 +12,7 @@ const AdminDetailPage = () => {
   useEffect(() => {
     if (!id) return;
 
-    getUserById(Number(id)).then((data) => {
+    getUserById(id).then((data) => {
       setUser(data ?? null);
       setLoading(false);
     });
@@ -34,7 +34,7 @@ const AdminDetailPage = () => {
           Detalle del usuario
         </h1>
         <p className="text-sm text-gray-500">
-          Información del usuario #{user.id}
+          Información del usuario #{user._id}
         </p>
       </div>
 
@@ -44,14 +44,14 @@ const AdminDetailPage = () => {
           <Info label="Nombre" value={user.firstname} />
           <Info label="Email" value={user.email} />
           <Info label="Rol" value={user.role} />
-          <Info label="Estado" value={user.status} />
+          {/* <Info label="Estado" value={user.status} /> */}
         </div>
       </div>
 
       {/* Actions */}
       <div className="flex gap-3">
         <button
-          onClick={() => navigate(`/dashboard/users/${user.id}/edit`)}
+          onClick={() => navigate(`/dashboard/users/${user._id}/edit`)}
           className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white"
         >
           Editar

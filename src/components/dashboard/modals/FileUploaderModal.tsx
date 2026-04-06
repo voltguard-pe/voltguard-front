@@ -74,7 +74,7 @@ const FileUploaderModal = ({
       setError(null);
       setLoading(true)
       for (const file of files) {
-        await uploadFile(file, userId)
+        await uploadFile(file, userId.toString())
       }
       setFiles([])
       onUploadSuccess?.()

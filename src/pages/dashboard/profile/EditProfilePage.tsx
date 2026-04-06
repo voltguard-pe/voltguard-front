@@ -42,7 +42,7 @@ const EditProfilePage = () => {
         setErrorMessage(null);
 
         try {
-            const updatedUser = await updateUser(formData);
+            const updatedUser = await updateUser(auth._id, formData);
 
             setAuth(updatedUser); // 🔥 Actualizamos el contexto global
             navigate("/dashboard/profile");

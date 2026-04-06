@@ -26,6 +26,7 @@ export const createBoard = async (data: CreateBoardPayload) => {
   formData.append("tensionNominal", String(data.tensionNominal));
   formData.append("numeroFases", String(data.numeroFases));
   formData.append("incluyeNeutro", String(data.incluyeNeutro));
+  formData.append("company", data.company!);
 
   if (data.location) formData.append("location", data.location);
   if (data.description) formData.append("description", data.description);

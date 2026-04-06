@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createBoard } from "../../../services/board.service";
 import DragAndDrop from "../../../shared/components/DragAndDrop";
 import Input from "../../../shared/components/Input";
 import type { BoardCreateDTO } from "../../../shared/types/BoardProps";
+import { getCompanies } from "../../../services/company.service";
 
 const BoardsCreatePage = () => {
   const [name, setName] = useState("");
@@ -12,10 +13,25 @@ const BoardsCreatePage = () => {
   const [incluyeNeutro, setIncluyeNeutro] = useState(false);
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
+ const [company, setCompany] = useState("");
+const [companies, setCompanies] = useState<any[]>([]);
 
   const [diagrama, setDiagrama] = useState<File[]>([]);
   const [leyenda, setLeyenda] = useState<File[]>([]);
   const [galeria, setGaleria] = useState<File[]>([]);
+
+  useEffect(() => {
+  const fetchCompanies = async () => {
+    try {
+      const data = await getCompanies();
+      setCompanies(data);
+    } catch (error) {
+      console.error("Error cargando empresas", error);
+    }
+  };
+
+  fetchCompanies();
+}, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,6 +44,7 @@ const BoardsCreatePage = () => {
       incluyeNeutro,
       location,
       description,
+      company
     };
 
     try {
@@ -105,6 +122,18 @@ const BoardsCreatePage = () => {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
         />
+
+        <select
+  value={company}
+  onChange={(e) => setCompany(e.target.value)}
+>
+  <option value="">Selecciona empresa</option>
+  {companies.map((c) => (
+    <option key={c._id} value={c._id}>
+      {c.name}
+    </option>
+  ))}
+</select>
 
         <label className="flex items-center gap-2 col-span-2">
           <span>¿Incluye neutro?</span>

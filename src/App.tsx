@@ -77,7 +77,7 @@ function App() {
                 <Route path="companies/:publicCode/edit" element={<CompaniesEditPage />} />
               </Route>
 
-              <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
+              <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                 <Route path="boards/create" element={<BoardsCreatePage />} />
                 <Route path="boards/:code/edit" element={<BoardsEditPage />} />
               </Route>

@@ -1,25 +1,45 @@
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { publicGetCompanyBoardByCode } from "../../../services/board.service";
-import type { PublicBoardByCodeResponseDTO } from "../../../shared/types/BoardProps";
+import { getBoardByCode } from "../../../services/board.service";
+import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 
 const BoardDetailPage = () => {
   const navigate = useNavigate();
   const { publicCode, code } = useParams();
 
-  const [board, setBoard] = useState<PublicBoardByCodeResponseDTO | null>(null);
+  const [board, setBoard] = useState<BoardResponseDTO | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchBoardDetail = async () => {
-    if (!code) return;
+    if (!code) {
+      setError("Código de tablero no proporcionado");
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
-      const data = await publicGetCompanyBoardByCode(code);
+      setError("");
+
+      const data = await getBoardByCode(publicCode?.toString() || "", code);
+
+      const boardCompanyPublicCode =
+        typeof data.company === "object" && data.company !== null
+          ? data.company.publicCode
+          : undefined;
+
+      if (publicCode && boardCompanyPublicCode && boardCompanyPublicCode !== publicCode) {
+        setError("El tablero no pertenece a la empresa seleccionada");
+        setBoard(null);
+        return;
+      }
+
       setBoard(data);
-    } catch (error) {
-      console.error("Error cargando detalle del tablero", error);
+    } catch (err) {
+      console.error("Error cargando detalle del tablero", err);
+      setError("No se pudo cargar el tablero");
       setBoard(null);
     } finally {
       setLoading(false);
@@ -28,15 +48,24 @@ const BoardDetailPage = () => {
 
   useEffect(() => {
     fetchBoardDetail();
-  }, [code]);
+  }, [code, publicCode]);
 
   if (loading) {
     return <p className="text-sm text-gray-500">Cargando detalle...</p>;
   }
 
+  if (error) {
+    return <p className="text-sm text-red-500">{error}</p>;
+  }
+
   if (!board) {
     return <p className="text-sm text-red-500">No se pudo cargar el tablero.</p>;
   }
+
+  const companyName =
+    typeof board.company === "object" && board.company !== null
+      ? board.company.name
+      : "Sin empresa";
 
   return (
     <section className="flex flex-col gap-y-6">
@@ -55,7 +84,7 @@ const BoardDetailPage = () => {
           {board.name}
         </h1>
         <p className="text-sm text-gray-500">
-          Empresa: {board.company?.name || "Sin empresa"}
+          Empresa: {companyName}
         </p>
       </div>
 
@@ -84,13 +113,13 @@ const BoardDetailPage = () => {
         <div className="bg-white rounded-xl shadow-sm p-5">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Imágenes</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {board.images.map((image, index) => (
               <img
                 key={index}
                 src={image}
                 alt={`Tablero ${board.name} ${index + 1}`}
-                className="w-full h-56 object-cover rounded-lg border"
+                className="h-56 w-full rounded-lg border object-cover"
               />
             ))}
           </div>

@@ -35,7 +35,7 @@ export interface BoardCreateDTO {
   incluyeNeutro: boolean;
   location?: string;
   description?: string;
-  company?: string;
+  publicCode?: string;
   images?: string[];
 }
 

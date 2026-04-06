@@ -33,7 +33,7 @@ export const logout = async () => {
 
 export const getProfile = async () => {
     try {
-        const response = await clientAxios.get('/auth/profile')
+        const response = await clientAxios.get('/user/profile')
         return response.data
     } catch (error) {
         throw new Error('Error al ver perfil' + error)

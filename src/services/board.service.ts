@@ -85,7 +85,7 @@ export const publicGetCompanyBoardByCode = async (
   code: string
 ): Promise<PublicBoardByCodeResponseDTO> => {
   const { data } = await clientAxios.get<PublicBoardByCodeResponseDTO>(
-    `/board/public/board/${code}`
+    `/board/public/${code}`
   );
   return data;
 };

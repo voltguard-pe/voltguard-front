@@ -1,0 +1,103 @@
+import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { publicGetCompanyBoardByCode } from "../../../services/board.service";
+import type { PublicBoardByCodeResponseDTO } from "../../../shared/types/BoardProps";
+
+const BoardDetailPage = () => {
+  const navigate = useNavigate();
+  const { publicCode, code } = useParams();
+
+  const [board, setBoard] = useState<PublicBoardByCodeResponseDTO | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchBoardDetail = async () => {
+    if (!code) return;
+
+    try {
+      setLoading(true);
+      const data = await publicGetCompanyBoardByCode(code);
+      setBoard(data);
+    } catch (error) {
+      console.error("Error cargando detalle del tablero", error);
+      setBoard(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBoardDetail();
+  }, [code]);
+
+  if (loading) {
+    return <p className="text-sm text-gray-500">Cargando detalle...</p>;
+  }
+
+  if (!board) {
+    return <p className="text-sm text-red-500">No se pudo cargar el tablero.</p>;
+  }
+
+  return (
+    <section className="flex flex-col gap-y-6">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate(`/dashboard/boards/${publicCode}`)}
+          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
+        >
+          <ArrowLeft size={18} />
+          Volver
+        </button>
+      </div>
+
+      <div>
+        <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+          {board.name}
+        </h1>
+        <p className="text-sm text-gray-500">
+          Empresa: {board.company?.name || "Sin empresa"}
+        </p>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm p-5 space-y-3 text-sm">
+        <p>
+          <strong>Tipo:</strong> {board.type}
+        </p>
+        <p>
+          <strong>Tensión nominal:</strong> {board.tensionNominal}
+        </p>
+        <p>
+          <strong>Número de fases:</strong> {board.numeroFases}
+        </p>
+        <p>
+          <strong>Incluye neutro:</strong> {board.incluyeNeutro ? "Sí" : "No"}
+        </p>
+        <p>
+          <strong>Ubicación:</strong> {board.location || "Sin ubicación"}
+        </p>
+        <p>
+          <strong>Descripción:</strong> {board.description || "Sin descripción"}
+        </p>
+      </div>
+
+      {board.images?.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">Imágenes</h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {board.images.map((image, index) => (
+              <img
+                key={index}
+                src={image}
+                alt={`Tablero ${board.name} ${index + 1}`}
+                className="w-full h-56 object-cover rounded-lg border"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+};
+
+export default BoardDetailPage;

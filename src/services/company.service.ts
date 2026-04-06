@@ -45,3 +45,8 @@ export const getCompanyOptions = async (): Promise<CompanyOptionDTO[]> => {
     publicCode: company.publicCode,
   }));
 };
+
+export const publicGetCompanies = async (): Promise<CompanyOptionDTO[]> => {
+  const { data } = await clientAxios.get<CompanyOptionDTO[]>("/company/public");
+  return data;
+};

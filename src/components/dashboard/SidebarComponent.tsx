@@ -43,7 +43,7 @@ const navItems: NavItem[] = [
     label: "Tableros",
     path: "/dashboard/boards",
     icon: BarChart2,
-    roles: ["SUPERADMIN", "ADMIN"],
+    roles: ["SUPERADMIN", "ADMIN", "USER"],
   },
   // {
   //   label: "Configuración",

@@ -28,6 +28,7 @@ import CompaniesEditPage from './pages/dashboard/companies/CompaniesEditPage'
 import DashboardRouter from './routes/DashboardRouter'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRouter'
+import BoardDetailPage from './pages/dashboard/board/BoardDetailPage'
 
 function App() {
   return (
@@ -36,8 +37,6 @@ function App() {
         <Routes>
           <Route path='/' element={<LandingLayout />}>
             <Route index element={<HomePage />} />
-            {/* <Route path="/public/boards" element={<PublicBoardsPage />} />
-            <Route path="/public/boards/:publicCode" element={<PublicBoardsPage />} /> */}
           </Route>
 
           <Route element={<PublicRoute />}>
@@ -53,12 +52,16 @@ function App() {
             <Route path='/dashboard' element={<DashboardLayout />}>
               <Route index element={<DashboardRouter />} />
               <Route path="settings" element={<ConfigurationDashboardPage />} />
+
               <Route path="profile">
                 <Route index element={<ProfileDashboardPage />} />
                 <Route path="edit" element={<EditProfilePage />} />
               </Route>
 
+              {/* RUTAS DE TABLEROS VISIBLES PARA USER/ADMIN/SUPERADMIN */}
               <Route path="boards" element={<BoardDashboardPage />} />
+              <Route path="boards/:publicCode" element={<BoardDashboardPage />} />
+              <Route path="boards/:publicCode/:code" element={<BoardDetailPage />} />
 
               <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                 <Route path="users" element={<AdminDashboardPage />} />
@@ -67,16 +70,16 @@ function App() {
 
                 <Route path="admins" element={<CompanyDashboardPage />} />
                 <Route path="admins/create" element={<CompanyCreatePage />} />
-                {/* <Route path="company/:id" element={<CompanyDetailPage />} /> */}
                 <Route path="admins/:id/edit" element={<CompanyEditPage />} />
+
                 <Route path="companies" element={<CompaniesDashboardPages />} />
                 <Route path="companies/create" element={<CompaniesCreatePage />} />
                 <Route path="companies/:publicCode/edit" element={<CompaniesEditPage />} />
               </Route>
+
               <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
                 <Route path="boards/create" element={<BoardsCreatePage />} />
                 <Route path="boards/:code/edit" element={<BoardsEditPage />} />
-                {/* <Route path="/dashboard/upload" element={<BoardFileUploaderPage />} /> */}
               </Route>
             </Route>
           </Route>
@@ -85,7 +88,7 @@ function App() {
         </Routes>
       </AuthProvider>
     </BrowserRouter>
-  )
+  );
 }
 
 export default App

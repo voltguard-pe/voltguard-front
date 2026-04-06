@@ -79,24 +79,38 @@ export interface PublicBoardByCodeResponseDTO {
   };
 }
 
-export interface PublicBoardByCodeResponseDTO {
-  board: {
-    name: string;
-    location: string;
-    description: string;
-    images: string[];
-    createdAt: string;
-  };
-  company: {
-    name: string;
-    publicCode: string;
-  };
-}
-
 export interface PublicCompanyBoardsResponseDTO {
   company: {
     name: string;
     publicCode: string;
   };
-  boards: PublicCompanyBoardsItemDTO[];
+  boards: {
+    code: string;
+    name: string;
+    type: string;
+    tensionNominal: number;
+    numeroFases: number;
+    incluyeNeutro: boolean;
+    location: string;
+    description: string;
+    images: string[];
+    createdAt: string;
+  }[];
+}
+
+export interface PublicBoardByCodeResponseDTO {
+  code: string;
+  name: string;
+  type: string;
+  tensionNominal: number;
+  numeroFases: number;
+  incluyeNeutro: boolean;
+  location: string;
+  description: string;
+  images: string[];
+  createdAt: string;
+  company: {
+    name: string;
+    publicCode: string;
+  };
 }

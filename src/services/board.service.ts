@@ -7,98 +7,71 @@ import type {
   PublicCompanyBoardsResponseDTO,
 } from "../shared/types/BoardProps";
 
-// Privado: obtener tableros de la empresa del admin autenticado
-export const getBoards = async () => {
-  const res = await clientAxios.get("/board");
+type CreateBoardPayload = BoardCreateDTO & {
+  diagrama?: File[];
+  leyenda?: File[];
+  galeria?: File[];
+};
+
+export const getBoards = async (): Promise<BoardResponseDTO[]> => {
+  const res = await clientAxios.get<BoardResponseDTO[]>("/board");
   return res.data;
 };
 
-// Privado: obtener un tablero por id, solo si pertenece a la empresa del admin
-export const getBoardById = async (id: string) => {
-  const res = await clientAxios.get(`/board/${id}`);
-  return res.data;
-};
-
-// Privado: crear tablero para la empresa del admin autenticado
-export const createBoard = async (data: any) => {
+export const createBoard = async (data: CreateBoardPayload) => {
   const formData = new FormData();
 
   formData.append("name", data.name);
-  formData.append("location", data.location);
-  formData.append("description", data.description);
+  formData.append("type", data.type);
+  formData.append("tensionNominal", String(data.tensionNominal));
+  formData.append("numeroFases", String(data.numeroFases));
+  formData.append("incluyeNeutro", String(data.incluyeNeutro));
 
-  // 📸 imágenes
-  data.tablero?.forEach((file: File) => {
-    formData.append("tablero", file);
-  });
-
-  data.unifilar?.forEach((file: File) => {
-    formData.append("unifilar", file);
-  });
-
-  data.leyenda?.forEach((file: File) => {
-    formData.append("leyenda", file);
-  });
-
-  data.termografia?.forEach((file: File) => {
-    formData.append("termografia", file);
-  });
-
-  const res = await clientAxios.post("/board", formData);
-  return res.data;
-};
-
-// Privado: actualizar tablero si luego implementas esa ruta en backend
-export const updateBoard = async (
-  id: string,
-  data: any
-) => {
-  const formData = new FormData();
-
-  // 🧾 datos
-  if (data.name) formData.append("name", data.name);
   if (data.location) formData.append("location", data.location);
   if (data.description) formData.append("description", data.description);
 
-  // 🔴 eliminar imágenes
-  if (data.imagesToDelete?.length > 0) {
-    formData.append(
-      "imagesToDelete",
-      JSON.stringify(data.imagesToDelete)
-    );
-  }
-
-  // 🟢 nuevas imágenes
-  data.tablero?.forEach((file: File) => {
-    formData.append("tablero", file);
-  });
-
-  data.unifilar?.forEach((file: File) => {
+  data.diagrama?.forEach((file) => {
     formData.append("unifilar", file);
   });
 
-  data.leyenda?.forEach((file: File) => {
+  data.leyenda?.forEach((file) => {
     formData.append("leyenda", file);
   });
 
-  data.termografia?.forEach((file: File) => {
-    formData.append("termografia", file);
+  data.galeria?.forEach((file) => {
+    formData.append("tablero", file);
   });
 
-  const res = await clientAxios.put(`/board/${id}`, formData);
+  const res = await clientAxios.post("/board", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+
   return res.data;
 };
 
-// Privado: eliminar tablero de la empresa del admin
-export const deleteBoard = async (id: string) => {
-  const res = await clientAxios.delete(`/board/${id}`);
+export const getBoardByCode = async (code: string): Promise<BoardResponseDTO> => {
+  const res = await clientAxios.get<BoardResponseDTO>(`/board/${code}`);
   return res.data;
 };
 
+export const updateBoard = async (
+  code: string,
+  data: BoardUpdateDTO
+): Promise<{ message: string; board: BoardResponseDTO }> => {
+  const res = await clientAxios.put<{ message: string; board: BoardResponseDTO }>(
+    `/board/${code}`,
+    data
+  );
+  return res.data;
+};
 
+export const deleteBoard = async (code: string) => {
+  const res = await clientAxios.delete(`/board/${code}`);
+  return res.data;
+};
 
-
-// Público: obtener tableros de una empresa por publicCode
 export const publicGetCompanyBoards = async (
   publicCode: string
 ): Promise<PublicCompanyBoardsResponseDTO> => {
@@ -108,7 +81,6 @@ export const publicGetCompanyBoards = async (
   return data;
 };
 
-// Público: obtener detalle público de un tablero por code
 export const publicGetCompanyBoardByCode = async (
   code: string
 ): Promise<PublicBoardByCodeResponseDTO> => {

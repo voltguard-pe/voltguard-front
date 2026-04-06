@@ -14,6 +14,10 @@ export interface BoardResponseDTO {
   _id: string;
   code: string;
   name: string;
+  type: string;
+  tensionNominal: number;
+  numeroFases: number;
+  incluyeNeutro: boolean;
   location: string;
   description: string;
   images: string[];
@@ -25,6 +29,10 @@ export interface BoardResponseDTO {
 
 export interface BoardCreateDTO {
   name: string;
+  type: string;
+  tensionNominal: number;
+  numeroFases: number;
+  incluyeNeutro: boolean;
   location?: string;
   description?: string;
   images?: string[];
@@ -32,6 +40,10 @@ export interface BoardCreateDTO {
 
 export interface BoardUpdateDTO {
   name?: string;
+  type?: string;
+  tensionNominal?: number;
+  numeroFases?: number;
+  incluyeNeutro?: boolean;
   location?: string;
   description?: string;
   images?: string[];
@@ -40,18 +52,31 @@ export interface BoardUpdateDTO {
 export interface PublicCompanyBoardsItemDTO {
   code: string;
   name: string;
+  type: string;
+  tensionNominal: number;
+  numeroFases: number;
+  incluyeNeutro: boolean;
   location: string;
   description: string;
   images: string[];
   createdAt: string;
 }
 
-export interface PublicCompanyBoardsResponseDTO {
+export interface PublicBoardByCodeResponseDTO {
+  code: string;
+  name: string;
+  type: string;
+  tensionNominal: number;
+  numeroFases: number;
+  incluyeNeutro: boolean;
+  location: string;
+  description: string;
+  images: string[];
+  createdAt: string;
   company: {
     name: string;
     publicCode: string;
   };
-  boards: PublicCompanyBoardsItemDTO[];
 }
 
 export interface PublicBoardByCodeResponseDTO {
@@ -66,4 +91,12 @@ export interface PublicBoardByCodeResponseDTO {
     name: string;
     publicCode: string;
   };
+}
+
+export interface PublicCompanyBoardsResponseDTO {
+  company: {
+    name: string;
+    publicCode: string;
+  };
+  boards: PublicCompanyBoardsItemDTO[];
 }

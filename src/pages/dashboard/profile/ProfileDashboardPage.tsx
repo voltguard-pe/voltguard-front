@@ -1,14 +1,13 @@
 import {
-  User,
-  Mail,
-  Shield,
   Calendar,
   Edit,
   Lock,
+  Mail,
+  Shield
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../shared/hooks/useAuth";
 import { formatDate } from "../../../shared/utils/formatDate";
-import { useNavigate } from "react-router-dom";
 import { getInitials } from "../../../shared/utils/initialsName";
 
 const stats = [

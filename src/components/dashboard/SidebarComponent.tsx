@@ -28,8 +28,14 @@ const navItems: NavItem[] = [
     roles: ["SUPERADMIN"], // 👈 solo admin
   },
   {
+    label: "Administradores",
+    path: "/dashboard/admins",
+    icon: Building2,
+    roles: ["SUPERADMIN"], // 👈 solo admin
+  },
+  {
     label: "Empresas",
-    path: "/dashboard/company",
+    path: "/dashboard/companies",
     icon: Building2,
     roles: ["SUPERADMIN"], // 👈 solo admin
   },

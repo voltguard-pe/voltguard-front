@@ -10,11 +10,10 @@ import RegisterPage from './pages/auth/RegisterPage'
 import AdminCreatePage from './pages/dashboard/admin/AdminCreatePage'
 import AdminDashboardPage from './pages/dashboard/admin/AdminDashboardPage'
 import AdminDetailPage from './pages/dashboard/admin/AdminDetailPage'
-import AdminEditPage from './pages/dashboard/admin/AdminEditPage'
 import BoardsCreatePage from './pages/dashboard/board/BoardCreatePage'
 import BoardDashboardPage from './pages/dashboard/board/BoardDashboardPage'
 import BoardsEditPage from './pages/dashboard/board/BoardEditPage'
-import CompanyCreatePage from './pages/dashboard/company/CompanyCreatePage'
+import CompanyCreatePage from './pages/dashboard/company/CompanyAdminCreatePage'
 import CompanyDashboardPage from './pages/dashboard/company/CompanyDashboardPage'
 import CompanyEditPage from './pages/dashboard/company/CompanyEditPage'
 import ConfigurationDashboardPage from './pages/dashboard/ConfigurationDashboardPage'
@@ -22,7 +21,10 @@ import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
 import ProfileDashboardPage from './pages/dashboard/profile/ProfileDashboardPage'
 import HomePage from './pages/landing/HomePage'
 import NotFoundPage from './pages/NotFoundPage'
-import PublicBoardsPage from './pages/public/PublicBoardsPage'
+// import PublicBoardsPage from './pages/public/PublicBoardsPage'
+import CompaniesCreatePage from './pages/dashboard/companies/CompaniesCreatePage'
+import CompaniesDashboardPages from './pages/dashboard/companies/CompaniesDashboardPages'
+import CompaniesEditPage from './pages/dashboard/companies/CompaniesEditPage'
 import DashboardRouter from './routes/DashboardRouter'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRouter'
@@ -34,8 +36,8 @@ function App() {
         <Routes>
           <Route path='/' element={<LandingLayout />}>
             <Route index element={<HomePage />} />
-            <Route path="/public/boards" element={<PublicBoardsPage />} />
-            <Route path="/public/boards/:publicCode" element={<PublicBoardsPage />} />
+            {/* <Route path="/public/boards" element={<PublicBoardsPage />} />
+            <Route path="/public/boards/:publicCode" element={<PublicBoardsPage />} /> */}
           </Route>
 
           <Route element={<PublicRoute />}>
@@ -62,16 +64,18 @@ function App() {
                 <Route path="users" element={<AdminDashboardPage />} />
                 <Route path="users/create" element={<AdminCreatePage />} />
                 <Route path="users/:id" element={<AdminDetailPage />} />
-                <Route path="users/:id/edit" element={<AdminEditPage />} />
 
-                <Route path="company" element={<CompanyDashboardPage />} />
-                <Route path="company/create" element={<CompanyCreatePage />} />
+                <Route path="admins" element={<CompanyDashboardPage />} />
+                <Route path="admins/create" element={<CompanyCreatePage />} />
                 {/* <Route path="company/:id" element={<CompanyDetailPage />} /> */}
-                <Route path="company/:id/edit" element={<CompanyEditPage />} />
+                <Route path="admins/:id/edit" element={<CompanyEditPage />} />
+                <Route path="companies" element={<CompaniesDashboardPages />} />
+                <Route path="companies/create" element={<CompaniesCreatePage />} />
+                <Route path="companies/:publicCode/edit" element={<CompaniesEditPage />} />
               </Route>
               <Route element={<ProtectedRoute allowedRoles={["ADMIN"]} />}>
                 <Route path="boards/create" element={<BoardsCreatePage />} />
-                <Route path="boards/:id/edit" element={<BoardsEditPage />} />
+                <Route path="boards/:code/edit" element={<BoardsEditPage />} />
                 {/* <Route path="/dashboard/upload" element={<BoardFileUploaderPage />} /> */}
               </Route>
             </Route>

@@ -1,8 +1,14 @@
 import { Mail } from "lucide-react";
 import { useState } from "react";
-import { NavLink } from 'react-router-dom';
+import { NavLink } from "react-router-dom";
+import axios from "axios";
 import Input from "../../shared/components/Input";
 import { forgotPassword } from "../../services/auth.service";
+
+type ForgotPasswordErrorResponse = {
+  retryAfterSeconds?: number;
+  message?: string;
+};
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
@@ -11,10 +17,10 @@ const ForgotPasswordPage = () => {
   const [cooldown, setCooldown] = useState(0);
 
   const startCooldown = (seconds: number) => {
-    setCooldown(seconds); // 30 segundos
+    setCooldown(seconds);
 
     const interval = setInterval(() => {
-      setCooldown(prev => {
+      setCooldown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
           return 0;
@@ -35,17 +41,16 @@ const ForgotPasswordPage = () => {
 
       setSubmitted(true);
       startCooldown(response.cooldownSeconds);
-
-    } catch (error: any) {
-      // 🔥 Aquí manejamos el 429 del backend
-      if (error.response?.status === 429) {
-        const seconds = error.response.data.retryAfterSeconds;
-
-        setSubmitted(true);
-        startCooldown(seconds); // ya pone status en cooldown
+    } catch (error: unknown) {
+      if (axios.isAxiosError<ForgotPasswordErrorResponse>(error)) {
+        if (error.response?.status === 429) {
+          const seconds = error.response.data?.retryAfterSeconds ?? 30;
+          setSubmitted(true);
+          startCooldown(seconds);
+        }
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   };
 
@@ -55,7 +60,8 @@ const ForgotPasswordPage = () => {
         ¿Olvidaste tu contraseña?
       </h1>
       <p className="text-sm text-center text-gray-500 mb-4">
-        Ingresa tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+        Ingresa tu correo electrónico y te enviaremos un enlace para
+        restablecer tu contraseña.
       </p>
 
       {submitted ? (
@@ -63,7 +69,9 @@ const ForgotPasswordPage = () => {
           <div className="font-medium text-center">
             {cooldown > 0 ? (
               <p className="text-green-600">
-                Hemos enviado las instrucciones a <span className="font-bold">{email}</span> para cambiar tu contraseña
+                Hemos enviado las instrucciones a{" "}
+                <span className="font-bold">{email}</span> para cambiar tu
+                contraseña
               </p>
             ) : (
               <p className="text-green-600">
@@ -91,7 +99,7 @@ const ForgotPasswordPage = () => {
             type="email"
             name="email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
             placeholder="Correo electrónico"
             icon={Mail}
           />
@@ -108,7 +116,7 @@ const ForgotPasswordPage = () => {
 
       <p className="text-sm text-gray-500 mt-6 text-center">
         ¿Recordaste tu contraseña?{" "}
-        <NavLink to={'/auth'} className="text-indigo-600 hover:underline">
+        <NavLink to="/auth" className="text-indigo-600 hover:underline">
           Inicia sesión
         </NavLink>
       </p>

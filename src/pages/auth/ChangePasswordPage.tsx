@@ -50,7 +50,7 @@ const ChangePasswordPage = () => {
             navigate("/auth"); // redirigir al login
 
         } catch (err) {
-            setError("El enlace es inválido o expiró");
+            setError("Error al cambiar la contraseña. Intenta de nuevo." + (err instanceof Error ? err.message : ""));
         } finally {
             setLoading(false);
         }

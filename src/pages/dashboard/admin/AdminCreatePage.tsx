@@ -1,46 +1,35 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createUser } from "../../../services/users.service";
-import Input from "../../../shared/components/Input";
-import Select from "../../../shared/components/Select";
-import UserForm from "./AdminForm";
+import type { CreateUserDTO } from "../../../shared/types/UserProps";
 import AdminForm from "./AdminForm";
+
+type AdminFormData = {
+  firstname: string;
+  lastname: string;
+  email: string;
+  password?: string;
+};
 
 const AdminCreatePage = () => {
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    role: "Usuario",
-    status: "Activo",
-  });
+  const companyPublicCode = "AQUI_EL_PUBLIC_CODE";
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    setForm({
-      ...form,
-      [e.target.name as string]: e.target.value,
-    });
-  };
+  const handleCreate = async (data: AdminFormData) => {
+    const payload: CreateUserDTO = {
+      firstname: data.firstname,
+      lastname: data.lastname,
+      email: data.email,
+      password: data.password ?? "",
+      companyPublicCode,
+    };
 
-//   const handleSubmit = async (e: React.FormEvent) => {
-//     e.preventDefault();
-
-//     await createUser(form);
-//     navigate("/dashboard/users");
-//   };
-
-  const handleCreate = async (data: any) => {
-    await createUser(data);
+    await createUser(payload);
     navigate("/dashboard/users");
   };
 
   return (
     <section className="max-w-4xl flex flex-col gap-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-800">
           Crear nuevo usuario
@@ -50,18 +39,10 @@ const AdminCreatePage = () => {
         </p>
       </div>
 
-      {/* Form */}
       <AdminForm
-        initialValues={{
-          name: "",
-          email: "",
-          password: "",
-          role: "Usuario",
-          status: "Activo",
-        }}
-        showPassword
-        submitLabel="Crear usuario"
+        key="new"
         onSubmit={handleCreate}
+        onCancel={() => navigate(-1)}
       />
     </section>
   );

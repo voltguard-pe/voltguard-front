@@ -15,6 +15,7 @@ const BoardsCreatePage = () => {
   const [description, setDescription] = useState("");
   const [company, setCompany] = useState("");
   const [companies, setCompanies] = useState<any[]>([]);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [diagrama, setDiagrama] = useState<File[]>([]);
   const [leyenda, setLeyenda] = useState<File[]>([]);
@@ -54,6 +55,7 @@ const BoardsCreatePage = () => {
         diagrama,
         leyenda,
         galeria,
+        termografia
       });
 
       alert("Board creado correctamente 🚀");
@@ -68,10 +70,47 @@ const BoardsCreatePage = () => {
       setDiagrama([]);
       setLeyenda([]);
       setGaleria([]);
+      setTermografia([]);
     } catch (error) {
       console.error(error);
       alert("Error al crear el board");
     }
+  };
+
+  const renderPreview = (
+    files: File[],
+    setFiles: React.Dispatch<React.SetStateAction<File[]>>
+  ) => {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+        {files.map((file, index) => {
+          const preview = URL.createObjectURL(file);
+
+          return (
+            <div key={index} className="relative group">
+              <img
+                src={preview}
+                loading="lazy"
+                onClick={() => setSelectedImage(preview)} // 👈 modal
+                className="h-32 w-full object-cover rounded-lg border cursor-pointer hover:opacity-80 transition"
+                // onLoad={() => URL.revokeObjectURL(preview)}
+              />
+
+              {/* ELIMINAR */}
+              <button
+                type="button"
+                onClick={() =>
+                  setFiles((prev) => prev.filter((_, i) => i !== index))
+                }
+                className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded shadow hover:bg-red-700"
+              >
+                ✕
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -124,19 +163,26 @@ const BoardsCreatePage = () => {
           onChange={(e) => setDescription(e.target.value)}
         />
 
-        <select
-          value={company}
-          onChange={(e) => setCompany(e.target.value)}
-        >
-          <option value="">Selecciona empresa</option>
-          {companies.map((c) => (
-            <option key={c._id} value={c._id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Empresa
+          </label>
 
-        <label className="flex items-center gap-2 col-span-2">
+          <select
+            value={company}
+            onChange={(e) => setCompany(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-200 transition"
+          >
+            <option value="">Selecciona empresa</option>
+            {companies.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <label className="flex items-center gap-2">
           <span>¿Incluye neutro?</span>
           <input
             type="checkbox"
@@ -149,50 +195,47 @@ const BoardsCreatePage = () => {
         <div className="col-span-2">
           <h2 className="font-semibold mb-1">Diagrama unifilar</h2>
           <DragAndDrop multiple onFilesChange={(files) => setDiagrama(files)} />
-          {diagrama.length > 0 && (
-            <ul className="text-sm mt-1 list-disc list-inside">
-              {diagrama.map((file) => (
-                <li key={file.name}>{file.name}</li>
-              ))}
-            </ul>
-          )}
+          {diagrama.length > 0 && renderPreview(diagrama, setDiagrama)}
         </div>
 
         <div className="col-span-2">
           <h2 className="font-semibold mb-1">Leyenda</h2>
           <DragAndDrop multiple onFilesChange={(files) => setLeyenda(files)} />
-          {leyenda.length > 0 && (
-            <ul className="text-sm mt-1 list-disc list-inside">
-              {leyenda.map((file) => (
-                <li key={file.name}>{file.name}</li>
-              ))}
-            </ul>
-          )}
+          {leyenda.length > 0 && renderPreview(leyenda, setLeyenda)}
         </div>
 
         <div className="col-span-2">
           <h2 className="font-semibold mb-1">Galería</h2>
           <DragAndDrop multiple onFilesChange={(files) => setGaleria(files)} />
-          {galeria.length > 0 && (
-            <ul className="text-sm mt-1 list-disc list-inside">
-              {galeria.map((file) => (
-                <li key={file.name}>{file.name}</li>
-              ))}
-            </ul>
-          )}
+          {galeria.length > 0 && renderPreview(galeria, setGaleria)}
         </div>
-        
+
         <div className="col-span-2">
           <h2 className="font-semibold mb-1">Termografia</h2>
           <DragAndDrop multiple onFilesChange={(files) => setTermografia(files)} />
-          {termografia.length > 0 && (
-            <ul className="text-sm mt-1 list-disc list-inside">
-              {termografia.map((file) => (
-                <li key={file.name}>{file.name}</li>
-              ))}
-            </ul>
-          )}
+          {termografia.length > 0 && renderPreview(termografia, setTermografia)}
         </div>
+
+        {selectedImage && (
+          <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+            onClick={() => setSelectedImage(null)}
+          >
+            <img
+              src={selectedImage}
+              alt="Preview"
+              className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-5 right-5 text-white text-2xl"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         <div className="col-span-2 flex justify-end gap-4 mt-4">
           <button

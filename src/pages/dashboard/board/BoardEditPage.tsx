@@ -17,6 +17,7 @@ const BoardsEditPage = () => {
   const [board, setBoard] = useState<BoardResponseDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [type, setType] = useState("");
@@ -83,7 +84,7 @@ const BoardsEditPage = () => {
 
     try {
       setSaving(true);
-          await updateBoard(publicCode!, code!, formData);
+      await updateBoard(publicCode!, code!, formData);
 
       alert("Tablero actualizado correctamente");
       navigate(`/dashboard/boards/${publicCode}`);
@@ -193,7 +194,7 @@ const BoardsEditPage = () => {
             {/* EXISTENTES */}
             {existingImages.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                {existingImages.map((img, index) => (
+                {/* {existingImages.map((img, index) => (
                   <div key={index} className="relative">
                     <img
                       src={img}
@@ -209,20 +210,80 @@ const BoardsEditPage = () => {
                       X
                     </button>
                   </div>
-                ))}
+                ))} */}
+
+                {existingImages.map((img, index) => {
+                  const thumb = img.replace(
+                    "/upload/",
+                    "/upload/w_300,f_auto/"
+                  );
+
+                  return (
+                    <div key={index} className="relative">
+                      <img
+                        src={thumb}
+                        loading="lazy"
+                        onClick={() => setSelectedImage(img)} // 👈 original HD
+                        className="h-32 w-full object-cover rounded cursor-pointer hover:opacity-80"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExistingImages(prev => prev.filter((_, i) => i !== index))
+                        }
+                        className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
+                      >
+                        X
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
             {/* NUEVAS */}
             {galeria.length > 0 && (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                {galeria.map((file, index) => (
+                {/* {galeria.map((file, index) => (
                   <img
                     key={index}
                     src={URL.createObjectURL(file)}
                     className="h-32 w-full object-cover rounded"
                   />
-                ))}
+                ))} */}
+                {galeria.map((file, index) => {
+                  const preview = URL.createObjectURL(file);
+
+                  return (
+                    <img
+                      key={index}
+                      src={preview}
+                      className="h-32 w-full object-cover rounded"
+                      onLoad={() => URL.revokeObjectURL(preview)} // 👈 limpia memoria
+                    />
+                  );
+                })}
+              </div>
+            )}
+
+            {selectedImage && (
+              <div
+                className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+                onClick={() => setSelectedImage(null)}
+              >
+                <img
+                  src={selectedImage} // ORIGINAL HD
+                  className="max-h-[90vh] max-w-[90vw] rounded-lg"
+                  onClick={(e) => e.stopPropagation()}
+                />
+
+                <button
+                  onClick={() => setSelectedImage(null)}
+                  className="absolute top-5 right-5 text-white text-2xl"
+                >
+                  ✕
+                </button>
               </div>
             )}
           </div>

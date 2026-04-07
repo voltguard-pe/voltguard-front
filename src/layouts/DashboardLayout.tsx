@@ -19,7 +19,7 @@ const DashboardLayout = () => {
       <div className="flex flex-col flex-1 w-full">
         <NavbarComponent onOpenSidebar={() => setIsSidebarOpen(true)} />
 
-        <main className="flex-1 p-4 md:p-6">
+        <main className="flex-1 p-4 overflow-y-scroll md:p-6">
           <Outlet />
         </main>
 

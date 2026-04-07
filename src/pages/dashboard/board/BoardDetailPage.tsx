@@ -11,6 +11,7 @@ const BoardDetailPage = () => {
   const [board, setBoard] = useState<BoardResponseDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const fetchBoardDetail = async () => {
     if (!code) {
@@ -114,14 +115,52 @@ const BoardDetailPage = () => {
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Imágenes</h2>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {board.images.map((image, index) => (
+            {/* {board.images.map((image, index) => (
               <img
                 key={index}
                 src={image}
                 alt={`Tablero ${board.name} ${index + 1}`}
                 className="h-56 w-full rounded-lg border object-cover"
               />
-            ))}
+            ))} */}
+
+            {board.images.map((image, index) => {
+              const thumb = image.replace(
+                "/upload/",
+                "/upload/w_400,f_auto/"
+              );
+
+              return (
+                <img
+                  key={index}
+                  src={thumb}
+                  alt=""
+                  loading="lazy"
+                  onClick={() => setSelectedImage(image)}
+                  className="cursor-pointer h-56 w-full object-cover rounded-lg"
+                />
+              );
+            })}
+            {selectedImage && (
+  <div
+    className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+    onClick={() => setSelectedImage(null)}
+  >
+    <img
+      src={selectedImage} // 👈 imagen original HD
+      alt="Preview"
+      className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg"
+      onClick={(e) => e.stopPropagation()} // evita cerrar al hacer click en la imagen
+    />
+
+    <button
+      onClick={() => setSelectedImage(null)}
+      className="absolute top-5 right-5 text-white text-2xl"
+    >
+      ✕
+    </button>
+  </div>
+)}
           </div>
         </div>
       )}

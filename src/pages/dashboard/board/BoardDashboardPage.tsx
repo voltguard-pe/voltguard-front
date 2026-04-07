@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   deleteBoard,
+  publicGetCompanyBoardByCode,
   publicGetCompanyBoards,
 } from "../../../services/board.service";
 import { getCompanies } from "../../../services/company.service";
@@ -126,6 +127,13 @@ const BoardDashboardPage = () => {
       alert("Error al eliminar");
     }
   };
+
+  // const companyForPDF =
+  // auth?.role === "ADMIN"
+  //   ? typeof auth.company === "object"
+  //     ? auth.company
+  //     : null
+  //   : selectedCompany;
 
   return (
     <section className="flex flex-col gap-y-6">
@@ -274,12 +282,16 @@ const BoardDashboardPage = () => {
 
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => generateBoardPDF(board)}
-                          className="p-2 hover:bg-gray-200 rounded"
-                        >
-                          <PdfIcon size={18} />
-                        </button>
+<button
+  onClick={async () => {
+    if (!effectivePublicCode) return;
+    const fullBoard = await publicGetCompanyBoardByCode(effectivePublicCode, board.code);
+    generateBoardPDF(fullBoard);
+  }}
+  className="p-2 hover:bg-gray-200 rounded"
+>
+  <PdfIcon size={18} />
+</button>
 
                         <button
                           onClick={() =>

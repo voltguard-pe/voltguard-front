@@ -1,10 +1,42 @@
 import jsPDF from "jspdf";
-import type { PublicCompanyBoardsItemDTO } from "../types/BoardProps";
+import type { PublicBoardByCodeResponseDTO } from "../types/BoardProps";
 
 export const generateBoardPDF = async (
-  board: PublicCompanyBoardsItemDTO
+  board: PublicBoardByCodeResponseDTO
 ) => {
   const doc = new jsPDF();
+
+  // =========================
+  // 🏢 PORTADA
+  // =========================
+
+  doc.setFillColor(30, 64, 175);
+  doc.rect(0, 0, 210, 297, "F");
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(28);
+  doc.setFont("helvetica", "bold");
+  doc.text("VOLTGUARD", 105, 100, { align: "center" });
+
+  doc.setFontSize(16);
+  doc.setFont("helvetica", "normal");
+  doc.text("Reporte de tablero eléctrico", 105, 115, { align: "center" });
+
+  doc.setFontSize(12);
+  doc.text(`Empresa: ${board.company?.name || "N/A"}`, 105, 140, { align: "center" });
+
+  doc.setFontSize(12);
+  doc.text(`Tablero: ${board.name}`, 105, 150, { align: "center" });
+
+  doc.text(
+    `Fecha: ${new Date().toLocaleDateString()}`,
+    105,
+    160,
+    { align: "center" }
+  );
+
+  // nueva página
+  doc.addPage();
 
   let y = 20;
 
@@ -17,7 +49,7 @@ export const generateBoardPDF = async (
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   // doc.text("REPORTE DE TABLERO ELÉCTRICO", 14, 15);
-  doc.text("GESENER", 14, 15);
+  doc.text("VOLTGUARD", 14, 15);
 
   doc.setFontSize(10);
   // doc.text(`Código: ${board.code}`, 150, 15);
@@ -92,33 +124,80 @@ export const generateBoardPDF = async (
   // =========================
   if (board.images?.length) {
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(12);
     doc.text("Evidencias fotográficas", 14, y);
     y += 10;
+
+    const pageWidth = 210;
+    const margin = 14;
+    const gap = 6;
+
+    const imgWidth = (pageWidth - margin * 2 - gap) / 2;
+
+    let x = margin;
+    let rowMaxHeight = 0;
 
     for (let i = 0; i < board.images.length; i++) {
       const imgUrl = board.images[i];
 
-      const res = await fetch(imgUrl);
+      // const res = await fetch(imgUrl);
+      const res = await fetch(
+        imgUrl.replace("/upload/", "/upload/w_1200/")
+      );
       const blob = await res.blob();
 
       const reader = new FileReader();
 
       await new Promise<void>((resolve) => {
         reader.onloadend = () => {
-          // salto de página si se llena
-          if (y > 250) {
-            doc.addPage();
-            y = 20;
-          }
+          const imgData = reader.result as string;
 
-          doc.addImage(reader.result as string, "JPEG", 14, y, 80, 60);
-          y += 70;
+          const img = new Image();
+          img.src = imgData;
 
-          resolve();
+          img.onload = () => {
+            const ratio = img.width / img.height;
+            const imgHeight = imgWidth / ratio;
+
+            // 🔥 salto de página
+            if (y + imgHeight + 10 > 280) {
+              doc.addPage();
+              y = 20;
+              x = margin;
+            }
+
+            // 🏷️ TÍTULO (AQUÍ VA)
+            doc.setFontSize(9);
+            doc.setTextColor(100);
+            doc.text(`Imagen ${i + 1}`, x, y - 2);
+
+            // 🧱 BORDE / FONDO (AQUÍ VA)
+            doc.setDrawColor(220);
+            doc.rect(x - 1, y - 1, imgWidth + 2, imgHeight + 2);
+
+            // 🖼️ IMAGEN
+            doc.addImage(imgData, "JPEG", x, y, imgWidth, imgHeight);
+
+            rowMaxHeight = Math.max(rowMaxHeight, imgHeight);
+
+            // mover posición
+            if (x === margin) {
+              x += imgWidth + gap;
+            } else {
+              x = margin;
+              y += rowMaxHeight + gap + 6;
+              rowMaxHeight = 0;
+            }
+
+            resolve();
+          };
         };
+
         reader.readAsDataURL(blob);
       });
     }
+
+    y += 10;
   }
 
   // =========================

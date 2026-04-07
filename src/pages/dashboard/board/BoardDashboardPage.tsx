@@ -1,4 +1,4 @@
-import { ChevronDown, Eye, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Eye, Pencil, Plus, QrCode, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
@@ -13,6 +13,7 @@ import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
 import { PdfIcon } from "../../../shared/icons/Icons";
 import { useAuth } from "../../../shared/hooks/useAuth";
+import QRCode from "react-qr-code";
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
@@ -27,6 +28,8 @@ const BoardDashboardPage = () => {
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingBoards, setLoadingBoards] = useState(false);
 
+  const [showQR, setShowQR] = useState(false);
+
   // 🔥 CLAVE: empresa efectiva
   const effectivePublicCode =
     auth?.role === "ADMIN"
@@ -34,6 +37,9 @@ const BoardDashboardPage = () => {
         ? auth.company
         : auth.company?.publicCode
       : publicCode;
+
+  const qrUrl = `${window.location.origin}/dashboard/boards/${effectivePublicCode}`;
+
 
   // =========================
   // 🔹 FETCH EMPRESAS (solo SUPERADMIN)
@@ -145,6 +151,37 @@ const BoardDashboardPage = () => {
             Nuevo tablero
           </button>
         )}
+
+        {auth?.role === "ADMIN" && effectivePublicCode && (
+          <button
+            onClick={() => setShowQR(true)}
+            className="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 transition w-full md:w-auto cursor-pointer"
+          >
+            <QrCode size={16} />
+            Ver QR
+          </button>
+        )}
+
+        {showQR && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center gap-4">
+              <h2 className="text-lg font-semibold">QR de la empresa</h2>
+
+              <QRCode value={qrUrl} size={200} />
+
+              <p className="text-xs text-gray-500 text-center break-all">
+                {qrUrl}
+              </p>
+
+              <button
+                onClick={() => setShowQR(false)}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* SELECT SOLO SUPERADMIN */}
@@ -180,36 +217,36 @@ const BoardDashboardPage = () => {
 
       {/* TABLA */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-  {/* 🔥 ADMIN: nunca mostrar "selecciona empresa" */}
-  {auth?.role === "ADMIN" && loadingBoards ? (
-    <div className="p-6">
-      <p className="text-sm text-gray-500">Cargando tableros...</p>
-    </div>
-  ) : auth?.role === "ADMIN" && boards.length === 0 ? (
-    <div className="p-6">
-      <p className="text-sm text-gray-500">
-        Tu empresa no tiene tableros registrados
-      </p>
-    </div>
-  ) : auth?.role === "SUPERADMIN" && !effectivePublicCode ? (
-    <div className="p-6">
-      <p className="text-sm text-gray-500">
-        Selecciona una empresa para ver sus tableros
-      </p>
-    </div>
-  ) : loadingBoards ? (
-    <div className="p-6">
-      <p className="text-sm text-gray-500">Cargando tableros...</p>
-    </div>
-  ) : boards.length === 0 ? (
-    <div className="p-6">
-      <p className="text-sm text-gray-500">
-        Esta empresa no tiene tableros registrados
-      </p>
-    </div>
-  ) : (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[600px] text-sm">
+        {/* 🔥 ADMIN: nunca mostrar "selecciona empresa" */}
+        {auth?.role === "ADMIN" && loadingBoards ? (
+          <div className="p-6">
+            <p className="text-sm text-gray-500">Cargando tableros...</p>
+          </div>
+        ) : auth?.role === "ADMIN" && boards.length === 0 ? (
+          <div className="p-6">
+            <p className="text-sm text-gray-500">
+              Tu empresa no tiene tableros registrados
+            </p>
+          </div>
+        ) : auth?.role === "SUPERADMIN" && !effectivePublicCode ? (
+          <div className="p-6">
+            <p className="text-sm text-gray-500">
+              Selecciona una empresa para ver sus tableros
+            </p>
+          </div>
+        ) : loadingBoards ? (
+          <div className="p-6">
+            <p className="text-sm text-gray-500">Cargando tableros...</p>
+          </div>
+        ) : boards.length === 0 ? (
+          <div className="p-6">
+            <p className="text-sm text-gray-500">
+              Esta empresa no tiene tableros registrados
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[600px] text-sm">
               <thead className="bg-gray-50 text-gray-600">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">

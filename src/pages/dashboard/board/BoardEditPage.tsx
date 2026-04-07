@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getBoardByCode, updateBoard } from "../../../services/board.service";
+import DragAndDrop from "../../../shared/components/DragAndDrop";
 import Input from "../../../shared/components/Input";
 import type {
-  BoardResponseDTO,
-  BoardUpdateDTO,
+  BoardResponseDTO
 } from "../../../shared/types/BoardProps";
 
 const BoardsEditPage = () => {
-  const { code } = useParams<{ code: string }>();
+  const { publicCode, code } = useParams<{
+    publicCode: string;
+    code: string;
+  }>();
   const navigate = useNavigate();
 
   const [board, setBoard] = useState<BoardResponseDTO | null>(null);
@@ -22,15 +25,17 @@ const BoardsEditPage = () => {
   const [incluyeNeutro, setIncluyeNeutro] = useState(false);
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
-  const [images, setImages] = useState("");
+  const [galeria, setGaleria] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!code) return;
+    if (!code || !publicCode) return;
 
     const fetchBoard = async () => {
       try {
         setLoading(true);
-        const data: BoardResponseDTO = await getBoardByCode(code);
+
+        const data = await getBoardByCode(publicCode, code);
 
         setBoard(data);
         setName(data.name || "");
@@ -40,7 +45,7 @@ const BoardsEditPage = () => {
         setIncluyeNeutro(Boolean(data.incluyeNeutro));
         setLocation(data.location || "");
         setDescription(data.description || "");
-        setImages(Array.isArray(data.images) ? data.images.join("\n") : "");
+        setExistingImages(data.images || []);
       } catch (error) {
         console.error("Error cargando board", error);
       } finally {
@@ -49,31 +54,39 @@ const BoardsEditPage = () => {
     };
 
     fetchBoard();
-  }, [code]);
+  }, [code, publicCode]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!board) return;
 
-    const payload: BoardUpdateDTO = {
-      name: name.trim(),
-      type: type.trim(),
-      tensionNominal,
-      numeroFases,
-      incluyeNeutro,
-      location: location.trim(),
-      description: description.trim(),
-      images: images
-        .split("\n")
-        .map((img) => img.trim())
-        .filter(Boolean),
-    };
+    const formData = new FormData();
+
+    formData.append("name", name);
+    formData.append("type", type);
+    formData.append("tensionNominal", String(tensionNominal));
+    formData.append("numeroFases", String(numeroFases));
+    formData.append("incluyeNeutro", String(incluyeNeutro));
+    formData.append("location", location);
+    formData.append("description", description);
+
+    // imágenes existentes (las que NO borraste)
+    existingImages.forEach((img) => {
+      formData.append("existingImages", img);
+    });
+
+    // nuevas imágenes
+    galeria.forEach((file) => {
+      formData.append("tablero", file);
+    });
+
 
     try {
       setSaving(true);
-      await updateBoard(board.code, payload);
+          await updateBoard(publicCode!, code!, formData);
+
       alert("Tablero actualizado correctamente");
-      navigate("/dashboard/boards");
+      navigate(`/dashboard/boards/${publicCode}`);
     } catch (error) {
       console.error("Error actualizando board", error);
       alert("Error al actualizar tablero");
@@ -172,48 +185,53 @@ const BoardsEditPage = () => {
           <label className="text-sm font-medium text-gray-700">
             Imágenes
           </label>
-          <textarea
-            value={images}
-            onChange={(e) => setImages(e.target.value)}
-            rows={6}
-            className="rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-200"
-            placeholder={
-              "Una URL por línea\nhttps://ejemplo.com/imagen1.jpg\nhttps://ejemplo.com/imagen2.jpg"
-            }
-          />
-          <p className="text-xs text-gray-500">
-            Ingresa una URL de imagen por línea.
-          </p>
-        </div>
+          <div className="col-span-2">
+            <h2 className="font-semibold mb-1">Galería</h2>
 
-        {images.trim() && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 md:col-span-2">
-            {images
-              .split("\n")
-              .map((img) => img.trim())
-              .filter(Boolean)
-              .map((img, index) => (
-                <div
-                  key={`${img}-${index}`}
-                  className="overflow-hidden rounded-lg border border-gray-200"
-                >
+            <DragAndDrop multiple onFilesChange={(files) => setGaleria(files)} />
+
+            {/* EXISTENTES */}
+            {existingImages.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                {existingImages.map((img, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={img}
+                      className="h-32 w-full object-cover rounded"
+                    />
+                    <button
+                    type="button"
+                      onClick={() =>
+                        setExistingImages(prev => prev.filter((_, i) => i !== index))
+                      }
+                      className="absolute top-1 right-1 bg-red-600 text-white text-xs px-2 py-1 rounded"
+                    >
+                      X
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* NUEVAS */}
+            {galeria.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                {galeria.map((file, index) => (
                   <img
-                    src={img}
-                    alt={`preview-${index}`}
-                    className="h-40 w-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
+                    key={index}
+                    src={URL.createObjectURL(file)}
+                    className="h-32 w-full object-cover rounded"
                   />
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
         <div className="mt-4 flex justify-end gap-4 md:col-span-2">
           <button
             type="button"
-            onClick={() => navigate("/dashboard/boards")}
+            onClick={() => navigate(`/dashboard/boards/${publicCode}`)}
             className="rounded-lg bg-gray-400 px-4 py-2 text-white hover:bg-gray-500"
           >
             Cancelar

@@ -2,15 +2,15 @@ import clientAxios from "../shared/config/clientAxios";
 import type {
   BoardCreateDTO,
   BoardResponseDTO,
-  BoardUpdateDTO,
   PublicBoardByCodeResponseDTO,
-  PublicCompanyBoardsResponseDTO,
+  PublicCompanyBoardsResponseDTO
 } from "../shared/types/BoardProps";
 
 type CreateBoardPayload = BoardCreateDTO & {
   diagrama?: File[];
   leyenda?: File[];
   galeria?: File[];
+  termografia?: File[];
 };
 
 export const getBoards = async (
@@ -31,22 +31,18 @@ export const createBoard = async (data: CreateBoardPayload) => {
   formData.append("tensionNominal", String(data.tensionNominal));
   formData.append("numeroFases", String(data.numeroFases));
   formData.append("incluyeNeutro", String(data.incluyeNeutro));
-  formData.append("publicCode", data.publicCode!);
+  formData.append("companyPublicCode", data.publicCode!);
+
 
   if (data.location) formData.append("location", data.location);
   if (data.description) formData.append("description", data.description);
 
-  data.diagrama?.forEach((file) => {
-    formData.append("unifilar", file);
-  });
+   data.diagrama?.forEach(file => formData.append("unifilar", file));
+  data.leyenda?.forEach(file => formData.append("leyenda", file));
+  data.galeria?.forEach(file => formData.append("tablero", file));
+  data.termografia?.forEach(file => formData.append("termografia", file));
 
-  data.leyenda?.forEach((file) => {
-    formData.append("leyenda", file);
-  });
-
-  data.galeria?.forEach((file) => {
-    formData.append("tablero", file);
-  });
+  console.log("companyPublicCode:", data.publicCode);
 
   const res = await clientAxios.post("/board", formData, {
     headers: {
@@ -70,12 +66,18 @@ export const getBoardByCode = async (
 export const updateBoard = async (
   publicCode: string,
   code: string,
-  data: BoardUpdateDTO
-): Promise<{ message: string; board: BoardResponseDTO }> => {
-  const res = await clientAxios.put<{ message: string; board: BoardResponseDTO }>(
+  formData: FormData
+) => {
+  const res = await clientAxios.put(
     `/board/${publicCode}/${code}`,
-    data
+    formData,
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
   );
+
   return res.data;
 };
 

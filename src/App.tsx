@@ -79,7 +79,7 @@ function App() {
 
               <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                 <Route path="boards/create" element={<BoardsCreatePage />} />
-                <Route path="boards/:publicCode/:code/edit" element={<BoardDetailPage />} />
+                <Route path="boards/:publicCode/:code/edit" element={<BoardsEditPage />} />
               </Route>
             </Route>
           </Route>

@@ -13,25 +13,26 @@ const BoardsCreatePage = () => {
   const [incluyeNeutro, setIncluyeNeutro] = useState(false);
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
- const [company, setCompany] = useState("");
-const [companies, setCompanies] = useState<any[]>([]);
+  const [company, setCompany] = useState("");
+  const [companies, setCompanies] = useState<any[]>([]);
 
   const [diagrama, setDiagrama] = useState<File[]>([]);
   const [leyenda, setLeyenda] = useState<File[]>([]);
   const [galeria, setGaleria] = useState<File[]>([]);
+  const [termografia, setTermografia] = useState<File[]>([]); // <-- corregido
 
   useEffect(() => {
-  const fetchCompanies = async () => {
-    try {
-      const data = await getCompanies();
-      setCompanies(data);
-    } catch (error) {
-      console.error("Error cargando empresas", error);
-    }
-  };
+    const fetchCompanies = async () => {
+      try {
+        const data = await getCompanies();
+        setCompanies(data);
+      } catch (error) {
+        console.error("Error cargando empresas", error);
+      }
+    };
 
-  fetchCompanies();
-}, []);
+    fetchCompanies();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -44,7 +45,7 @@ const [companies, setCompanies] = useState<any[]>([]);
       incluyeNeutro,
       location,
       description,
-      company
+      publicCode: company
     };
 
     try {
@@ -124,16 +125,16 @@ const [companies, setCompanies] = useState<any[]>([]);
         />
 
         <select
-  value={company}
-  onChange={(e) => setCompany(e.target.value)}
->
-  <option value="">Selecciona empresa</option>
-  {companies.map((c) => (
-    <option key={c._id} value={c._id}>
-      {c.name}
-    </option>
-  ))}
-</select>
+          value={company}
+          onChange={(e) => setCompany(e.target.value)}
+        >
+          <option value="">Selecciona empresa</option>
+          {companies.map((c) => (
+            <option key={c._id} value={c._id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
 
         <label className="flex items-center gap-2 col-span-2">
           <span>¿Incluye neutro?</span>
@@ -175,6 +176,18 @@ const [companies, setCompanies] = useState<any[]>([]);
           {galeria.length > 0 && (
             <ul className="text-sm mt-1 list-disc list-inside">
               {galeria.map((file) => (
+                <li key={file.name}>{file.name}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+        
+        <div className="col-span-2">
+          <h2 className="font-semibold mb-1">Termografia</h2>
+          <DragAndDrop multiple onFilesChange={(files) => setTermografia(files)} />
+          {termografia.length > 0 && (
+            <ul className="text-sm mt-1 list-disc list-inside">
+              {termografia.map((file) => (
                 <li key={file.name}>{file.name}</li>
               ))}
             </ul>

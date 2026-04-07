@@ -8,8 +8,12 @@ const UserDashboardPage = () => {
     const [boards, setBoards] = useState<BoardResponseDTO[]>([]);
 
     useEffect(() => {
-        getBoards().then(setBoards);
-    }, []);
+        if (!auth?._id) return;
+
+        getBoards(auth._id).then((data) => {
+            setBoards(data.boards ?? []);
+        });
+    }, [auth?._id]);
 
     console.log("Boards del usuario:", boards);
 

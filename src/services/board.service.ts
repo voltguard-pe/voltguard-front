@@ -2,6 +2,7 @@ import clientAxios from "../shared/config/clientAxios";
 import type {
   BoardCreateDTO,
   BoardResponseDTO,
+  BoardUpdateDTO,
   PublicBoardByCodeResponseDTO,
   PublicCompanyBoardsResponseDTO
 } from "../shared/types/BoardProps";
@@ -12,6 +13,26 @@ type CreateBoardPayload = BoardCreateDTO & {
   galeria?: File[];
   termografia?: File[];
 };
+
+// type UpdateBoardPayload = {
+//   name?: string;
+//   type?: string;
+//   tensionNominal?: number;
+//   numeroFases?: number;
+//   incluyeNeutro?: boolean;
+//   location?: string;
+//   description?: string;
+
+//   existing_unifilar?: string[];
+//   existing_leyenda?: string[];
+//   existing_tablero?: string[];
+//   existing_termografia?: string[];
+
+//   diagrama?: File[];
+//   leyenda?: File[];
+//   galeria?: File[];
+//   termografia?: File[];
+// };
 
 export const getBoards = async (
   publicCode: string
@@ -33,16 +54,13 @@ export const createBoard = async (data: CreateBoardPayload) => {
   formData.append("incluyeNeutro", String(data.incluyeNeutro));
   formData.append("companyPublicCode", data.publicCode!);
 
-
   if (data.location) formData.append("location", data.location);
   if (data.description) formData.append("description", data.description);
 
-   data.diagrama?.forEach(file => formData.append("unifilar", file));
+  data.diagrama?.forEach(file => formData.append("unifilar", file));
   data.leyenda?.forEach(file => formData.append("leyenda", file));
   data.galeria?.forEach(file => formData.append("tablero", file));
   data.termografia?.forEach(file => formData.append("termografia", file));
-
-  console.log("companyPublicCode:", data.publicCode);
 
   const res = await clientAxios.post("/board", formData, {
     headers: {
@@ -66,16 +84,53 @@ export const getBoardByCode = async (
 export const updateBoard = async (
   publicCode: string,
   code: string,
-  formData: FormData
+  data: BoardUpdateDTO
 ) => {
+  const formData = new FormData();
+
+  if (data.name !== undefined) formData.append("name", data.name);
+  if (data.type !== undefined) formData.append("type", data.type);
+  if (data.tensionNominal !== undefined)
+    formData.append("tensionNominal", String(data.tensionNominal));
+  if (data.numeroFases !== undefined)
+    formData.append("numeroFases", String(data.numeroFases));
+  if (data.incluyeNeutro !== undefined)
+    formData.append("incluyeNeutro", String(data.incluyeNeutro));
+  if (data.location !== undefined)
+    formData.append("location", data.location || "");
+  if (data.description !== undefined)
+    formData.append("description", data.description || "");
+
+  formData.append(
+    "existingImages",
+    JSON.stringify([
+      ...(data.existingUnifilar || []),
+      ...(data.existingLeyenda || []),
+      ...(data.existingTablero || []),
+      ...(data.existingTermografia || []),
+    ])
+  );
+
+  data.unifilar?.forEach((file) =>
+    formData.append("unifilar", file)
+  );
+
+  data.leyenda?.forEach((file) =>
+    formData.append("leyenda", file)
+  );
+
+  data.tablero?.forEach((file) =>
+    formData.append("tablero", file)
+  );
+
+  data.termografia?.forEach((file) =>
+    formData.append("termografia", file)
+  );
+
   const res = await clientAxios.put(
     `/board/${publicCode}/${code}`,
     formData,
-    {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    }
+    { headers: { "Content-Type": "multipart/form-data" } }
   );
 
   return res.data;

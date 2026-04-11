@@ -31,7 +31,11 @@ const BoardDetailPage = () => {
           ? data.company.publicCode
           : undefined;
 
-      if (publicCode && boardCompanyPublicCode && boardCompanyPublicCode !== publicCode) {
+      if (
+        publicCode &&
+        boardCompanyPublicCode &&
+        boardCompanyPublicCode !== publicCode
+      ) {
         setError("El tablero no pertenece a la empresa seleccionada");
         setBoard(null);
         return;
@@ -60,7 +64,11 @@ const BoardDetailPage = () => {
   }
 
   if (!board) {
-    return <p className="text-sm text-red-500">No se pudo cargar el tablero.</p>;
+    return (
+      <p className="text-sm text-red-500">
+        No se pudo cargar el tablero.
+      </p>
+    );
   }
 
   const companyName =
@@ -68,11 +76,45 @@ const BoardDetailPage = () => {
       ? board.company.name
       : "Sin empresa";
 
+  const renderSection = (title: string, images: string[]) => {
+    if (!images || images.length === 0) return null;
+
+    return (
+      <div className="bg-white rounded-xl shadow-sm p-5">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">
+          {title}
+        </h2>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {images.map((image, index) => {
+            const thumb = image.replace(
+              "/upload/",
+              "/upload/w_400,f_auto/"
+            );
+
+            return (
+              <img
+                key={index}
+                src={thumb}
+                alt=""
+                loading="lazy"
+                onClick={() => setSelectedImage(image)}
+                className="cursor-pointer h-56 w-full object-cover rounded-lg"
+              />
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <section className="flex flex-col gap-y-6">
       <div className="flex items-center gap-3">
         <button
-          onClick={() => navigate(`/dashboard/boards/${publicCode}`)}
+          onClick={() =>
+            navigate(`/dashboard/boards/${publicCode}`)
+          }
           className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
         >
           <ArrowLeft size={18} />
@@ -94,74 +136,50 @@ const BoardDetailPage = () => {
           <strong>Tipo:</strong> {board.type}
         </p>
         <p>
-          <strong>Tensión nominal:</strong> {board.tensionNominal}
+          <strong>Tensión nominal:</strong>{" "}
+          {board.tensionNominal}
         </p>
         <p>
-          <strong>Número de fases:</strong> {board.numeroFases}
+          <strong>Número de fases:</strong>{" "}
+          {board.numeroFases}
         </p>
         <p>
-          <strong>Incluye neutro:</strong> {board.incluyeNeutro ? "Sí" : "No"}
+          <strong>Incluye neutro:</strong>{" "}
+          {board.incluyeNeutro ? "Sí" : "No"}
         </p>
         <p>
-          <strong>Ubicación:</strong> {board.location || "Sin ubicación"}
+          <strong>Ubicación:</strong>{" "}
+          {board.location || "Sin ubicación"}
         </p>
         <p>
-          <strong>Descripción:</strong> {board.description || "Sin descripción"}
+          <strong>Descripción:</strong>{" "}
+          {board.description || "Sin descripción"}
         </p>
       </div>
 
-      {board.images?.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Imágenes</h2>
+      {renderSection("Diagrama unifilar", board.images?.unifilar || [])}
+      {renderSection("Leyenda", board.images?.leyenda || [])}
+      {renderSection("Galería", board.images?.tablero || [])}
+      {renderSection("Termografía", board.images?.termografia || [])}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* {board.images.map((image, index) => (
-              <img
-                key={index}
-                src={image}
-                alt={`Tablero ${board.name} ${index + 1}`}
-                className="h-56 w-full rounded-lg border object-cover"
-              />
-            ))} */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          onClick={() => setSelectedImage(null)}
+        >
+          <img
+            src={selectedImage}
+            alt="Preview"
+            className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
 
-            {board.images.map((image, index) => {
-              const thumb = image.replace(
-                "/upload/",
-                "/upload/w_400,f_auto/"
-              );
-
-              return (
-                <img
-                  key={index}
-                  src={thumb}
-                  alt=""
-                  loading="lazy"
-                  onClick={() => setSelectedImage(image)}
-                  className="cursor-pointer h-56 w-full object-cover rounded-lg"
-                />
-              );
-            })}
-            {selectedImage && (
-  <div
-    className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
-    onClick={() => setSelectedImage(null)}
-  >
-    <img
-      src={selectedImage} // 👈 imagen original HD
-      alt="Preview"
-      className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg"
-      onClick={(e) => e.stopPropagation()} // evita cerrar al hacer click en la imagen
-    />
-
-    <button
-      onClick={() => setSelectedImage(null)}
-      className="absolute top-5 right-5 text-white text-2xl"
-    >
-      ✕
-    </button>
-  </div>
-)}
-          </div>
+          <button
+            onClick={() => setSelectedImage(null)}
+            className="absolute top-5 right-5 text-white text-2xl"
+          >
+            ✕
+          </button>
         </div>
       )}
     </section>

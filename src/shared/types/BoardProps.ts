@@ -10,6 +10,13 @@ export interface UserSummaryDTO {
   email: string;
 }
 
+export interface BoardImages {
+  unifilar: string[];
+  leyenda: string[];
+  tablero: string[];
+  termografia: string[];
+}
+
 export interface BoardResponseDTO {
   _id: string;
   code: string;
@@ -20,7 +27,7 @@ export interface BoardResponseDTO {
   incluyeNeutro: boolean;
   location: string;
   description: string;
-  images: string[];
+  images: BoardImages;
   company: string | CompanySummaryDTO;
   createdBy: string | UserSummaryDTO;
   createdAt: string;
@@ -47,7 +54,16 @@ export interface BoardUpdateDTO {
   incluyeNeutro?: boolean;
   location?: string;
   description?: string;
-  images?: string[];
+
+  existingUnifilar?: string[];
+  existingLeyenda?: string[];
+  existingTablero?: string[];
+  existingTermografia?: string[];
+
+  unifilar?: File[];
+  leyenda?: File[];
+  tablero?: File[];
+  termografia?: File[];
 }
 
 export interface PublicCompanyBoardsItemDTO {
@@ -59,7 +75,7 @@ export interface PublicCompanyBoardsItemDTO {
   incluyeNeutro: boolean;
   location: string;
   description: string;
-  images: string[];
+  images: BoardImages;
   createdAt: string;
 }
 
@@ -72,7 +88,7 @@ export interface PublicBoardByCodeResponseDTO {
   incluyeNeutro: boolean;
   location: string;
   description: string;
-  images: string[];
+  images: BoardImages;
   createdAt: string;
   company: {
     name: string;
@@ -94,24 +110,7 @@ export interface PublicCompanyBoardsResponseDTO {
     incluyeNeutro: boolean;
     location: string;
     description: string;
-    images: string[];
+    images: BoardImages;
     createdAt: string;
   }[];
-}
-
-export interface PublicBoardByCodeResponseDTO {
-  code: string;
-  name: string;
-  type: string;
-  tensionNominal: number;
-  numeroFases: number;
-  incluyeNeutro: boolean;
-  location: string;
-  description: string;
-  images: string[];
-  createdAt: string;
-  company: {
-    name: string;
-    publicCode: string;
-  };
 }

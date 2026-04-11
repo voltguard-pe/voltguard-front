@@ -4,200 +4,205 @@ import type { PublicBoardByCodeResponseDTO } from "../types/BoardProps";
 export const generateBoardPDF = async (
   board: PublicBoardByCodeResponseDTO
 ) => {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ format: "a4" });
 
   // =========================
-  // 🏢 PORTADA
+  // 🎨 HEADER
   // =========================
+  const drawHeader = () => {
+    doc.setFillColor(30, 64, 175);
+    doc.rect(0, 0, 210, 25, "F");
 
-  doc.setFillColor(30, 64, 175);
-  doc.rect(0, 0, 210, 297, "F");
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(28);
-  doc.setFont("helvetica", "bold");
-  doc.text("VOLTGUARD", 105, 100, { align: "center" });
-
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "normal");
-  doc.text("Reporte de tablero eléctrico", 105, 115, { align: "center" });
-
-  doc.setFontSize(12);
-  doc.text(`Empresa: ${board.company?.name || "N/A"}`, 105, 140, { align: "center" });
-
-  doc.setFontSize(12);
-  doc.text(`Tablero: ${board.name}`, 105, 150, { align: "center" });
-
-  doc.text(
-    `Fecha: ${new Date().toLocaleDateString()}`,
-    105,
-    160,
-    { align: "center" }
-  );
-
-  // nueva página
-  doc.addPage();
-
-  let y = 20;
-
-  // =========================
-  // 🏢 HEADER
-  // =========================
-  doc.setFillColor(30, 64, 175); // azul
-  doc.rect(0, 0, 210, 25, "F");
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  // doc.text("REPORTE DE TABLERO ELÉCTRICO", 14, 15);
-  doc.text("VOLTGUARD", 14, 15);
-
-  doc.setFontSize(10);
-  // doc.text(`Código: ${board.code}`, 150, 15);
-  doc.text("REPORTE DE TABLERO ELÉCTRICO", 140, 15);
-
-  // reset color
-  doc.setTextColor(0, 0, 0);
-
-  y = 35;
-
-  // =========================
-  // 📌 TÍTULO
-  // =========================
-  doc.setFontSize(14);
-  doc.setFont("helvetica", "bold");
-  doc.text(board.name, 14, y);
-
-  y += 10;
-
-  // =========================
-  // 📋 DATOS GENERALES (BOX)
-  // =========================
-  doc.setDrawColor(200);
-  doc.rect(14, y, 182, 40);
-
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "normal");
-
-  const xLeft = 18;
-  const xRight = 110;
-  let yBox = y + 8;
-
-  doc.text(`Tipo: ${board.type}`, xLeft, yBox);
-  doc.text(`Tensión: ${board.tensionNominal} V`, xRight, yBox);
-
-  yBox += 10;
-
-  doc.text(`Fases: ${board.numeroFases}`, xLeft, yBox);
-  doc.text(
-    `Neutro: ${board.incluyeNeutro ? "Sí" : "No"}`,
-    xRight,
-    yBox
-  );
-
-  yBox += 10;
-
-  doc.text(`Ubicación: ${board.location || "N/A"}`, xLeft, yBox);
-
-  y += 50;
-
-  // =========================
-  // 📝 DESCRIPCIÓN
-  // =========================
-  doc.setFont("helvetica", "bold");
-  doc.text("Descripción", 14, y);
-
-  y += 6;
-
-  doc.setFont("helvetica", "normal");
-
-  const splitDesc = doc.splitTextToSize(
-    board.description || "Sin descripción",
-    180
-  );
-
-  doc.text(splitDesc, 14, y);
-
-  y += splitDesc.length * 6 + 10;
-
-  // =========================
-  // 🖼️ IMÁGENES
-  // =========================
-  if (board.images?.length) {
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.text("Evidencias fotográficas", 14, y);
+    doc.text("VOLTGUARD", 14, 15);
+
+    doc.setFontSize(10);
+    doc.text("REPORTE DE TABLERO ELÉCTRICO", 120, 15);
+
+    doc.setTextColor(0, 0, 0);
+  };
+
+  // =========================
+  // 📄 INFO
+  // =========================
+  const drawBoardInfo = () => {
+    let y = 35;
+
+    doc.setFontSize(14);
+    doc.setFont("helvetica", "bold");
+    doc.text(board.name || "Sin nombre", 14, y);
+
     y += 10;
 
-    const pageWidth = 210;
-    const margin = 14;
-    const gap = 6;
+    doc.setDrawColor(200);
+    doc.rect(14, y, 182, 40);
 
-    const imgWidth = (pageWidth - margin * 2 - gap) / 2;
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
 
-    let x = margin;
-    let rowMaxHeight = 0;
+    const xLeft = 18;
+    const xRight = 110;
+    let yBox = y + 8;
 
-    for (let i = 0; i < board.images.length; i++) {
-      const imgUrl = board.images[i];
+    doc.text(`Tipo: ${board.type || "N/A"}`, xLeft, yBox);
+    doc.text(`Tensión: ${board.tensionNominal || 0} V`, xRight, yBox);
 
-      // const res = await fetch(imgUrl);
-      const res = await fetch(
-        imgUrl.replace("/upload/", "/upload/w_1200/")
-      );
-      const blob = await res.blob();
+    yBox += 10;
 
+    doc.text(`Fases: ${board.numeroFases || 0}`, xLeft, yBox);
+    doc.text(
+      `Neutro: ${board.incluyeNeutro ? "Sí" : "No"}`,
+      xRight,
+      yBox
+    );
+
+    yBox += 10;
+
+    doc.text(`Ubicación: ${board.location || "N/A"}`, xLeft, yBox);
+
+    y += 55;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Descripción", 14, y);
+
+    y += 6;
+
+    doc.setFont("helvetica", "normal");
+
+    const splitDesc = doc.splitTextToSize(
+      board.description || "Sin descripción",
+      180
+    );
+
+    doc.text(splitDesc, 14, y);
+
+    return y + splitDesc.length * 6 + 10;
+  };
+
+  // =========================
+  // 🖼 LOAD IMAGE
+  // =========================
+  const loadImage = async (url: string) => {
+    const res = await fetch(url.replace("/upload/", "/upload/w_1200/"));
+    const blob = await res.blob();
+
+    return new Promise<{ data: string; img: HTMLImageElement }>((resolve) => {
       const reader = new FileReader();
 
-      await new Promise<void>((resolve) => {
-        reader.onloadend = () => {
-          const imgData = reader.result as string;
+      reader.onloadend = () => {
+        const imgData = reader.result as string;
 
-          const img = new Image();
-          img.src = imgData;
+        const img = new Image();
+        img.src = imgData;
 
-          img.onload = () => {
-            const ratio = img.width / img.height;
-            const imgHeight = imgWidth / ratio;
+        img.onload = () => resolve({ data: imgData, img });
+      };
 
-            // 🔥 salto de página
-            if (y + imgHeight + 10 > 280) {
-              doc.addPage();
-              y = 20;
-              x = margin;
-            }
+      reader.readAsDataURL(blob);
+    });
+  };
 
-            // 🏷️ TÍTULO (AQUÍ VA)
-            doc.setFontSize(9);
-            doc.setTextColor(100);
-            doc.text(`Imagen ${i + 1}`, x, y - 2);
+  const getImageDimensions = (
+    img: HTMLImageElement,
+    maxWidth: number,
+    maxHeight: number
+  ) => {
+    const ratio = img.width / img.height;
 
-            // 🧱 BORDE / FONDO (AQUÍ VA)
-            doc.setDrawColor(220);
-            doc.rect(x - 1, y - 1, imgWidth + 2, imgHeight + 2);
+    let width = maxWidth;
+    let height = width / ratio;
 
-            // 🖼️ IMAGEN
-            doc.addImage(imgData, "JPEG", x, y, imgWidth, imgHeight);
-
-            rowMaxHeight = Math.max(rowMaxHeight, imgHeight);
-
-            // mover posición
-            if (x === margin) {
-              x += imgWidth + gap;
-            } else {
-              x = margin;
-              y += rowMaxHeight + gap + 6;
-              rowMaxHeight = 0;
-            }
-
-            resolve();
-          };
-        };
-
-        reader.readAsDataURL(blob);
-      });
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = height * ratio;
     }
 
-    y += 10;
+    return { width, height };
+  };
+
+  // =========================
+  // 📦 IMÁGENES AGRUPADAS (FIX CLAVE)
+  // =========================
+  const images = board.images || {};
+
+  const unifilar = images.unifilar || [];
+  const leyenda = images.leyenda || [];
+  const tablero = images.tablero || [];
+  const termografia = images.termografia || [];
+
+  // =========================
+  // 📄 PÁGINA 1 - UNIFILAR
+  // =========================
+  if (unifilar[0]) {
+    drawHeader();
+    const y = drawBoardInfo();
+
+    const { data, img } = await loadImage(unifilar[0]);
+
+    const { width, height } = getImageDimensions(img, 182, 140);
+    const x = (210 - width) / 2;
+
+    doc.setFontSize(11);
+    doc.text("Diagrama unifilar", 14, y);
+
+    doc.addImage(data, "JPEG", x, y + 5, width, height);
+  }
+
+  // =========================
+  // 📄 PÁGINA 2 - LEYENDA
+  // =========================
+  if (leyenda[0]) {
+    doc.addPage();
+
+    drawHeader();
+    const y = drawBoardInfo();
+
+    const { data, img } = await loadImage(leyenda[0]);
+
+    const { width, height } = getImageDimensions(img, 182, 140);
+    const x = (210 - width) / 2;
+
+    doc.setFontSize(11);
+    doc.text("Leyenda", 14, y);
+
+    doc.addImage(data, "JPEG", x, y + 5, width, height);
+  }
+
+  // =========================
+  // 📄 PÁGINA 3 - TABLERO + TERMOGRAFÍA
+  // =========================
+  if (tablero[0] || termografia[0]) {
+    doc.addPage();
+
+    drawHeader();
+    const y = drawBoardInfo();
+
+    const maxWidth = 85;
+    const maxHeight = 110;
+
+    const x1 = 14;
+    const x2 = 110;
+
+    let yImg = y + 5;
+
+    doc.setFontSize(11);
+    doc.text("Tablero / Termografía", 14, y);
+
+    if (tablero[0]) {
+      const { data, img } = await loadImage(tablero[0]);
+      const dim = getImageDimensions(img, maxWidth, maxHeight);
+
+      doc.addImage(data, "JPEG", x1, yImg, dim.width, dim.height);
+    }
+
+    if (termografia[0]) {
+      const { data, img } = await loadImage(termografia[0]);
+      const dim = getImageDimensions(img, maxWidth, maxHeight);
+
+      doc.addImage(data, "JPEG", x2, yImg, dim.width, dim.height);
+    }
   }
 
   // =========================
@@ -221,7 +226,7 @@ export const generateBoardPDF = async (
   }
 
   // =========================
-  // 🚀 ABRIR PDF
+  // 🚀 OPEN PDF
   // =========================
   window.open(doc.output("bloburl"));
 };

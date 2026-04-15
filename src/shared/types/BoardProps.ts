@@ -10,9 +10,13 @@ export interface UserSummaryDTO {
   email: string;
 }
 
+export interface BoardLeyendaItem {
+  circuito: string;
+  descripcion: string;
+}
+
 export interface BoardImages {
   unifilar: string[];
-  leyenda: string[];
   tablero: string[];
   termografia: string[];
 }
@@ -20,6 +24,7 @@ export interface BoardImages {
 export interface BoardResponseDTO {
   _id: string;
   code: string;
+  boardCode: string;
   name: string;
   type: string;
   tensionNominal: number;
@@ -28,6 +33,7 @@ export interface BoardResponseDTO {
   location: string;
   description: string;
   images: BoardImages;
+  leyenda: BoardLeyendaItem[];
   company: string | CompanySummaryDTO;
   createdBy: string | UserSummaryDTO;
   createdAt: string;
@@ -35,6 +41,7 @@ export interface BoardResponseDTO {
 }
 
 export interface BoardCreateDTO {
+  boardCode: string;
   name: string;
   type: string;
   tensionNominal: number;
@@ -44,6 +51,7 @@ export interface BoardCreateDTO {
   description?: string;
   publicCode?: string;
   images?: string[];
+  leyenda?: BoardLeyendaItem[];
 }
 
 export interface BoardUpdateDTO {
@@ -55,13 +63,13 @@ export interface BoardUpdateDTO {
   location?: string;
   description?: string;
 
+  leyenda?: BoardLeyendaItem[];
+
   existingUnifilar?: string[];
-  existingLeyenda?: string[];
   existingTablero?: string[];
   existingTermografia?: string[];
 
   unifilar?: File[];
-  leyenda?: File[];
   tablero?: File[];
   termografia?: File[];
 }
@@ -81,6 +89,7 @@ export interface PublicCompanyBoardsItemDTO {
 
 export interface PublicBoardByCodeResponseDTO {
   code: string;
+  boardCode: string;
   name: string;
   type: string;
   tensionNominal: number;
@@ -89,6 +98,7 @@ export interface PublicBoardByCodeResponseDTO {
   location: string;
   description: string;
   images: BoardImages;
+  leyenda: BoardLeyendaItem[];
   createdAt: string;
   company: {
     name: string;

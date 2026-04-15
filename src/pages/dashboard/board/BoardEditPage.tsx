@@ -6,7 +6,7 @@ import {
 } from "../../../services/board.service";
 import DragAndDrop from "../../../shared/components/DragAndDrop";
 import Input from "../../../shared/components/Input";
-import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
+import type { BoardLeyendaItem, BoardResponseDTO } from "../../../shared/types/BoardProps";
 
 const BoardsEditPage = () => {
   const { publicCode, code } = useParams<{
@@ -29,23 +29,15 @@ const BoardsEditPage = () => {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
 
+  const [leyenda, setLeyenda] = useState<BoardLeyendaItem[]>([]);
+
   const [unifilar, setUnifilar] = useState<File[]>([]);
-  const [leyenda, setLeyenda] = useState<File[]>([]);
   const [tablero, setTablero] = useState<File[]>([]);
   const [termografia, setTermografia] = useState<File[]>([]);
 
-  const [existingUnifilar, setExistingUnifilar] = useState<string[]>(
-    []
-  );
-  const [existingLeyenda, setExistingLeyenda] = useState<string[]>(
-    []
-  );
-  const [existingTablero, setExistingTablero] = useState<string[]>(
-    []
-  );
-  const [existingTermografia, setExistingTermografia] = useState<
-    string[]
-  >([]);
+  const [existingUnifilar, setExistingUnifilar] = useState<string[]>([]);
+  const [existingTablero, setExistingTablero] = useState<string[]>([]);
+  const [existingTermografia, setExistingTermografia] = useState<string[]>([]);
 
   useEffect(() => {
     if (!code || !publicCode) return;
@@ -66,10 +58,11 @@ const BoardsEditPage = () => {
         setLocation(data.location || "");
         setDescription(data.description || "");
 
+        setLeyenda((data as any).leyenda || []);
+
         const images = data.images || {};
 
         setExistingUnifilar(images.unifilar || []);
-        setExistingLeyenda(images.leyenda || []);
         setExistingTablero(images.tablero || []);
         setExistingTermografia(images.termografia || []);
       } catch (error) {
@@ -81,6 +74,27 @@ const BoardsEditPage = () => {
 
     fetchBoard();
   }, [code, publicCode]);
+
+  // =========================
+  // 🧾 LEYENDA HANDLERS
+  // =========================
+  const addRow = () => {
+    setLeyenda([...leyenda, { circuito: "", descripcion: "" }]);
+  };
+
+  const removeRow = (index: number) => {
+    setLeyenda(leyenda.filter((_, i) => i !== index));
+  };
+
+  const updateRow = (
+    index: number,
+    field: keyof BoardLeyendaItem,
+    value: string
+  ) => {
+    const updated = [...leyenda];
+    updated[index][field] = value;
+    setLeyenda(updated);
+  };
 
   const renderPreview = (
     files: File[],
@@ -164,12 +178,11 @@ const BoardsEditPage = () => {
         incluyeNeutro,
         location,
         description,
+        leyenda,
         existingUnifilar,
-        existingLeyenda,
         existingTablero,
         existingTermografia,
         unifilar,
-        leyenda,
         tablero,
         termografia,
       });
@@ -187,84 +200,111 @@ const BoardsEditPage = () => {
   if (loading) return <p>Cargando...</p>;
   if (!board) return <p>No encontrado</p>;
 
-  return (
+ return (
     <div className="max-w-4xl mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4">
         Editar Board
       </h1>
 
-      <form
-        onSubmit={handleSubmit}
-        className="grid grid-cols-2 gap-4"
-      >
-        <Input
-          label="Nombre"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <Input
-          label="Tipo"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        />
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
+
+        {/* INFO */}
+        <Input label="Nombre" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input label="Tipo" value={type} onChange={(e) => setType(e.target.value)} />
 
         <Input
           label="Tensión"
           type="number"
           value={String(tensionNominal)}
-          onChange={(e) =>
-            setTensionNominal(Number(e.target.value))
-          }
+          onChange={(e) => setTensionNominal(Number(e.target.value))}
         />
 
         <Input
           label="Fases"
           type="number"
           value={String(numeroFases)}
-          onChange={(e) =>
-            setNumeroFases(Number(e.target.value))
-          }
+          onChange={(e) => setNumeroFases(Number(e.target.value))}
         />
 
-        <Input
-          label="Ubicación"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-        />
-        <Input
-          label="Descripción"
-          value={description}
-          onChange={(e) =>
-            setDescription(e.target.value)
-          }
-        />
+        <Input label="Ubicación" value={location} onChange={(e) => setLocation(e.target.value)} />
+        <Input label="Descripción" value={description} onChange={(e) => setDescription(e.target.value)} />
 
         <label className="flex gap-2">
           <input
             type="checkbox"
             checked={incluyeNeutro}
-            onChange={(e) =>
-              setIncluyeNeutro(e.target.checked)
-            }
+            onChange={(e) => setIncluyeNeutro(e.target.checked)}
           />
           Incluye neutro
         </label>
 
+        {/* ========================= */}
+        {/* 🧾 LEYENDA */}
+        {/* ========================= */}
+        <div className="col-span-2">
+          <h2 className="font-semibold mb-2">Leyenda</h2>
+
+          <table className="w-full border text-sm">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border p-2">Circuito</th>
+                <th className="border p-2">Descripción</th>
+                <th className="border p-2">Acción</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {leyenda.map((item, index) => (
+                <tr key={index}>
+                  <td className="border p-2">
+                    <input
+                      value={item.circuito}
+                      onChange={(e) =>
+                        updateRow(index, "circuito", e.target.value)
+                      }
+                      className="w-full border px-2 py-1"
+                    />
+                  </td>
+
+                  <td className="border p-2">
+                    <input
+                      value={item.descripcion}
+                      onChange={(e) =>
+                        updateRow(index, "descripcion", e.target.value)
+                      }
+                      className="w-full border px-2 py-1"
+                    />
+                  </td>
+
+                  <td className="border p-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => removeRow(index)}
+                      className="text-red-600"
+                    >
+                      ✕
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <button
+            type="button"
+            onClick={addRow}
+            className="mt-2 bg-blue-500 text-white px-3 py-1 rounded"
+          >
+            + Agregar fila
+          </button>
+        </div>
+
+        {/* IMÁGENES */}
         <div className="col-span-2">
           <h2>Diagrama unifilar</h2>
           <DragAndDrop multiple onFilesChange={setUnifilar} />
-          {renderExisting(
-            existingUnifilar,
-            setExistingUnifilar
-          )}
+          {renderExisting(existingUnifilar, setExistingUnifilar)}
           {renderPreview(unifilar, setUnifilar)}
-        </div>
-
-        <div className="col-span-2">
-          <h2>Leyenda</h2>
-          <DragAndDrop multiple onFilesChange={setLeyenda} />
-          {renderExisting(existingLeyenda, setExistingLeyenda)}
-          {renderPreview(leyenda, setLeyenda)}
         </div>
 
         <div className="col-span-2">
@@ -276,17 +316,12 @@ const BoardsEditPage = () => {
 
         <div className="col-span-2">
           <h2>Termografía</h2>
-          <DragAndDrop
-            multiple
-            onFilesChange={setTermografia}
-          />
-          {renderExisting(
-            existingTermografia,
-            setExistingTermografia
-          )}
+          <DragAndDrop multiple onFilesChange={setTermografia} />
+          {renderExisting(existingTermografia, setExistingTermografia)}
           {renderPreview(termografia, setTermografia)}
         </div>
 
+        {/* MODAL */}
         {selectedImage && (
           <div
             className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
@@ -294,19 +329,13 @@ const BoardsEditPage = () => {
           >
             <img
               src={selectedImage}
-              className="max-w-[90%] max-h-[90%] rounded-lg shadow-lg"
-              onClick={(e) => e.stopPropagation()} // 👈 evita cerrar al hacer click en la imagen
+              className="max-w-[90%] max-h-[90%] rounded-lg"
+              onClick={(e) => e.stopPropagation()}
             />
-
-            <button
-              onClick={() => setSelectedImage(null)}
-              className="absolute top-5 right-5 text-white text-2xl"
-            >
-              ✕
-            </button>
           </div>
         )}
 
+        {/* BOTONES */}
         <div className="col-span-2 flex justify-end gap-4">
           <button type="button" onClick={() => navigate(-1)}>
             Cancelar

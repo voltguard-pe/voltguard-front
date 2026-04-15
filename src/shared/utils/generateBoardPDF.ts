@@ -1,4 +1,5 @@
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import type { PublicBoardByCodeResponseDTO } from "../types/BoardProps";
 
 export const generateBoardPDF = async (
@@ -123,23 +124,27 @@ export const generateBoardPDF = async (
   };
 
   // =========================
-  // 📦 IMÁGENES AGRUPADAS (FIX CLAVE)
+  // 📄 CONTROL DE PÁGINAS
   // =========================
-  const images = board.images || {};
+  let isFirstPage = true;
 
-  const unifilar = images.unifilar || [];
-  const leyenda = images.leyenda || [];
-  const tablero = images.tablero || [];
-  const termografia = images.termografia || [];
+  const createPage = () => {
+    if (!isFirstPage) {
+      doc.addPage();
+    }
+    isFirstPage = false;
+
+    drawHeader();
+    return drawBoardInfo();
+  };
 
   // =========================
   // 📄 PÁGINA 1 - UNIFILAR
   // =========================
-  if (unifilar[0]) {
-    drawHeader();
-    const y = drawBoardInfo();
+  if (board.images?.unifilar?.[0]) {
+    const y = createPage();
 
-    const { data, img } = await loadImage(unifilar[0]);
+    const { data, img } = await loadImage(board.images.unifilar[0]);
 
     const { width, height } = getImageDimensions(img, 182, 140);
     const x = (210 - width) / 2;
@@ -151,33 +156,43 @@ export const generateBoardPDF = async (
   }
 
   // =========================
-  // 📄 PÁGINA 2 - LEYENDA
+  // 📄 PÁGINA 2 - LEYENDA (🔥 AUTOTABLE)
   // =========================
-  if (leyenda[0]) {
-    doc.addPage();
+  if (board.leyenda && board.leyenda.length > 0) {
+    const y = createPage();
 
-    drawHeader();
-    const y = drawBoardInfo();
-
-    const { data, img } = await loadImage(leyenda[0]);
-
-    const { width, height } = getImageDimensions(img, 182, 140);
-    const x = (210 - width) / 2;
-
-    doc.setFontSize(11);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
     doc.text("Leyenda", 14, y);
 
-    doc.addImage(data, "JPEG", x, y + 5, width, height);
+    const yTable = y + 10;
+
+    autoTable(doc, {
+      startY: yTable,
+      head: [["Circuito", "Descripción"]],
+      body: board.leyenda.map((item) => [
+        item.circuito || "-",
+        item.descripcion || "-",
+      ]),
+      styles: {
+        font: "helvetica",
+        fontSize: 10,
+      },
+      headStyles: {
+        fillColor: [30, 64, 175],
+      },
+      margin: { left: 14, right: 14 },
+    });
   }
 
   // =========================
-  // 📄 PÁGINA 3 - TABLERO + TERMOGRAFÍA
+  // 📄 PÁGINA 3 - IMÁGENES
   // =========================
-  if (tablero[0] || termografia[0]) {
-    doc.addPage();
+  if (board.images?.tablero?.[0] || board.images?.termografia?.[0]) {
+    const y = createPage();
 
-    drawHeader();
-    const y = drawBoardInfo();
+    doc.setFontSize(11);
+    doc.text("Tablero / Termografía", 14, y);
 
     const maxWidth = 85;
     const maxHeight = 110;
@@ -185,20 +200,19 @@ export const generateBoardPDF = async (
     const x1 = 14;
     const x2 = 110;
 
-    let yImg = y + 5;
+    const yImg = y + 10;
 
-    doc.setFontSize(11);
-    doc.text("Tablero / Termografía", 14, y);
-
-    if (tablero[0]) {
-      const { data, img } = await loadImage(tablero[0]);
+    if (board.images?.tablero?.[0]) {
+      const { data, img } = await loadImage(board.images.tablero[0]);
       const dim = getImageDimensions(img, maxWidth, maxHeight);
 
       doc.addImage(data, "JPEG", x1, yImg, dim.width, dim.height);
     }
 
-    if (termografia[0]) {
-      const { data, img } = await loadImage(termografia[0]);
+    if (board.images?.termografia?.[0]) {
+      const { data, img } = await loadImage(
+        board.images.termografia[0]
+      );
       const dim = getImageDimensions(img, maxWidth, maxHeight);
 
       doc.addImage(data, "JPEG", x2, yImg, dim.width, dim.height);

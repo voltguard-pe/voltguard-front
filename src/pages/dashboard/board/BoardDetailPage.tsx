@@ -108,6 +108,49 @@ const BoardDetailPage = () => {
     );
   };
 
+  const renderLeyenda = () => {
+  if (!board.leyenda || board.leyenda.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm p-5">
+      <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        Leyenda
+      </h2>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
+          <thead className="bg-gray-100 text-gray-700">
+            <tr>
+              <th className="px-4 py-2 text-left border-b">
+                Circuito
+              </th>
+              <th className="px-4 py-2 text-left border-b">
+                Descripción
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {board.leyenda.map((item, index) => (
+              <tr
+                key={index}
+                className="odd:bg-white even:bg-gray-50"
+              >
+                <td className="px-4 py-2 border-b font-medium text-gray-800">
+                  {item.circuito || "-"}
+                </td>
+                <td className="px-4 py-2 border-b text-gray-600">
+                  {item.descripcion || "-"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
   return (
     <section className="flex flex-col gap-y-6">
       <div className="flex items-center gap-3">
@@ -158,7 +201,7 @@ const BoardDetailPage = () => {
       </div>
 
       {renderSection("Diagrama unifilar", board.images?.unifilar || [])}
-      {renderSection("Leyenda", board.images?.leyenda || [])}
+      {renderLeyenda()}
       {renderSection("Galería", board.images?.tablero || [])}
       {renderSection("Termografía", board.images?.termografia || [])}
 

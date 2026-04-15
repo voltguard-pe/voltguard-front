@@ -1,20 +1,21 @@
 import { ChevronDown, Eye, Pencil, Plus, QrCode, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import QRCode from "react-qr-code";
 import { useNavigate, useParams } from "react-router-dom";
+import ImportBoardsModal from "../../../components/dashboard/modals/ImportBoardsModal";
 import {
   deleteBoard,
   publicGetCompanyBoardByCode,
   publicGetCompanyBoards,
 } from "../../../services/board.service";
 import { getCompanies } from "../../../services/company.service";
+import { useAuth } from "../../../shared/hooks/useAuth";
+import { PdfIcon } from "../../../shared/icons/Icons";
 import type {
   PublicCompanyBoardsItemDTO,
 } from "../../../shared/types/BoardProps";
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
-import { PdfIcon } from "../../../shared/icons/Icons";
-import { useAuth } from "../../../shared/hooks/useAuth";
-import QRCode from "react-qr-code";
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
@@ -30,6 +31,9 @@ const BoardDashboardPage = () => {
   const [loadingBoards, setLoadingBoards] = useState(false);
 
   const [showQR, setShowQR] = useState(false);
+
+
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // 🔥 CLAVE: empresa efectiva
   const effectivePublicCode =
@@ -128,13 +132,6 @@ const BoardDashboardPage = () => {
     }
   };
 
-  // const companyForPDF =
-  // auth?.role === "ADMIN"
-  //   ? typeof auth.company === "object"
-  //     ? auth.company
-  //     : null
-  //   : selectedCompany;
-
   return (
     <section className="flex flex-col gap-y-6">
       {/* HEADER */}
@@ -151,13 +148,21 @@ const BoardDashboardPage = () => {
         </div>
 
         {auth?.role === "SUPERADMIN" && (
-          <button
-            className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition w-full md:w-auto"
-            onClick={() => navigate("/dashboard/boards/create")}
-          >
-            <Plus size={18} />
-            Nuevo tablero
-          </button>
+          <div className="flex gap-x-4">
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+            >
+              Importar tableros
+            </button>
+            <button
+              className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition w-full md:w-auto"
+              onClick={() => navigate("/dashboard/boards/create")}
+            >
+              <Plus size={18} />
+              Nuevo tablero
+            </button>
+          </div>
         )}
 
         {auth?.role === "ADMIN" && effectivePublicCode && (
@@ -282,16 +287,16 @@ const BoardDashboardPage = () => {
 
                     <td className="px-4 py-3">
                       <div className="flex justify-end gap-2">
-<button
-  onClick={async () => {
-    if (!effectivePublicCode) return;
-    const fullBoard = await publicGetCompanyBoardByCode(effectivePublicCode, board.code);
-    generateBoardPDF(fullBoard);
-  }}
-  className="p-2 hover:bg-gray-200 rounded"
->
-  <PdfIcon size={18} />
-</button>
+                        <button
+                          onClick={async () => {
+                            if (!effectivePublicCode) return;
+                            const fullBoard = await publicGetCompanyBoardByCode(effectivePublicCode, board.code);
+                            generateBoardPDF(fullBoard);
+                          }}
+                          className="p-2 hover:bg-gray-200 rounded"
+                        >
+                          <PdfIcon size={18} />
+                        </button>
 
                         <button
                           onClick={() =>
@@ -333,6 +338,18 @@ const BoardDashboardPage = () => {
             </table>
           </div>
         )}
+
+        <ImportBoardsModal
+  isOpen={showImportModal}
+  onClose={() => setShowImportModal(false)}
+  companies={companies}
+  onSuccess={async () => {
+    if (effectivePublicCode) {
+      const data = await publicGetCompanyBoards(effectivePublicCode);
+      setBoards(data.boards);
+    }
+  }}
+/>
       </div>
     </section>
   );

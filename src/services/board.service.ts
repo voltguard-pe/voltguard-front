@@ -1,6 +1,7 @@
 import clientAxios from "../shared/config/clientAxios";
 import type {
   BoardCreateDTO,
+  BoardLeyendaItem,
   BoardResponseDTO,
   BoardUpdateDTO,
   PublicBoardByCodeResponseDTO,
@@ -9,30 +10,10 @@ import type {
 
 type CreateBoardPayload = BoardCreateDTO & {
   diagrama?: File[];
-  leyenda?: File[];
   galeria?: File[];
   termografia?: File[];
+  leyenda?: BoardLeyendaItem[];
 };
-
-// type UpdateBoardPayload = {
-//   name?: string;
-//   type?: string;
-//   tensionNominal?: number;
-//   numeroFases?: number;
-//   incluyeNeutro?: boolean;
-//   location?: string;
-//   description?: string;
-
-//   existing_unifilar?: string[];
-//   existing_leyenda?: string[];
-//   existing_tablero?: string[];
-//   existing_termografia?: string[];
-
-//   diagrama?: File[];
-//   leyenda?: File[];
-//   galeria?: File[];
-//   termografia?: File[];
-// };
 
 export const getBoards = async (
   publicCode: string
@@ -47,6 +28,7 @@ export const getBoards = async (
 export const createBoard = async (data: CreateBoardPayload) => {
   const formData = new FormData();
 
+  formData.append("boardCode", data.boardCode);
   formData.append("name", data.name);
   formData.append("type", data.type);
   formData.append("tensionNominal", String(data.tensionNominal));
@@ -57,8 +39,11 @@ export const createBoard = async (data: CreateBoardPayload) => {
   if (data.location) formData.append("location", data.location);
   if (data.description) formData.append("description", data.description);
 
+  if (data.leyenda) {
+    formData.append("leyenda", JSON.stringify(data.leyenda));
+  }
+
   data.diagrama?.forEach(file => formData.append("unifilar", file));
-  data.leyenda?.forEach(file => formData.append("leyenda", file));
   data.galeria?.forEach(file => formData.append("tablero", file));
   data.termografia?.forEach(file => formData.append("termografia", file));
 
@@ -84,7 +69,9 @@ export const getBoardByCode = async (
 export const updateBoard = async (
   publicCode: string,
   code: string,
-  data: BoardUpdateDTO
+  data: BoardUpdateDTO & {
+    leyenda?: BoardLeyendaItem[];
+  }
 ) => {
   const formData = new FormData();
 
@@ -101,22 +88,39 @@ export const updateBoard = async (
   if (data.description !== undefined)
     formData.append("description", data.description || "");
 
-  formData.append(
-    "existingImages",
-    JSON.stringify([
-      ...(data.existingUnifilar || []),
-      ...(data.existingLeyenda || []),
-      ...(data.existingTablero || []),
-      ...(data.existingTermografia || []),
-    ])
-  );
+  // =========================
+  // 📊 LEYENDA (CLAVE)
+  // =========================
+  if (data.leyenda !== undefined) {
+    formData.append("leyenda", JSON.stringify(data.leyenda));
+  }
 
+  // =========================
+  // 📦 EXISTING IMAGES
+  // =========================
+  if (data.existingUnifilar)
+    formData.append(
+      "existingUnifilar",
+      JSON.stringify(data.existingUnifilar)
+    );
+
+  if (data.existingTablero)
+    formData.append(
+      "existingTablero",
+      JSON.stringify(data.existingTablero)
+    );
+
+  if (data.existingTermografia)
+    formData.append(
+      "existingTermografia",
+      JSON.stringify(data.existingTermografia)
+    );
+
+  // =========================
+  // 🖼 NUEVAS IMÁGENES
+  // =========================
   data.unifilar?.forEach((file) =>
     formData.append("unifilar", file)
-  );
-
-  data.leyenda?.forEach((file) =>
-    formData.append("leyenda", file)
   );
 
   data.tablero?.forEach((file) =>
@@ -130,7 +134,11 @@ export const updateBoard = async (
   const res = await clientAxios.put(
     `/board/${publicCode}/${code}`,
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    }
   );
 
   return res.data;

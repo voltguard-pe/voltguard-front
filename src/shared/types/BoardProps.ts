@@ -10,6 +10,17 @@ export interface UserSummaryDTO {
   email: string;
 }
 
+// 🔥 NUEVO: CIRCUITS
+export interface BoardCircuit {
+  circuito: string;
+  descripcion: string;
+  amperaje?: number | null;
+  fase?: "R" | "S" | "T" | null;
+  tipo?: "MONOFASICO" | "TRIFASICO" | null;
+  estado?: "ACTIVO" | "INACTIVO" | "FALLA";
+}
+
+// 🔥 OPCIONAL (solo si quieres generar leyenda en frontend)
 export interface BoardLeyendaItem {
   circuito: string;
   descripcion: string;
@@ -21,6 +32,21 @@ export interface BoardImages {
   termografia: string[];
 }
 
+// 🔥 NUEVO: MAIN BREAKER
+export interface MainBreaker {
+  amperaje?: number;
+  polos?: number;
+  marca?: string;
+  modelo?: string;
+}
+
+// 🔥 NUEVO: PROTECCION
+export interface Proteccion {
+  sobretension?: boolean;
+  marca?: string;
+  modelo?: string;
+}
+
 export interface BoardResponseDTO {
   _id: string;
   code: string;
@@ -30,16 +56,29 @@ export interface BoardResponseDTO {
   tensionNominal: number;
   numeroFases: number;
   incluyeNeutro: boolean;
+  sistema?: "MONOFASICO" | "TRIFASICO";
   location: string;
   description: string;
+
+  circuits: BoardCircuit[]; // 🔥 CLAVE
+
+  mainBreaker?: MainBreaker;
+  proteccion?: Proteccion;
+
   images: BoardImages;
-  leyenda: BoardLeyendaItem[];
-  company: string | CompanySummaryDTO;
+
+  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+
+  company: CompanySummaryDTO;
   createdBy: string | UserSummaryDTO;
+
   createdAt: string;
   updatedAt: string;
 }
 
+// =========================
+// 📝 CREATE
+// =========================
 export interface BoardCreateDTO {
   boardCode: string;
   name: string;
@@ -47,23 +86,45 @@ export interface BoardCreateDTO {
   tensionNominal: number;
   numeroFases: number;
   incluyeNeutro: boolean;
+  sistema?: "MONOFASICO" | "TRIFASICO";
+  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+
   location?: string;
   description?: string;
+
   publicCode?: string;
-  images?: string[];
-  leyenda?: BoardLeyendaItem[];
+
+  circuits: BoardCircuit[]; // 🔥
+
+  mainBreaker?: MainBreaker;
+  proteccion?: Proteccion;
+
+  // imágenes (multipart)
+  tablero?: File[];
+  unifilar?: File[];
+  termografia?: File[];
 }
 
+// =========================
+// ✏️ UPDATE
+// =========================
 export interface BoardUpdateDTO {
+  boardCode?: string;
   name?: string;
   type?: string;
   tensionNominal?: number;
   numeroFases?: number;
   incluyeNeutro?: boolean;
+  sistema?: "MONOFASICO" | "TRIFASICO";
+  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+
   location?: string;
   description?: string;
 
-  leyenda?: BoardLeyendaItem[];
+  circuits?: BoardCircuit[]; // 🔥
+
+  mainBreaker?: MainBreaker;
+  proteccion?: Proteccion;
 
   existingUnifilar?: string[];
   existingTablero?: string[];
@@ -74,8 +135,12 @@ export interface BoardUpdateDTO {
   termografia?: File[];
 }
 
+// =========================
+// 🌐 PUBLIC
+// =========================
 export interface PublicCompanyBoardsItemDTO {
   code: string;
+  boardCode: string;
   name: string;
   type: string;
   tensionNominal: number;
@@ -95,11 +160,22 @@ export interface PublicBoardByCodeResponseDTO {
   tensionNominal: number;
   numeroFases: number;
   incluyeNeutro: boolean;
+  sistema?: "MONOFASICO" | "TRIFASICO";
+
   location: string;
   description: string;
+
+  circuits: BoardCircuit[]; // 🔥
+
+  mainBreaker?: MainBreaker;
+  proteccion?: Proteccion;
+
   images: BoardImages;
-  leyenda: BoardLeyendaItem[];
+
+  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+
   createdAt: string;
+
   company: {
     name: string;
     publicCode: string;
@@ -111,16 +187,5 @@ export interface PublicCompanyBoardsResponseDTO {
     name: string;
     publicCode: string;
   };
-  boards: {
-    code: string;
-    name: string;
-    type: string;
-    tensionNominal: number;
-    numeroFases: number;
-    incluyeNeutro: boolean;
-    location: string;
-    description: string;
-    images: BoardImages;
-    createdAt: string;
-  }[];
+  boards: PublicCompanyBoardsItemDTO[];
 }

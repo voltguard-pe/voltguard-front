@@ -8,15 +8,15 @@ export const generateBoardPDF = async (
   const doc = new jsPDF({ format: "a4" });
 
   // =========================
-  // 🎨 HEADER
+  // HEADER
   // =========================
   const drawHeader = () => {
     doc.setFillColor(30, 64, 175);
     doc.rect(0, 0, 210, 25, "F");
 
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
     doc.text("VOLTGUARD", 14, 15);
 
     doc.setFontSize(10);
@@ -26,9 +26,9 @@ export const generateBoardPDF = async (
   };
 
   // =========================
-  // 📄 INFO
+  // INFO GENERAL
   // =========================
-  const drawBoardInfo = () => {
+  const drawGeneralInfo = () => {
     let y = 35;
 
     doc.setFontSize(14);
@@ -37,33 +37,31 @@ export const generateBoardPDF = async (
 
     y += 10;
 
-    doc.setDrawColor(200);
-    doc.rect(14, y, 182, 40);
+    doc.rect(14, y, 182, 60);
+
+    let yBox = y + 8;
 
     doc.setFontSize(11);
     doc.setFont("helvetica", "normal");
 
-    const xLeft = 18;
-    const xRight = 110;
-    let yBox = y + 8;
-
-    doc.text(`Tipo: ${board.type || "N/A"}`, xLeft, yBox);
-    doc.text(`Tensión: ${board.tensionNominal || 0} V`, xRight, yBox);
+    doc.text(`Tipo: ${board.type}`, 18, yBox);
+    doc.text(`Tensión: ${board.tensionNominal} V`, 110, yBox);
 
     yBox += 10;
 
-    doc.text(`Fases: ${board.numeroFases || 0}`, xLeft, yBox);
-    doc.text(
-      `Neutro: ${board.incluyeNeutro ? "Sí" : "No"}`,
-      xRight,
-      yBox
-    );
+    doc.text(`Fases: ${board.numeroFases}`, 18, yBox);
+    doc.text(`Neutro: ${board.incluyeNeutro ? "Sí" : "No"}`, 110, yBox);
 
     yBox += 10;
 
-    doc.text(`Ubicación: ${board.location || "N/A"}`, xLeft, yBox);
+    doc.text(`Sistema: ${board.sistema}`, 18, yBox);
+    doc.text(`Estado: ${board.estadoGeneral}`, 110, yBox);
 
-    y += 55;
+    yBox += 10;
+
+    doc.text(`Ubicación: ${board.location || "-"}`, 18, yBox);
+
+    y += 75;
 
     doc.setFont("helvetica", "bold");
     doc.text("Descripción", 14, y);
@@ -72,18 +70,14 @@ export const generateBoardPDF = async (
 
     doc.setFont("helvetica", "normal");
 
-    const splitDesc = doc.splitTextToSize(
-      board.description || "Sin descripción",
-      180
-    );
+    const split = doc.splitTextToSize(board.description || "-", 180);
+    doc.text(split, 14, y);
 
-    doc.text(splitDesc, 14, y);
-
-    return y + splitDesc.length * 6 + 10;
+    return y + split.length * 6 + 10;
   };
 
   // =========================
-  // 🖼 LOAD IMAGE
+  // LOAD IMAGE
   // =========================
   const loadImage = async (url: string) => {
     const res = await fetch(url.replace("/upload/", "/upload/w_1200/"));
@@ -91,142 +85,140 @@ export const generateBoardPDF = async (
 
     return new Promise<{ data: string; img: HTMLImageElement }>((resolve) => {
       const reader = new FileReader();
-
       reader.onloadend = () => {
-        const imgData = reader.result as string;
-
         const img = new Image();
-        img.src = imgData;
-
-        img.onload = () => resolve({ data: imgData, img });
+        img.src = reader.result as string;
+        img.onload = () =>
+          resolve({ data: reader.result as string, img });
       };
-
       reader.readAsDataURL(blob);
     });
   };
 
-  const getImageDimensions = (
-    img: HTMLImageElement,
-    maxWidth: number,
-    maxHeight: number
-  ) => {
+  const getDim = (img: HTMLImageElement, maxW = 182, maxH = 120) => {
     const ratio = img.width / img.height;
+    let w = maxW;
+    let h = w / ratio;
 
-    let width = maxWidth;
-    let height = width / ratio;
-
-    if (height > maxHeight) {
-      height = maxHeight;
-      width = height * ratio;
+    if (h > maxH) {
+      h = maxH;
+      w = h * ratio;
     }
 
-    return { width, height };
+    return { w, h };
   };
 
   // =========================
-  // 📄 CONTROL DE PÁGINAS
-  // =========================
-  let isFirstPage = true;
-
-  const createPage = () => {
-    if (!isFirstPage) {
-      doc.addPage();
-    }
-    isFirstPage = false;
-
-    drawHeader();
-    return drawBoardInfo();
-  };
-
-  // =========================
-  // 📄 PÁGINA 1 - UNIFILAR
+  // 📄 PÁGINA 1 → GENERAL + UNIFILAR
   // =========================
   if (board.images?.unifilar?.[0]) {
-    const y = createPage();
+    drawHeader();
+
+    let y = drawGeneralInfo();
 
     const { data, img } = await loadImage(board.images.unifilar[0]);
+    const dim = getDim(img);
 
-    const { width, height } = getImageDimensions(img, 182, 140);
-    const x = (210 - width) / 2;
+    const x = (210 - dim.w) / 2;
 
-    doc.setFontSize(11);
     doc.text("Diagrama unifilar", 14, y);
-
-    doc.addImage(data, "JPEG", x, y + 5, width, height);
+    doc.addImage(data, "JPEG", x, y + 5, dim.w, dim.h);
   }
 
   // =========================
-  // 📄 PÁGINA 2 - LEYENDA (🔥 AUTOTABLE)
+  // 📄 PÁGINA 2 → CIRCUITOS
   // =========================
-  if (board.leyenda && board.leyenda.length > 0) {
-    const y = createPage();
+  if (board.circuits?.length) {
+    doc.addPage();
+    drawHeader();
 
-    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Leyenda", 14, y);
-
-    const yTable = y + 10;
+    doc.text("Circuitos", 14, 35);
 
     autoTable(doc, {
-      startY: yTable,
+      startY: 45,
+      // head: [["Circuito", "Descripción", "Estado", "Amperaje"]],
       head: [["Circuito", "Descripción"]],
-      body: board.leyenda.map((item) => [
-        item.circuito || "-",
-        item.descripcion || "-",
+      body: board.circuits.map((c) => [
+        c.circuito || "-",
+        c.descripcion || "-",
+        // c.estado || "-",
+        // c.amperaje || "-",
       ]),
-      styles: {
-        font: "helvetica",
-        fontSize: 10,
-      },
-      headStyles: {
-        fillColor: [30, 64, 175],
-      },
       margin: { left: 14, right: 14 },
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [30, 64, 175] },
     });
   }
 
   // =========================
-  // 📄 PÁGINA 3 - IMÁGENES
+  // 📄 PÁGINA 3 → PROTECCIÓN + IMÁGENES
   // =========================
   if (board.images?.tablero?.[0] || board.images?.termografia?.[0]) {
-    const y = createPage();
+    doc.addPage();
+    drawHeader();
 
-    doc.setFontSize(11);
+    let y = 35;
+
+    // MAIN BREAKER
+    if (board.mainBreaker) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Main Breaker", 14, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.text(`Amperaje: ${board.mainBreaker.amperaje} A`, 14, y);
+      doc.text(`Polos: ${board.mainBreaker.polos}`, 90, y);
+
+      y += 6;
+
+      doc.text(`Marca: ${board.mainBreaker.marca}`, 14, y);
+      doc.text(`Modelo: ${board.mainBreaker.modelo}`, 90, y);
+
+      y += 10;
+    }
+
+    // PROTECCIÓN
+    if (board.proteccion) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Protección", 14, y);
+      y += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Sobretensión: ${board.proteccion.sobretension ? "Sí" : "No"}`,
+        14,
+        y
+      );
+
+      y += 10;
+    }
+
+    // IMÁGENES
     doc.text("Tablero / Termografía", 14, y);
-
-    const maxWidth = 85;
-    const maxHeight = 110;
-
-    const x1 = 14;
-    const x2 = 110;
 
     const yImg = y + 10;
 
     if (board.images?.tablero?.[0]) {
       const { data, img } = await loadImage(board.images.tablero[0]);
-      const dim = getImageDimensions(img, maxWidth, maxHeight);
-
-      doc.addImage(data, "JPEG", x1, yImg, dim.width, dim.height);
+      const dim = getDim(img, 85, 110);
+      doc.addImage(data, "JPEG", 14, yImg, dim.w, dim.h);
     }
 
     if (board.images?.termografia?.[0]) {
-      const { data, img } = await loadImage(
-        board.images.termografia[0]
-      );
-      const dim = getImageDimensions(img, maxWidth, maxHeight);
-
-      doc.addImage(data, "JPEG", x2, yImg, dim.width, dim.height);
+      const { data, img } = await loadImage(board.images.termografia[0]);
+      const dim = getDim(img, 85, 110);
+      doc.addImage(data, "JPEG", 110, yImg, dim.w, dim.h);
     }
   }
 
   // =========================
-  // 📅 FOOTER
+  // FOOTER
   // =========================
-  const pageCount = doc.getNumberOfPages();
+  const pages = doc.getNumberOfPages();
 
-  for (let i = 1; i <= pageCount; i++) {
+  for (let i = 1; i <= pages; i++) {
     doc.setPage(i);
-
     doc.setFontSize(9);
     doc.setTextColor(150);
 
@@ -236,11 +228,8 @@ export const generateBoardPDF = async (
       290
     );
 
-    doc.text(`Página ${i} de ${pageCount}`, 170, 290);
+    doc.text(`Página ${i} de ${pages}`, 170, 290);
   }
 
-  // =========================
-  // 🚀 OPEN PDF
-  // =========================
   window.open(doc.output("bloburl"));
 };

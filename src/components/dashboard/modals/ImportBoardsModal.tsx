@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 import { runImport, validateImport } from "../../../services/import.service";
+import { toast } from "react-toastify";
 
 type Props = {
   isOpen: boolean;
@@ -21,8 +22,25 @@ const ImportBoardsModal = ({
   const [selectedCompany, setSelectedCompany] = useState("");
   const [result, setResult] = useState<any>(null);
   const [status, setStatus] = useState<Status>("idle");
+  const [progress, setProgress] = useState(0);
 
   const token = localStorage.getItem("token") || "";
+
+  // =========================
+  // 🔄 RESET STATE
+  // =========================
+  const resetState = () => {
+    setFile(null);
+    setSelectedCompany("");
+    setResult(null);
+    setStatus("idle");
+    setProgress(0);
+  };
+
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
 
   if (!isOpen) return null;
 
@@ -38,6 +56,7 @@ const ImportBoardsModal = ({
     setFile(f);
     setResult(null);
     setStatus("idle");
+    setProgress(0);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -60,12 +79,34 @@ const ImportBoardsModal = ({
 
       if (res.errors?.length > 0) {
         setStatus("error");
+        toast.error("El archivo tiene errores");
       } else {
         setStatus("valid");
+        toast.success("Archivo válido");
       }
     } catch (err) {
       setStatus("error");
     }
+  };
+
+  // =========================
+  // 🔄 SIMULACIÓN PROGRESO
+  // =========================
+  const simulateProgress = () => {
+    let value = 0;
+
+    const interval = setInterval(() => {
+      value += Math.random() * 10;
+
+      if (value >= 90) {
+        value = 90;
+        clearInterval(interval);
+      }
+
+      setProgress(Math.floor(value));
+    }, 400);
+
+    return interval;
   };
 
   // =========================
@@ -75,20 +116,31 @@ const ImportBoardsModal = ({
     if (!file || !selectedCompany) return;
 
     setStatus("importing");
+    setProgress(0);
+
+    const interval = simulateProgress();
 
     try {
       await runImport(file, token, selectedCompany);
 
-      onClose();
-      onSuccess();
+      clearInterval(interval);
+      setProgress(100);
+
+      // 🔥 pequeño delay para que el usuario vea 100%
+      setTimeout(() => {
+        toast.success("Tableros importados correctamente");
+        handleClose();
+        onSuccess();
+      }, 700);
     } catch (err) {
-      alert("Error al importar");
+      clearInterval(interval);
       setStatus("error");
+      toast.error("Error al importar los tableros");
     }
   };
 
   // =========================
-  // 🎨 UI HELPERS
+  // 🎨 TEXTO DINÁMICO
   // =========================
   const getStatusText = () => {
     switch (status) {
@@ -99,7 +151,7 @@ const ImportBoardsModal = ({
       case "error":
         return "Se encontraron errores ❌";
       case "importing":
-        return "Importando...";
+        return `Importando tableros... ${progress}%`;
       default:
         return "Selecciona un archivo .zip";
     }
@@ -107,7 +159,7 @@ const ImportBoardsModal = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-lg p-6 rounded-xl shadow-lg flex flex-col gap-4">
+      <div className="bg-white w-full max-w-lg p-6 rounded-2xl shadow-lg flex flex-col gap-4">
 
         <h2 className="text-lg font-bold">Importar tableros</h2>
 
@@ -116,6 +168,7 @@ const ImportBoardsModal = ({
           className="border p-2 rounded"
           value={selectedCompany}
           onChange={(e) => setSelectedCompany(e.target.value)}
+          disabled={status === "importing"}
         >
           <option value="">Seleccionar empresa</option>
           {companies.map((c) => (
@@ -129,7 +182,11 @@ const ImportBoardsModal = ({
         <div
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
-          className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-gray-50 transition"
+          className={`border-2 border-dashed rounded-lg p-6 text-center transition ${
+            status === "importing"
+              ? "opacity-50 pointer-events-none"
+              : "cursor-pointer hover:bg-gray-50"
+          }`}
         >
           <p className="text-sm text-gray-500">
             Arrastra tu archivo ZIP aquí o haz click
@@ -162,11 +219,21 @@ const ImportBoardsModal = ({
         {/* STATUS */}
         <p className="text-sm text-gray-600">{getStatusText()}</p>
 
+        {/* PROGRESS BAR */}
+        {status === "importing" && (
+          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-green-600 h-3 transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        )}
+
         {/* BOTONES */}
         <div className="flex gap-2">
           <button
             onClick={handleValidate}
-            disabled={!file || status === "validating"}
+            disabled={!file || status === "validating" || status === "importing"}
             className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
           >
             {status === "validating" ? "Validando..." : "Validar"}
@@ -209,8 +276,9 @@ const ImportBoardsModal = ({
         {/* FOOTER */}
         <div className="flex justify-end">
           <button
-            onClick={onClose}
-            className="bg-gray-500 text-white px-4 py-2 rounded"
+            onClick={handleClose}
+            disabled={status === "importing"}
+            className="bg-gray-500 text-white px-4 py-2 rounded disabled:opacity-50"
           >
             Cerrar
           </button>

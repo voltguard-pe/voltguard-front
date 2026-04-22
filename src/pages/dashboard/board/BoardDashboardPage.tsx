@@ -340,16 +340,16 @@ const BoardDashboardPage = () => {
         )}
 
         <ImportBoardsModal
-  isOpen={showImportModal}
-  onClose={() => setShowImportModal(false)}
-  companies={companies}
-  onSuccess={async () => {
-    if (effectivePublicCode) {
-      const data = await publicGetCompanyBoards(effectivePublicCode);
-      setBoards(data.boards);
-    }
-  }}
-/>
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          companies={companies}
+          onSuccess={async () => {
+            if (effectivePublicCode) {
+              const data = await publicGetCompanyBoards(effectivePublicCode);
+              setBoards(data.boards);
+            }
+          }}
+        />
       </div>
     </section>
   );

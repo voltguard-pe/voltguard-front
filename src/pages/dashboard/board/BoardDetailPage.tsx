@@ -13,216 +13,141 @@ const BoardDetailPage = () => {
   const [error, setError] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  const fetchBoardDetail = async () => {
-    if (!code) {
-      setError("Código de tablero no proporcionado");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError("");
-
-      const data = await getBoardByCode(publicCode?.toString() || "", code);
-
-      const boardCompanyPublicCode =
-        typeof data.company === "object" && data.company !== null
-          ? data.company.publicCode
-          : undefined;
-
-      if (
-        publicCode &&
-        boardCompanyPublicCode &&
-        boardCompanyPublicCode !== publicCode
-      ) {
-        setError("El tablero no pertenece a la empresa seleccionada");
-        setBoard(null);
-        return;
-      }
-
-      setBoard(data);
-    } catch (err) {
-      console.error("Error cargando detalle del tablero", err);
-      setError("No se pudo cargar el tablero");
-      setBoard(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchBoardDetail();
+    const fetch = async () => {
+      try {
+        const data = await getBoardByCode(publicCode!, code!);
+        setBoard(data);
+      } catch (err) {
+        setError("Error cargando tablero");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetch();
   }, [code, publicCode]);
 
-  if (loading) {
-    return <p className="text-sm text-gray-500">Cargando detalle...</p>;
-  }
-
-  if (error) {
-    return <p className="text-sm text-red-500">{error}</p>;
-  }
-
-  if (!board) {
-    return (
-      <p className="text-sm text-red-500">
-        No se pudo cargar el tablero.
-      </p>
-    );
-  }
+  if (loading) return <p>Cargando...</p>;
+  if (error) return <p className="text-red-500">{error}</p>;
+  if (!board) return <p>No encontrado</p>;
 
   const companyName =
-    typeof board.company === "object" && board.company !== null
+    typeof board.company === "object"
       ? board.company.name
       : "Sin empresa";
 
   const renderSection = (title: string, images: string[]) => {
-    if (!images || images.length === 0) return null;
+    if (!images?.length) return null;
 
     return (
-      <div className="bg-white rounded-xl shadow-sm p-5">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-          {title}
-        </h2>
+      <div className="bg-white p-5 rounded shadow">
+        <h2 className="font-semibold mb-3">{title}</h2>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {images.map((image, index) => {
-            const thumb = image.replace(
-              "/upload/",
-              "/upload/w_400,f_auto/"
-            );
-
-            return (
-              <img
-                key={index}
-                src={thumb}
-                alt=""
-                loading="lazy"
-                onClick={() => setSelectedImage(image)}
-                className="cursor-pointer h-56 w-full object-cover rounded-lg"
-              />
-            );
-          })}
+        <div className="grid grid-cols-3 gap-3">
+          {images.map((img, i) => (
+            <img
+              key={i}
+              src={img}
+              onClick={() => setSelectedImage(img)}
+              className="h-40 w-full object-cover cursor-pointer rounded"
+            />
+          ))}
         </div>
       </div>
     );
   };
 
-  const renderLeyenda = () => {
-  if (!board.leyenda || board.leyenda.length === 0) return null;
-
   return (
-    <div className="bg-white rounded-xl shadow-sm p-5">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">
-        Leyenda
-      </h2>
+    <section className="space-y-6">
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border border-gray-200 rounded-lg overflow-hidden">
-          <thead className="bg-gray-100 text-gray-700">
-            <tr>
-              <th className="px-4 py-2 text-left border-b">
-                Circuito
-              </th>
-              <th className="px-4 py-2 text-left border-b">
-                Descripción
-              </th>
-            </tr>
-          </thead>
+      <button onClick={() => navigate(-1)}>
+        <ArrowLeft /> Volver
+      </button>
 
-          <tbody>
-            {board.leyenda.map((item, index) => (
-              <tr
-                key={index}
-                className="odd:bg-white even:bg-gray-50"
-              >
-                <td className="px-4 py-2 border-b font-medium text-gray-800">
-                  {item.circuito || "-"}
-                </td>
-                <td className="px-4 py-2 border-b text-gray-600">
-                  {item.descripcion || "-"}
-                </td>
+      <h1 className="text-2xl font-bold">{board.name}</h1>
+      <p className="text-sm text-gray-500">{companyName}</p>
+
+      {/* INFO GENERAL */}
+      <div className="bg-white p-5 rounded shadow space-y-2">
+        <p><strong>Tipo:</strong> {board.type}</p>
+        <p><strong>Sistema:</strong> {board.sistema}</p>
+        <p><strong>Estado:</strong> {board.estadoGeneral}</p>
+        <p><strong>Tensión:</strong> {board.tensionNominal}</p>
+        <p><strong>Fases:</strong> {board.numeroFases}</p>
+        <p><strong>Neutro:</strong> {board.incluyeNeutro ? "Sí" : "No"}</p>
+        <p><strong>Ubicación:</strong> {board.location}</p>
+        <p><strong>Descripción:</strong> {board.description}</p>
+      </div>
+
+      {/* MAIN BREAKER */}
+      {board.mainBreaker && (
+        <div className="bg-white p-5 rounded shadow">
+          <h2 className="font-semibold mb-2">Main Breaker</h2>
+          <p>Amperaje: {board.mainBreaker.amperaje}</p>
+          <p>Polos: {board.mainBreaker.polos}</p>
+          <p>Marca: {board.mainBreaker.marca}</p>
+          <p>Modelo: {board.mainBreaker.modelo}</p>
+        </div>
+      )}
+
+      {/* PROTECCION */}
+      {board.proteccion && (
+        <div className="bg-white p-5 rounded shadow">
+          <h2 className="font-semibold mb-2">Protección</h2>
+          <p>Sobretensión: {board.proteccion.sobretension ? "Sí" : "No"}</p>
+          <p>Marca: {board.proteccion.marca}</p>
+          <p>Modelo: {board.proteccion.modelo}</p>
+        </div>
+      )}
+
+      {/* CIRCUITS */}
+      {board.circuits?.length > 0 && (
+        <div className="bg-white p-5 rounded shadow">
+          <h2 className="font-semibold mb-3">Circuitos</h2>
+
+          <table className="w-full text-sm border">
+            <thead className="bg-gray-100">
+              <tr>
+                <th>Circuito</th>
+                <th>Descripción</th>
+                <th>A</th>
+                <th>Fase</th>
+                <th>Tipo</th>
+                <th>Estado</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
+            </thead>
 
-  return (
-    <section className="flex flex-col gap-y-6">
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() =>
-            navigate(`/dashboard/boards/${publicCode}`)
-          }
-          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
-        >
-          <ArrowLeft size={18} />
-          Volver
-        </button>
-      </div>
+            <tbody>
+              {board.circuits.map((c, i) => (
+                <tr key={i}>
+                  <td>{c.circuito}</td>
+                  <td>{c.descripcion}</td>
+                  <td>{c.amperaje || "-"}</td>
+                  <td>{c.fase || "-"}</td>
+                  <td>{c.tipo || "-"}</td>
+                  <td>{c.estado}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      <div>
-        <h1 className="text-xl md:text-2xl font-bold text-gray-800">
-          {board.name}
-        </h1>
-        <p className="text-sm text-gray-500">
-          Empresa: {companyName}
-        </p>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm p-5 space-y-3 text-sm">
-        <p>
-          <strong>Tipo:</strong> {board.type}
-        </p>
-        <p>
-          <strong>Tensión nominal:</strong>{" "}
-          {board.tensionNominal}
-        </p>
-        <p>
-          <strong>Número de fases:</strong>{" "}
-          {board.numeroFases}
-        </p>
-        <p>
-          <strong>Incluye neutro:</strong>{" "}
-          {board.incluyeNeutro ? "Sí" : "No"}
-        </p>
-        <p>
-          <strong>Ubicación:</strong>{" "}
-          {board.location || "Sin ubicación"}
-        </p>
-        <p>
-          <strong>Descripción:</strong>{" "}
-          {board.description || "Sin descripción"}
-        </p>
-      </div>
-
-      {renderSection("Diagrama unifilar", board.images?.unifilar || [])}
-      {renderLeyenda()}
+      {renderSection("Unifilar", board.images?.unifilar || [])}
       {renderSection("Galería", board.images?.tablero || [])}
       {renderSection("Termografía", board.images?.termografia || [])}
 
+      {/* MODAL */}
       {selectedImage && (
         <div
-          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/80 flex justify-center items-center"
           onClick={() => setSelectedImage(null)}
         >
           <img
             src={selectedImage}
-            alt="Preview"
-            className="max-h-[90vh] max-w-[90vw] rounded-lg shadow-lg"
-            onClick={(e) => e.stopPropagation()}
+            className="max-w-[90%] max-h-[90%]"
           />
-
-          <button
-            onClick={() => setSelectedImage(null)}
-            className="absolute top-5 right-5 text-white text-2xl"
-          >
-            ✕
-          </button>
         </div>
       )}
     </section>

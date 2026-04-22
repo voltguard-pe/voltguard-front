@@ -20,7 +20,6 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const authentication = async () => {
       try {
         const user = await getProfile()
-        console.log("Datos del usuario", user)
         setAuth(user)
       } catch {
         setAuth(null)

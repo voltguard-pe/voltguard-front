@@ -1,31 +1,31 @@
 import clientAxios from "../shared/config/clientAxios";
 import type {
   BoardCreateDTO,
-  BoardLeyendaItem,
   BoardResponseDTO,
   BoardUpdateDTO,
   PublicBoardByCodeResponseDTO,
   PublicCompanyBoardsResponseDTO
 } from "../shared/types/BoardProps";
 
-type CreateBoardPayload = BoardCreateDTO & {
-  diagrama?: File[];
-  galeria?: File[];
-  termografia?: File[];
-  leyenda?: BoardLeyendaItem[];
-};
-
+// =========================
+// 📥 GET BOARDS
+// =========================
 export const getBoards = async (
   publicCode: string
-): Promise<{ company: { name: string; publicCode: string }; boards: BoardResponseDTO[] }> => {
-  const res = await clientAxios.get<{
-    company: { name: string; publicCode: string };
-    boards: BoardResponseDTO[];
-  }>(`/board/${publicCode}`);
+): Promise<{
+  company: { name: string; publicCode: string };
+  boards: BoardResponseDTO[];
+}> => {
+  const res = await clientAxios.get(
+    `/board/${publicCode}`
+  );
   return res.data;
 };
 
-export const createBoard = async (data: CreateBoardPayload) => {
+// =========================
+// 🆕 CREATE BOARD
+// =========================
+export const createBoard = async (data: BoardCreateDTO) => {
   const formData = new FormData();
 
   formData.append("boardCode", data.boardCode);
@@ -34,18 +34,39 @@ export const createBoard = async (data: CreateBoardPayload) => {
   formData.append("tensionNominal", String(data.tensionNominal));
   formData.append("numeroFases", String(data.numeroFases));
   formData.append("incluyeNeutro", String(data.incluyeNeutro));
-  formData.append("companyPublicCode", data.publicCode!);
 
+  if (data.sistema) formData.append("sistema", data.sistema);
+  if (data.estadoGeneral) formData.append("estadoGeneral", data.estadoGeneral);
   if (data.location) formData.append("location", data.location);
   if (data.description) formData.append("description", data.description);
+  if (data.publicCode)
+    formData.append("companyPublicCode", data.publicCode);
 
-  if (data.leyenda) {
-    formData.append("leyenda", JSON.stringify(data.leyenda));
+  // 🔥 circuits
+  formData.append("circuits", JSON.stringify(data.circuits));
+
+  // 🔥 mainBreaker
+  if (data.mainBreaker) {
+    formData.append("mainBreaker", JSON.stringify(data.mainBreaker));
   }
 
-  data.diagrama?.forEach(file => formData.append("unifilar", file));
-  data.galeria?.forEach(file => formData.append("tablero", file));
-  data.termografia?.forEach(file => formData.append("termografia", file));
+  // 🔥 proteccion
+  if (data.proteccion) {
+    formData.append("proteccion", JSON.stringify(data.proteccion));
+  }
+
+  // 🖼 imágenes
+  data.unifilar?.forEach((file) =>
+    formData.append("unifilar", file)
+  );
+
+  data.tablero?.forEach((file) =>
+    formData.append("tablero", file)
+  );
+
+  data.termografia?.forEach((file) =>
+    formData.append("termografia", file)
+  );
 
   const res = await clientAxios.post("/board", formData, {
     headers: {
@@ -56,25 +77,30 @@ export const createBoard = async (data: CreateBoardPayload) => {
   return res.data;
 };
 
+// =========================
+// 🔍 GET BOARD BY CODE
+// =========================
 export const getBoardByCode = async (
   publicCode: string,
   code: string
 ): Promise<BoardResponseDTO> => {
-  const res = await clientAxios.get<BoardResponseDTO>(
+  const res = await clientAxios.get(
     `/board/${publicCode}/${code}`
   );
   return res.data;
 };
 
+// =========================
+// ✏️ UPDATE BOARD
+// =========================
 export const updateBoard = async (
   publicCode: string,
   code: string,
-  data: BoardUpdateDTO & {
-    leyenda?: BoardLeyendaItem[];
-  }
+  data: BoardUpdateDTO
 ) => {
   const formData = new FormData();
 
+  if (data.boardCode !== undefined) formData.append("boardCode", data.boardCode);
   if (data.name !== undefined) formData.append("name", data.name);
   if (data.type !== undefined) formData.append("type", data.type);
   if (data.tensionNominal !== undefined)
@@ -83,16 +109,29 @@ export const updateBoard = async (
     formData.append("numeroFases", String(data.numeroFases));
   if (data.incluyeNeutro !== undefined)
     formData.append("incluyeNeutro", String(data.incluyeNeutro));
+  if (data.sistema !== undefined)
+    formData.append("sistema", data.sistema);
+  if (data.estadoGeneral !== undefined)
+    formData.append("estadoGeneral", data.estadoGeneral);
+
   if (data.location !== undefined)
     formData.append("location", data.location || "");
   if (data.description !== undefined)
     formData.append("description", data.description || "");
 
-  // =========================
-  // 📊 LEYENDA (CLAVE)
-  // =========================
-  if (data.leyenda !== undefined) {
-    formData.append("leyenda", JSON.stringify(data.leyenda));
+  // 🔥 circuits
+  if (data.circuits !== undefined) {
+    formData.append("circuits", JSON.stringify(data.circuits));
+  }
+
+  // 🔥 mainBreaker
+  if (data.mainBreaker !== undefined) {
+    formData.append("mainBreaker", JSON.stringify(data.mainBreaker));
+  }
+
+  // 🔥 proteccion
+  if (data.proteccion !== undefined) {
+    formData.append("proteccion", JSON.stringify(data.proteccion));
   }
 
   // =========================
@@ -144,15 +183,26 @@ export const updateBoard = async (
   return res.data;
 };
 
-export const deleteBoard = async (publicCode: string, code: string) => {
-  const res = await clientAxios.delete(`/board/${publicCode}/${code}`);
+// =========================
+// 🗑 DELETE
+// =========================
+export const deleteBoard = async (
+  publicCode: string,
+  code: string
+) => {
+  const res = await clientAxios.delete(
+    `/board/${publicCode}/${code}`
+  );
   return res.data;
 };
 
+// =========================
+// 🌐 PUBLIC
+// =========================
 export const publicGetCompanyBoards = async (
   publicCode: string
 ): Promise<PublicCompanyBoardsResponseDTO> => {
-  const { data } = await clientAxios.get<PublicCompanyBoardsResponseDTO>(
+  const { data } = await clientAxios.get(
     `/board/public/company/${publicCode}`
   );
   return data;
@@ -162,12 +212,15 @@ export const publicGetCompanyBoardByCode = async (
   publicCode: string,
   code: string
 ): Promise<PublicBoardByCodeResponseDTO> => {
-  const { data } = await clientAxios.get<PublicBoardByCodeResponseDTO>(
+  const { data } = await clientAxios.get(
     `/board/public/${publicCode}/${code}`
   );
   return data;
 };
 
+// =========================
+// 📤 UPLOAD FILE
+// =========================
 export const uploadFile = async (
   file: File,
   userId: string

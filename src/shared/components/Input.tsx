@@ -15,6 +15,9 @@ type InputProps = {
   min?: number;
   max?: number;
   step?: number;
+
+  // 🔥 NUEVO
+  error?: string;
 };
 
 const Input = ({
@@ -31,6 +34,7 @@ const Input = ({
   min,
   max,
   step,
+  error,
 }: InputProps) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -38,24 +42,40 @@ const Input = ({
     if (type === "password" && e.target.value === "") {
       setShowPassword(false);
     }
-
     onChange(e);
   };
 
+  const inputId = name || label;
+
   return (
-    <div className={`flex flex-col gap-y-2 ${className ?? ""}`}>
-      <label htmlFor={name || label} className="text-sm text-gray-600 font-medium">
-        {label}
+    <div className={`flex flex-col gap-y-1 ${className ?? ""}`}>
+      
+      {/* LABEL */}
+      <label
+        htmlFor={inputId}
+        className="text-sm text-gray-600 font-medium"
+      >
+        {label} {required && <span className="text-red-500">*</span>}
       </label>
 
+      {/* INPUT WRAPPER */}
       <div className="relative">
+
+        {/* ICON */}
         {Icon && (
           <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-5" />
         )}
 
+        {/* INPUT */}
         <input
-          id={name || label}
-          type={type === "password" ? (showPassword ? "text" : "password") : type}
+          id={inputId}
+          type={
+            type === "password"
+              ? showPassword
+                ? "text"
+                : "password"
+              : type
+          }
           name={name}
           value={value}
           onChange={handleChange}
@@ -65,11 +85,26 @@ const Input = ({
           min={min}
           max={max}
           step={step}
-          className={`w-full text-sm text-gray-600 border border-gray-300 rounded-lg py-2 px-3 ${
-            Icon ? "pl-10" : "px-3"
-          } outline-none focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed`}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${inputId}-error` : undefined}
+          className={`w-full text-sm rounded-lg py-2 px-3 outline-none transition-all
+            ${Icon ? "pl-10" : "px-3"}
+            
+            ${
+              error
+                ? "border border-red-500 focus:ring-4 focus:ring-red-200 focus:border-red-500"
+                : "border border-gray-300 focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500"
+            }
+
+            ${
+              disabled
+                ? "bg-gray-100 cursor-not-allowed"
+                : ""
+            }
+          `}
         />
 
+        {/* PASSWORD TOGGLE */}
         {type === "password" && value !== "" && (
           <button
             type="button"
@@ -84,6 +119,16 @@ const Input = ({
           </button>
         )}
       </div>
+
+      {/* 🔥 ERROR MESSAGE */}
+      {error && (
+        <span
+          id={`${inputId}-error`}
+          className="text-xs text-red-500"
+        >
+          {error}
+        </span>
+      )}
     </div>
   );
 };

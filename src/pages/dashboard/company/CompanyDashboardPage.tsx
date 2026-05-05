@@ -86,7 +86,7 @@ const CompanyDashboardPage = () => {
                 </td>
 
                 <td className="px-6 py-4 text-gray-600">
-                  {user.company ? (typeof user.company === 'string' ? user.company : user.company.name) : "Sin empresa"}
+                  {user.companyPublicCode ? (typeof user.companyPublicCode === 'string' ? user.companyPublicCode : user.companyPublicCode.name) : "Sin empresa"}
                 </td>
 
                 <td className="px-6 py-4">

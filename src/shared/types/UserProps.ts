@@ -12,7 +12,7 @@ export type UserProps = {
   email: string;
   isActive: boolean;
   role: Role;
-  company: string | CompanySummaryDTO | null;
+  companyPublicCode: string | CompanySummaryDTO | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -45,10 +45,10 @@ const CompanyEditPage = () => {
         setEmail(adminData.email ?? "");
         setIsActive(adminData.isActive ?? true);
 
-        if (typeof adminData.company === "string") {
-          setCompanyPublicCode(adminData.company);
-        } else if (adminData.company?.publicCode) {
-          setCompanyPublicCode(adminData.company.publicCode);
+        if (typeof adminData.companyPublicCode === "string") {
+          setCompanyPublicCode(adminData.companyPublicCode);
+        } else if (adminData.companyPublicCode?.publicCode) {
+          setCompanyPublicCode(adminData.companyPublicCode.publicCode);
         }
 
         setCompanies(

@@ -651,7 +651,7 @@ const BoardsCreatePage = () => {
       <div className="flex justify-end">
         <button
           disabled={loading}
-          className="bg-green-600 text-white px-6 py-3 rounded-lg disabled:opacity-50"
+          className="bg-green-600 text-white px-6 py-3 rounded-lg disabled:opacity-50 cursor-pointer"
         >
           {loading ? "Guardando..." : "Guardar Tablero"}
         </button>

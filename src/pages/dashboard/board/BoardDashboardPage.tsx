@@ -38,10 +38,13 @@ const BoardDashboardPage = () => {
   // 🔥 CLAVE: empresa efectiva
   const effectivePublicCode =
     auth?.role === "ADMIN"
-      ? typeof auth.company === "string"
-        ? auth.company
-        : auth.company?.publicCode
+      ? typeof auth.companyPublicCode === "string"
+        ? auth.companyPublicCode
+        : auth.companyPublicCode?.publicCode
       : publicCode;
+
+      console.log(auth)
+      console.log(effectivePublicCode)
 
   const qrUrl = `${window.location.origin}/dashboard/boards/${effectivePublicCode}`;
 

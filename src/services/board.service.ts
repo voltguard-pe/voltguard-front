@@ -218,6 +218,14 @@ export const publicGetCompanyBoardByCode = async (
   return data;
 };
 
+export const getCompanyBoards = async (): Promise<{
+  boards: BoardResponseDTO[];
+}> => {
+  const res = await clientAxios.get("/board");
+  console.log(res)
+  return res.data;
+};
+
 // =========================
 // 📤 UPLOAD FILE
 // =========================

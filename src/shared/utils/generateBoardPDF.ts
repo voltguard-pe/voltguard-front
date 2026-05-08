@@ -7,8 +7,8 @@ const value = (data: unknown) =>
 
 const bool = (data?: boolean) => (data ? "Sí" : "No");
 
-const formatDate = (date?: string) =>
-  date ? new Date(date).toLocaleString("es-PE") : "-";
+// const formatDate = (date?: string) =>
+//   date ? new Date(date).toLocaleString("es-PE") : "-";
 
 export const generateBoardPDF = async (
   board: PublicBoardByCodeResponseDTO
@@ -137,19 +137,19 @@ export const generateBoardPDF = async (
 
   y += 10;
 
-  y = drawKeyValueTable(
-    "Identificación",
-    [
-      ["ID interno", value(board.code)],
-      ["Código real del tablero", value(board.boardCode)],
-      ["Empresa", companyName],
-    ],
-    y
-  );
+  // y = drawKeyValueTable(
+  //   "Identificación",
+  //   [
+  //     ["ID interno", value(board.code)],
+  //     ["Empresa", companyName],
+  //   ],
+  //   y
+  // );
 
   y = drawKeyValueTable(
     "Información general",
     [
+      ["Código real del tablero", value(board.boardCode)],
       ["Nombre", value(board.name)],
       ["Tipo", value(board.type)],
       ["Sistema", value(board.sistema)],
@@ -173,31 +173,31 @@ export const generateBoardPDF = async (
     y
   );
 
-  y = drawKeyValueTable(
-    "Main Breaker",
-    [
-      [
-        "Amperaje",
-        board.mainBreaker?.amperaje
-          ? `${board.mainBreaker.amperaje} A`
-          : "-",
-      ],
-      ["Polos", value(board.mainBreaker?.polos)],
-      ["Marca", value(board.mainBreaker?.marca)],
-      ["Modelo", value(board.mainBreaker?.modelo)],
-    ],
-    y
-  );
+  // y = drawKeyValueTable(
+  //   "Main Breaker",
+  //   [
+  //     [
+  //       "Amperaje",
+  //       board.mainBreaker?.amperaje
+  //         ? `${board.mainBreaker.amperaje} A`
+  //         : "-",
+  //     ],
+  //     ["Polos", value(board.mainBreaker?.polos)],
+  //     ["Marca", value(board.mainBreaker?.marca)],
+  //     ["Modelo", value(board.mainBreaker?.modelo)],
+  //   ],
+  //   y
+  // );
 
-  y = drawKeyValueTable(
-    "Protección",
-    [
-      ["Sobretensión", bool(board.proteccion?.sobretension)],
-      ["Marca", value(board.proteccion?.marca)],
-      ["Modelo", value(board.proteccion?.modelo)],
-    ],
-    y
-  );
+  // y = drawKeyValueTable(
+  //   "Protección",
+  //   [
+  //     ["Sobretensión", bool(board.proteccion?.sobretension)],
+  //     ["Marca", value(board.proteccion?.marca)],
+  //     ["Modelo", value(board.proteccion?.modelo)],
+  //   ],
+  //   y
+  // );
 
   y = checkPage(y, 60);
 
@@ -205,16 +205,17 @@ export const generateBoardPDF = async (
 
   autoTable(doc, {
     startY: y,
-    head: [["Circuito", "Descripción", "Amperaje", "Fase", "Tipo", "Estado"]],
+    // head: [["Circuito", "Descripción", "Amperaje", "Fase", "Tipo", "Estado"]],
+    head: [["Circuito", "Descripción"]],
     body:
       board.circuits?.length > 0
         ? board.circuits.map((c) => [
             value(c.circuito),
             value(c.descripcion),
-            c.amperaje ? `${c.amperaje} A` : "-",
-            value(c.fase),
-            value(c.tipo),
-            value(c.estado),
+            // c.amperaje ? `${c.amperaje} A` : "-",
+            // value(c.fase),
+            // value(c.tipo),
+            // value(c.estado),
           ])
         : [["-", "Sin circuitos registrados", "-", "-", "-", "-"]],
     margin: { left: marginX, right: marginX },
@@ -240,15 +241,15 @@ export const generateBoardPDF = async (
     y
   );
 
-  y = drawKeyValueTable(
-    "Auditoría",
-    [
-      ["Creado por", value((board as any).createdBy)],
-      ["Fecha de creación", formatDate(board.createdAt)],
-      ["Última actualización", formatDate((board as any).updatedAt)],
-    ],
-    y
-  );
+  // y = drawKeyValueTable(
+  //   "Auditoría",
+  //   [
+  //     ["Creado por", value((board as any).createdBy)],
+  //     ["Fecha de creación", formatDate(board.createdAt)],
+  //     ["Última actualización", formatDate((board as any).updatedAt)],
+  //   ],
+  //   y
+  // );
 
   const drawImages = async (title: string, images: string[] = []) => {
     if (!images.length) return;

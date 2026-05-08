@@ -45,15 +45,15 @@ export const createBoard = async (data: BoardCreateDTO) => {
   // 🔥 circuits
   formData.append("circuits", JSON.stringify(data.circuits));
 
-  // 🔥 mainBreaker
-  if (data.mainBreaker) {
-    formData.append("mainBreaker", JSON.stringify(data.mainBreaker));
-  }
+  // // 🔥 mainBreaker
+  // if (data.mainBreaker) {
+  //   formData.append("mainBreaker", JSON.stringify(data.mainBreaker));
+  // }
 
-  // 🔥 proteccion
-  if (data.proteccion) {
-    formData.append("proteccion", JSON.stringify(data.proteccion));
-  }
+  // // 🔥 proteccion
+  // if (data.proteccion) {
+  //   formData.append("proteccion", JSON.stringify(data.proteccion));
+  // }
 
   // 🖼 imágenes
   data.unifilar?.forEach((file) =>
@@ -124,15 +124,15 @@ export const updateBoard = async (
     formData.append("circuits", JSON.stringify(data.circuits));
   }
 
-  // 🔥 mainBreaker
-  if (data.mainBreaker !== undefined) {
-    formData.append("mainBreaker", JSON.stringify(data.mainBreaker));
-  }
+  // // 🔥 mainBreaker
+  // if (data.mainBreaker !== undefined) {
+  //   formData.append("mainBreaker", JSON.stringify(data.mainBreaker));
+  // }
 
-  // 🔥 proteccion
-  if (data.proteccion !== undefined) {
-    formData.append("proteccion", JSON.stringify(data.proteccion));
-  }
+  // // 🔥 proteccion
+  // if (data.proteccion !== undefined) {
+  //   formData.append("proteccion", JSON.stringify(data.proteccion));
+  // }
 
   // =========================
   // 📦 EXISTING IMAGES

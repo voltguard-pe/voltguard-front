@@ -62,18 +62,18 @@ const BoardsEditPage = () => {
 
   const [circuits, setCircuits] = useState<BoardCircuit[]>([]);
 
-  const [mainBreaker, setMainBreaker] = useState({
-    amperaje: undefined as number | undefined,
-    polos: undefined as number | undefined,
-    marca: "",
-    modelo: "",
-  });
+  // const [mainBreaker, setMainBreaker] = useState({
+  //   amperaje: undefined as number | undefined,
+  //   polos: undefined as number | undefined,
+  //   marca: "",
+  //   modelo: "",
+  // });
 
-  const [proteccion, setProteccion] = useState({
-    sobretension: false,
-    marca: "",
-    modelo: "",
-  });
+  // const [proteccion, setProteccion] = useState({
+  //   sobretension: false,
+  //   marca: "",
+  //   modelo: "",
+  // });
 
   const [unifilar, setUnifilar] = useState<File[]>([]);
   const [tablero, setTablero] = useState<File[]>([]);
@@ -114,18 +114,18 @@ const BoardsEditPage = () => {
           setCompany(data.company.publicCode ?? "");
         }
 
-        setMainBreaker({
-          amperaje: data.mainBreaker?.amperaje,
-          polos: data.mainBreaker?.polos,
-          marca: data.mainBreaker?.marca || "",
-          modelo: data.mainBreaker?.modelo || "",
-        });
+        // setMainBreaker({
+        //   amperaje: data.mainBreaker?.amperaje,
+        //   polos: data.mainBreaker?.polos,
+        //   marca: data.mainBreaker?.marca || "",
+        //   modelo: data.mainBreaker?.modelo || "",
+        // });
 
-        setProteccion({
-          sobretension: data.proteccion?.sobretension || false,
-          marca: data.proteccion?.marca || "",
-          modelo: data.proteccion?.modelo || "",
-        });
+        // setProteccion({
+        //   sobretension: data.proteccion?.sobretension || false,
+        //   marca: data.proteccion?.marca || "",
+        //   modelo: data.proteccion?.modelo || "",
+        // });
 
         setExistingUnifilar(data.images?.unifilar || []);
         setExistingTablero(data.images?.tablero || []);
@@ -162,11 +162,7 @@ const BoardsEditPage = () => {
   ) => {
     const updated = [...circuits];
 
-    if (field === "amperaje") {
-      updated[i][field] = value === "" ? null : Number(value);
-    } else if (field === "fase" || field === "tipo") {
-      updated[i][field] = value === "" ? null : value;
-    } else {
+    if (field ) {
       updated[i][field] = value;
     }
 
@@ -179,10 +175,10 @@ const BoardsEditPage = () => {
       {
         circuito: "",
         descripcion: "",
-        amperaje: null,
-        fase: null,
-        tipo: null,
-        estado: "ACTIVO",
+        // amperaje: null,
+        // fase: null,
+        // tipo: null,
+        // estado: "ACTIVO",
       },
     ]);
   };
@@ -280,26 +276,26 @@ const BoardsEditPage = () => {
       .map((c) => ({
         circuito: c.circuito,
         descripcion: c.descripcion,
-        amperaje: c.amperaje ?? null,
-        fase: c.fase || null,
-        tipo: c.tipo || null,
-        estado: c.estado || "ACTIVO",
+        // amperaje: c.amperaje ?? null,
+        // fase: c.fase || null,
+        // tipo: c.tipo || null,
+        // estado: c.estado || "ACTIVO",
       })),
 
-    mainBreaker:
-      !mainBreaker.amperaje &&
-        !mainBreaker.polos &&
-        !mainBreaker.marca &&
-        !mainBreaker.modelo
-        ? undefined
-        : mainBreaker,
+    // mainBreaker:
+    //   !mainBreaker.amperaje &&
+    //     !mainBreaker.polos &&
+    //     !mainBreaker.marca &&
+    //     !mainBreaker.modelo
+    //     ? undefined
+    //     : mainBreaker,
 
-    proteccion:
-      !proteccion.sobretension &&
-        !proteccion.marca &&
-        !proteccion.modelo
-        ? undefined
-        : proteccion,
+    // proteccion:
+    //   !proteccion.sobretension &&
+    //     !proteccion.marca &&
+    //     !proteccion.modelo
+    //     ? undefined
+    //     : proteccion,
   });
 
   // =========================
@@ -535,7 +531,7 @@ const BoardsEditPage = () => {
       {/* ========================= */}
       <section className="bg-white p-5 rounded-xl shadow grid md:grid-cols-2 gap-6">
 
-        <div className="flex flex-col gap-y-4">
+        {/* <div className="flex flex-col gap-y-4">
           <h2 className="font-semibold">Interruptor General (Main Breaker)</h2>
 
 
@@ -579,9 +575,9 @@ const BoardsEditPage = () => {
               }
             />
 
-        </div>
+        </div> */}
 
-        <div className="flex flex-col gap-y-4">
+        {/* <div className="flex flex-col gap-y-4">
           <h2 className="font-semibold">Sistema de Protección</h2>
 
           <Checkbox
@@ -614,7 +610,7 @@ const BoardsEditPage = () => {
             />
 
           </div>
-        </div>
+        </div> */}
 
       </section>
 
@@ -667,7 +663,7 @@ const BoardsEditPage = () => {
                   }
                 />
 
-                <Input
+                {/* <Input
                   type="number"
                   label="Corriente (A)"
                   value={c.amperaje ?? ""}
@@ -731,7 +727,7 @@ const BoardsEditPage = () => {
                     { label: "Inactivo", value: "INACTIVO" },
                     { label: "Falla", value: "FALLA" },
                   ]}
-                />
+                /> */}
 
               </div>
             </div>

@@ -9,8 +9,8 @@ const value = (data: unknown) =>
 
 const bool = (data?: boolean) => (data ? "Sí" : "No");
 
-const formatDate = (date?: string) =>
-  date ? new Date(date).toLocaleString("es-PE") : "-";
+// const formatDate = (date?: string) =>
+//   date ? new Date(date).toLocaleString("es-PE") : "-";
 
 const BoardDetailPage = () => {
   const navigate = useNavigate();
@@ -108,7 +108,7 @@ const BoardDetailPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
+        {/* <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
           <h2 className="font-semibold mb-2">Identificación</h2>
           {renderField("ID interno", board.code)}
           {renderField("Código real del tablero", board.boardCode)}
@@ -117,10 +117,11 @@ const BoardDetailPage = () => {
             "Código público de empresa",
             (board as BoardResponseDTO & { companyPublicCode?: string }).companyPublicCode
           )}
-        </div>
+        </div> */}
 
         <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
           <h2 className="font-semibold mb-2">Información general</h2>
+          {renderField("Código real del tablero", board.boardCode)}
           {renderField("Nombre", board.name)}
           {renderField("Tipo", board.type)}
           {renderField("Sistema", board.sistema)}
@@ -141,7 +142,7 @@ const BoardDetailPage = () => {
           </p>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
+        {/* <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
           <h2 className="font-semibold mb-2">Interruptor principal</h2>
           {renderField(
             "Amperaje",
@@ -162,7 +163,7 @@ const BoardDetailPage = () => {
           </p>
           {renderField("Marca", board.proteccion?.marca)}
           {renderField("Modelo", board.proteccion?.modelo)}
-        </div>
+        </div> */}
       </div>
 
       <div className="bg-white p-4 sm:p-5 rounded shadow">
@@ -181,7 +182,7 @@ const BoardDetailPage = () => {
                   <p>
                     <strong>Descripción:</strong> {value(c.descripcion)}
                   </p>
-                  <p>
+                  {/* <p>
                     <strong>Amperaje:</strong>{" "}
                     {c.amperaje ? `${c.amperaje} A` : "-"}
                   </p>
@@ -193,7 +194,7 @@ const BoardDetailPage = () => {
                   </p>
                   <p>
                     <strong>Estado:</strong> {value(c.estado)}
-                  </p>
+                  </p> */}
                 </div>
               ))}
             </div>
@@ -204,10 +205,10 @@ const BoardDetailPage = () => {
                   <tr>
                     <th className="border p-2 text-left">Circuito</th>
                     <th className="border p-2 text-left">Descripción</th>
-                    <th className="border p-2 text-left">Amperaje</th>
+                    {/* <th className="border p-2 text-left">Amperaje</th>
                     <th className="border p-2 text-left">Fase</th>
                     <th className="border p-2 text-left">Tipo</th>
-                    <th className="border p-2 text-left">Estado</th>
+                    <th className="border p-2 text-left">Estado</th> */}
                   </tr>
                 </thead>
 
@@ -216,12 +217,12 @@ const BoardDetailPage = () => {
                     <tr key={i}>
                       <td className="border p-2">{value(c.circuito)}</td>
                       <td className="border p-2">{value(c.descripcion)}</td>
-                      <td className="border p-2">
+                      {/* <td className="border p-2">
                         {c.amperaje ? `${c.amperaje} A` : "-"}
                       </td>
                       <td className="border p-2">{value(c.fase)}</td>
                       <td className="border p-2">{value(c.tipo)}</td>
-                      <td className="border p-2">{value(c.estado)}</td>
+                      <td className="border p-2">{value(c.estado)}</td> */}
                     </tr>
                   ))}
                 </tbody>
@@ -235,12 +236,12 @@ const BoardDetailPage = () => {
       {renderImageSection("Diagrama unifilar", board.images?.unifilar)}
       {renderImageSection("Termografía", board.images?.termografia)}
 
-      <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
+      {/* <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
         <h2 className="font-semibold mb-2">Auditoría</h2>
         {renderField("Creado por", board.createdBy)}
         {renderField("Fecha de creación", formatDate(board.createdAt))}
         {renderField("Última actualización", formatDate(board.updatedAt))}
-      </div>
+      </div> */}
 
       {selectedImage && (
         <div

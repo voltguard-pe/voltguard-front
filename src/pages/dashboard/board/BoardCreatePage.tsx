@@ -74,21 +74,21 @@ const BoardsCreatePage = () => {
   // =========================
   // ⚡ MAIN BREAKER
   // =========================
-  const [mainBreaker, setMainBreaker] = useState({
-    amperaje: undefined as number | undefined,
-    polos: undefined as number | undefined,
-    marca: "",
-    modelo: "",
-  });
+  // const [mainBreaker, setMainBreaker] = useState({
+  //   amperaje: undefined as number | undefined,
+  //   polos: undefined as number | undefined,
+  //   marca: "",
+  //   modelo: "",
+  // });
 
   // =========================
   // ⚡ PROTECCIÓN
   // =========================
-  const [proteccion, setProteccion] = useState({
-    sobretension: false,
-    marca: "",
-    modelo: "",
-  });
+  // const [proteccion, setProteccion] = useState({
+  //   sobretension: false,
+  //   marca: "",
+  //   modelo: "",
+  // });
 
   const [errors, setErrors] = useState<FormErrors>({});
 
@@ -126,10 +126,10 @@ const BoardsCreatePage = () => {
       {
         circuito: "",
         descripcion: "",
-        amperaje: null,
-        fase: null,
-        tipo: null,
-        estado: "ACTIVO",
+        // amperaje: null,
+        // fase: null,
+        // tipo: null,
+        // estado: "ACTIVO",
       },
     ]);
   };
@@ -215,8 +215,8 @@ const BoardsCreatePage = () => {
         description,
         publicCode: company,
         circuits,
-        mainBreaker,
-        proteccion,
+        // mainBreaker,
+        // proteccion,
         unifilar: diagrama,
         tablero: galeria,
         termografia,
@@ -231,7 +231,8 @@ const BoardsCreatePage = () => {
       setTensionNominal(undefined);
       setNumeroFases(undefined);
       setCompany("");
-      setCircuits([{ circuito: "", descripcion: "", estado: "ACTIVO" }]);
+      // setCircuits([{ circuito: "", descripcion: "", estado: "ACTIVO" }]);
+      setCircuits([{ circuito: "", descripcion: "" }]);
 
     } catch (error) {
       console.error(error);
@@ -412,7 +413,7 @@ const BoardsCreatePage = () => {
       {/* ========================= */}
       {/* MAIN BREAKER + PROTECCIÓN */}
       {/* ========================= */}
-      <section className="bg-white p-5 rounded-xl shadow grid md:grid-cols-2 gap-6">
+      {/* <section className="bg-white p-5 rounded-xl shadow grid md:grid-cols-2 gap-6">
 
         <div>
           <h2 className="font-semibold mb-3">Interruptor General</h2>
@@ -497,7 +498,7 @@ const BoardsCreatePage = () => {
           </div>
         </div>
 
-      </section>
+      </section> */}
 
       {/* ========================= */}
       {/* CIRCUITOS */}
@@ -548,7 +549,7 @@ const BoardsCreatePage = () => {
                   }
                 />
 
-                <Input
+                {/* <Input
                   type="number"
                   label="Corriente (A)"
                   value={c.amperaje ?? ""}
@@ -612,7 +613,7 @@ const BoardsCreatePage = () => {
                     { label: "Inactivo", value: "INACTIVO" },
                     { label: "Falla", value: "FALLA" },
                   ]}
-                />
+                /> */}
 
               </div>
             </div>

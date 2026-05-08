@@ -14,10 +14,10 @@ export interface UserSummaryDTO {
 export interface BoardCircuit {
   circuito: string;
   descripcion: string;
-  amperaje?: number | null;
-  fase?: "R" | "S" | "T" | null;
-  tipo?: "MONOFASICO" | "TRIFASICO" | null;
-  estado?: "ACTIVO" | "INACTIVO" | "FALLA";
+  // amperaje?: number | null;
+  // fase?: "R" | "S" | "T" | null;
+  // tipo?: "MONOFASICO" | "TRIFASICO" | null;
+  // estado?: "ACTIVO" | "INACTIVO" | "FALLA";
 }
 
 // 🔥 OPCIONAL (solo si quieres generar leyenda en frontend)
@@ -32,20 +32,20 @@ export interface BoardImages {
   termografia: string[];
 }
 
-// 🔥 NUEVO: MAIN BREAKER
-export interface MainBreaker {
-  amperaje?: number;
-  polos?: number;
-  marca?: string;
-  modelo?: string;
-}
+// // 🔥 NUEVO: MAIN BREAKER
+// export interface MainBreaker {
+//   amperaje?: number;
+//   polos?: number;
+//   marca?: string;
+//   modelo?: string;
+// }
 
-// 🔥 NUEVO: PROTECCION
-export interface Proteccion {
-  sobretension?: boolean;
-  marca?: string;
-  modelo?: string;
-}
+// // 🔥 NUEVO: PROTECCION
+// export interface Proteccion {
+//   sobretension?: boolean;
+//   marca?: string;
+//   modelo?: string;
+// }
 
 export interface BoardResponseDTO {
   _id: string;
@@ -62,8 +62,8 @@ export interface BoardResponseDTO {
 
   circuits: BoardCircuit[]; // 🔥 CLAVE
 
-  mainBreaker?: MainBreaker;
-  proteccion?: Proteccion;
+  // mainBreaker?: MainBreaker;
+  // proteccion?: Proteccion;
 
   images: BoardImages;
 
@@ -96,8 +96,8 @@ export interface BoardCreateDTO {
 
   circuits: BoardCircuit[]; // 🔥
 
-  mainBreaker?: MainBreaker;
-  proteccion?: Proteccion;
+  // mainBreaker?: MainBreaker;
+  // proteccion?: Proteccion;
 
   // imágenes (multipart)
   tablero?: File[];
@@ -123,8 +123,8 @@ export interface BoardUpdateDTO {
 
   circuits?: BoardCircuit[]; // 🔥
 
-  mainBreaker?: MainBreaker;
-  proteccion?: Proteccion;
+  // mainBreaker?: MainBreaker;
+  // proteccion?: Proteccion;
 
   existingUnifilar?: string[];
   existingTablero?: string[];
@@ -167,8 +167,8 @@ export interface PublicBoardByCodeResponseDTO {
 
   circuits: BoardCircuit[]; // 🔥
 
-  mainBreaker?: MainBreaker;
-  proteccion?: Proteccion;
+  // mainBreaker?: MainBreaker;
+  // proteccion?: Proteccion;
 
   images: BoardImages;
 

@@ -3,9 +3,9 @@ import {
   CheckCircle2,
   FileArchive,
   Loader2,
+  ShieldCheck,
   UploadCloud,
   X,
-  ShieldCheck,
 } from "lucide-react";
 
 import { useState } from "react";
@@ -13,7 +13,11 @@ import { toast } from "react-toastify";
 
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 
-import { runImport, validateImport } from "../../../services/import.service";
+import {
+  runInsulationZip,
+  validateInsulationZip,
+  type InsulationValidationResponse,
+} from "../../../services/insulation.service";
 
 type Props = {
   isOpen: boolean;
@@ -32,11 +36,11 @@ const ImportInsulationsModal = ({
 }: Props) => {
   const [file, setFile] = useState<File | null>(null);
   const [selectedCompany, setSelectedCompany] = useState("");
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<InsulationValidationResponse | null>(
+    null
+  );
   const [status, setStatus] = useState<Status>("idle");
   const [progress, setProgress] = useState(0);
-
-  const token = localStorage.getItem("token") || "";
 
   const resetState = () => {
     setFile(null);
@@ -54,7 +58,7 @@ const ImportInsulationsModal = ({
   if (!isOpen) return null;
 
   const handleFile = (selectedFile: File) => {
-    if (!selectedFile.name.endsWith(".zip")) {
+    if (!selectedFile.name.toLowerCase().endsWith(".zip")) {
       toast.error("Solo se permiten archivos .zip");
       return;
     }
@@ -76,23 +80,27 @@ const ImportInsulationsModal = ({
   };
 
   const handleValidate = async () => {
-    if (!file) return;
+    if (!file || !selectedCompany) {
+      toast.error("Selecciona una empresa y adjunta el ZIP");
+      return;
+    }
 
     setStatus("validating");
 
     try {
-      const response = await validateImport(file, token);
+      const response = await validateInsulationZip(file, selectedCompany);
 
       setResult(response);
 
-      if (response.errors?.length > 0) {
+      if (!response.ok || response.errors?.length > 0) {
         setStatus("error");
         toast.error("El archivo tiene errores");
       } else {
         setStatus("valid");
         toast.success("Archivo válido");
       }
-    } catch {
+    } catch (error) {
+      console.error("Error validando mediciones de aislamiento", error);
       setStatus("error");
       toast.error("Error al validar el archivo");
     }
@@ -116,7 +124,10 @@ const ImportInsulationsModal = ({
   };
 
   const handleImport = async () => {
-    if (!file || !selectedCompany) return;
+    if (!file || !selectedCompany) {
+      toast.error("Selecciona una empresa y adjunta el ZIP");
+      return;
+    }
 
     setStatus("importing");
     setProgress(0);
@@ -124,18 +135,35 @@ const ImportInsulationsModal = ({
     const interval = simulateProgress();
 
     try {
-      await runImport(file, token, selectedCompany);
+      const response = await runInsulationZip(file, selectedCompany);
 
       clearInterval(interval);
       setProgress(100);
+
+      if (!response.ok || response.errors?.length > 0) {
+        setStatus("error");
+        toast.error("La importación terminó con errores");
+        setResult((prev) =>
+          prev
+            ? {
+                ...prev,
+                errors: response.errors.map(
+                  (item) => `${item.boardCode}: ${item.error}`
+                ),
+              }
+            : null
+        );
+        return;
+      }
 
       setTimeout(() => {
         toast.success("Mediciones de aislamiento importadas correctamente");
         handleClose();
         onSuccess();
       }, 700);
-    } catch {
+    } catch (error) {
       clearInterval(interval);
+      console.error("Error importando mediciones de aislamiento", error);
       setStatus("error");
       toast.error("Error al importar las mediciones de aislamiento");
     }
@@ -174,7 +202,7 @@ const ImportInsulationsModal = ({
       default:
         return {
           icon: <UploadCloud size={18} />,
-          text: "Selecciona un archivo ZIP para comenzar",
+          text: "Selecciona una empresa y un archivo ZIP para comenzar",
           className: "bg-slate-100 text-slate-600",
         };
     }
@@ -183,9 +211,12 @@ const ImportInsulationsModal = ({
   const statusContent = getStatusContent();
 
   const canValidate =
-    file && status !== "validating" && status !== "importing";
+    Boolean(file) &&
+    Boolean(selectedCompany) &&
+    status !== "validating" &&
+    status !== "importing";
 
-  const canImport = file && selectedCompany && status === "valid";
+  const canImport = Boolean(file) && Boolean(selectedCompany) && status === "valid";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
@@ -202,12 +233,13 @@ const ImportInsulationsModal = ({
               </h2>
 
               <p className="text-sm text-slate-500">
-                Sube un archivo ZIP para importar mediciones por empresa.
+                Sube un ZIP con imágenes nombradas por código de tablero.
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={handleClose}
             disabled={status === "importing"}
             className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
@@ -225,7 +257,11 @@ const ImportInsulationsModal = ({
             <select
               className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-[#0797d5] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
               value={selectedCompany}
-              onChange={(event) => setSelectedCompany(event.target.value)}
+              onChange={(event) => {
+                setSelectedCompany(event.target.value);
+                setResult(null);
+                setStatus("idle");
+              }}
               disabled={status === "importing"}
             >
               <option value="">Seleccionar empresa</option>
@@ -267,7 +303,7 @@ const ImportInsulationsModal = ({
             <p className="mt-1 text-sm text-slate-500">
               {file
                 ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
-                : "También puedes hacer click para seleccionarlo desde tu equipo."}
+                : "El ZIP debe contener imágenes como T0001.jpg, T0002.png o T0003.jpeg."}
             </p>
 
             <input
@@ -314,7 +350,7 @@ const ImportInsulationsModal = ({
                   </h3>
 
                   <p className="text-sm text-slate-500">
-                    Total detectado: {result.total}
+                    Tableros detectados: {result.totalBoardsDetected}
                   </p>
                 </div>
 
@@ -329,7 +365,7 @@ const ImportInsulationsModal = ({
                 )}
               </div>
 
-              <div className="mt-4 max-h-40 space-y-2 overflow-y-auto">
+              <div className="mt-4 max-h-48 space-y-2 overflow-y-auto">
                 {result.errors?.length > 0 ? (
                   result.errors.map((error: string, index: number) => (
                     <div
@@ -340,10 +376,38 @@ const ImportInsulationsModal = ({
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-2xl bg-white px-4 py-3 text-sm text-[#3aaa35]">
-                    El archivo fue validado correctamente.
-                  </div>
+                  <>
+                    <div className="rounded-2xl bg-white px-4 py-3 text-sm text-[#3aaa35]">
+                      El archivo fue validado correctamente.
+                    </div>
+
+                    {result.boards?.map((board) => (
+                      <div
+                        key={board.boardCode}
+                        className="rounded-2xl bg-white px-4 py-3 text-xs text-slate-600"
+                      >
+                        <p className="font-semibold text-slate-800">
+                          {board.boardCode}
+                        </p>
+                        <p>
+                          Imágenes:{" "}
+                          {board.boardImages?.length
+                            ? board.boardImages.join(", ")
+                            : "-"}
+                        </p>
+                      </div>
+                    ))}
+                  </>
                 )}
+
+                {result.warnings?.map((warning, index) => (
+                  <div
+                    key={`warning-${index}`}
+                    className="rounded-2xl bg-yellow-50 px-4 py-3 text-xs text-yellow-700"
+                  >
+                    {warning}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -351,6 +415,7 @@ const ImportInsulationsModal = ({
 
         <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end">
           <button
+            type="button"
             onClick={handleClose}
             disabled={status === "importing"}
             className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
@@ -359,6 +424,7 @@ const ImportInsulationsModal = ({
           </button>
 
           <button
+            type="button"
             onClick={handleValidate}
             disabled={!canValidate}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
@@ -367,10 +433,11 @@ const ImportInsulationsModal = ({
               <Loader2 size={18} className="animate-spin" />
             )}
 
-            {status === "validating" ? "Validando..." : "Validar archivo"}
+            {status === "validating" ? "Validando..." : "Validar"}
           </button>
 
           <button
+            type="button"
             onClick={handleImport}
             disabled={!canImport}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3] disabled:cursor-not-allowed disabled:opacity-50"

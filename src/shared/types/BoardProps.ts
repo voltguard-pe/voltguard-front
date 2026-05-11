@@ -68,16 +68,11 @@ export interface InsulationCircuitMeasurement {
 }
 
 export interface InsulationMeasurementRow {
-  circuit: string;
   description: string;
-  circuitType?: "MONOFASICO" | "TRIFASICO" | string | null;
   measurement_l1_g: number | null;
   measurement_l2_g: number | null;
   measurement_l3_g: number | null;
   unit: "MΩ";
-  readingConfidence?: number | null;
-  associationConfidence?: number | null;
-  observation?: string;
 }
 
 export interface InsulationMeasurementRecord {
@@ -87,7 +82,6 @@ export interface InsulationMeasurementRecord {
   status: InsulationStatus;
   sourceImages?: {
     boardImage?: string;
-    unifilarImage?: string;
   };
   rows: InsulationMeasurementRow[];
   warnings?: string[];

@@ -31,7 +31,7 @@ import type { PublicCompanyBoardsItemDTO } from "../../../shared/types/BoardProp
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
-import QRModal from "../../../components/dashboard/modals/QrModal";
+import QRModal from "../../../components/dashboard/modals/ViewQRModal";
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();

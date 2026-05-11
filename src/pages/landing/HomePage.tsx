@@ -9,8 +9,6 @@ import {
 
 import { useNavigate } from "react-router-dom";
 
-const ImgHome = "../../../src/assets/images/switchboard-check-electrician-with-tablet-technology-action.jpg"
-
 const features = [
     {
         title: "Gestión de empresas",
@@ -87,7 +85,7 @@ const HomePage = () => {
                     <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl">
                         <div className="rounded-[1.5rem] bg-slate-50">
                             <img
-                                src={ImgHome}
+                                src="/imageHero.jpg"
                                 alt="imagen"
                                 className="object-cover w-full h-full rounded-[1.5rem]"
                             />

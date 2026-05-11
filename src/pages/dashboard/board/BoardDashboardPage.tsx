@@ -3,6 +3,7 @@ import {
   ChevronDown,
   Eye,
   FileDown,
+  Import,
   MapPin,
   Pencil,
   Plus,
@@ -204,23 +205,23 @@ const BoardDashboardPage = () => {
             <button
               type="button"
               onClick={() => setShowImportInsulationsModal(true)}
-              className="flex items-center justify-center gap-2 rounded-lg bg-yellow-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-yellow-600"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
+              <Import size={18} />
               Importar mediciones de aislamiento
             </button>
 
             <button
-              type="button"
               onClick={() => setShowImportModal(true)}
-              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
             >
+              <Import size={18} />
               Importar tableros
             </button>
 
             <button
-              type="button"
-              className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
               onClick={() => navigate("/dashboard/boards/create")}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
             >
               <Plus size={18} />
               Nuevo tablero

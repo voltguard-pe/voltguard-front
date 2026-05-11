@@ -37,12 +37,12 @@ const formatMeasurementWithUnit = (
   return `${data} ${unit}`;
 };
 
-const getStatusLabel = (status?: string) => {
-  if (status === "PENDING_REVIEW") return "Pendiente de revisión";
-  if (status === "CONFIRMED") return "Confirmado";
-  if (status === "FAILED") return "Fallido";
-  return value(status);
-};
+// const getStatusLabel = (status?: string) => {
+//   if (status === "PENDING_REVIEW") return "Pendiente de revisión";
+//   if (status === "CONFIRMED") return "Confirmado";
+//   if (status === "FAILED") return "Fallido";
+//   return value(status);
+// };
 
 const getStatusClasses = (status?: string) => {
   if (status === "CONFIRMED") {
@@ -159,7 +159,7 @@ const BoardDetailPage = () => {
             </p>
           </div>
 
-          {record && (
+          {/* {record && (
             <span
               className={`w-fit rounded px-2 py-1 text-xs ${getStatusClasses(
                 record.status
@@ -167,7 +167,7 @@ const BoardDetailPage = () => {
             >
               {getStatusLabel(record.status)}
             </span>
-          )}
+          )} */}
         </div>
 
         {!row ? (
@@ -250,13 +250,6 @@ const BoardDetailPage = () => {
                 </tbody>
               </table>
             </div>
-
-            {record.importedAt && (
-              <p className="mt-3 text-xs text-gray-500">
-                Importado el{" "}
-                {new Date(record.importedAt).toLocaleString("es-PE")}
-              </p>
-            )}
           </>
         )}
       </div>

@@ -1,14 +1,18 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
+import type { InsulationMeasurementRecord } from "../../../shared/types/BoardProps";
 
-
-import {
-  getBoardByCode,
-  updateBoard,
-} from "../../../services/board.service";
+import { getBoardByCode, updateBoard } from "../../../services/board.service";
 
 import { getCompanies } from "../../../services/company.service";
+
+import {
+  createBoardInsulationMeasurement,
+  deleteBoardInsulationMeasurement,
+  updateBoardInsulationMeasurement,
+  type InsulationManualPayload,
+} from "../../../services/insulation.service";
 
 import type {
   BoardCircuit,
@@ -40,17 +44,29 @@ const initialValues: BoardFormValues = {
   existingTermografia: [],
 };
 
+const initialInsulationValues: InsulationManualPayload = {
+  measurement_l1_g: null,
+  measurement_l2_g: null,
+  measurement_l3_g: null,
+};
+
 const EditBoardPage = () => {
   const { publicCode, code } = useParams();
   const navigate = useNavigate();
 
-  const [, setBoard] = useState<BoardResponseDTO | null>(null);
+  const [board, setBoard] = useState<BoardResponseDTO | null>(null);
   const [values, setValues] = useState<BoardFormValues>(initialValues);
   const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
   const [errors, setErrors] = useState<BoardFormErrors>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const [insulationValues, setInsulationValues] =
+    useState<InsulationManualPayload>(initialInsulationValues);
+
+  const [savingInsulation, setSavingInsulation] = useState(false);
+  const [deletingInsulation, setDeletingInsulation] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -94,6 +110,20 @@ const EditBoardPage = () => {
           existingTablero: boardData.images?.tablero || [],
           existingTermografia: boardData.images?.termografia || [],
         });
+
+        const insulationRecords = boardData.insulationMeasurements || [];
+        const latestInsulation =
+          insulationRecords.length > 0
+            ? insulationRecords[insulationRecords.length - 1]
+            : null;
+
+        const latestRow = latestInsulation?.rows?.[0];
+
+        setInsulationValues({
+          measurement_l1_g: latestRow?.measurement_l1_g ?? null,
+          measurement_l2_g: latestRow?.measurement_l2_g ?? null,
+          measurement_l3_g: latestRow?.measurement_l3_g ?? null,
+        });
       } catch (error) {
         console.error(error);
         toast.error("Error cargando tablero");
@@ -105,6 +135,13 @@ const EditBoardPage = () => {
     fetchData();
   }, [publicCode, code, navigate]);
 
+  const hasInsulationMeasurement = Boolean(
+    board?.insulationMeasurements?.length
+  );
+
+  const isMonofasicBoard =
+    values.sistema === "MONOFASICO" || Number(values.numeroFases) < 3;
+
   const handleChange = <K extends keyof BoardFormValues>(
     key: K,
     value: BoardFormValues[K]
@@ -113,6 +150,20 @@ const EditBoardPage = () => {
       ...prev,
       [key]: value,
     }));
+
+    if (key === "sistema" && value === "MONOFASICO") {
+      setInsulationValues((prev) => ({
+        ...prev,
+        measurement_l3_g: null,
+      }));
+    }
+
+    if (key === "numeroFases" && Number(value) < 3) {
+      setInsulationValues((prev) => ({
+        ...prev,
+        measurement_l3_g: null,
+      }));
+    }
   };
 
   const handleCircuitChange = (
@@ -143,6 +194,7 @@ const EditBoardPage = () => {
         {
           circuito: "",
           descripcion: "",
+          tipo: null,
         },
       ],
     }));
@@ -153,6 +205,118 @@ const EditBoardPage = () => {
       ...prev,
       circuits: prev.circuits.filter((_, i) => i !== index),
     }));
+  };
+
+  const handleInsulationChange = (
+    key: keyof InsulationManualPayload,
+    value: string
+  ) => {
+    if (key === "measurement_l3_g" && isMonofasicBoard) {
+      setInsulationValues((prev) => ({
+        ...prev,
+        measurement_l3_g: null,
+      }));
+      return;
+    }
+
+    const parsedValue = value === "" ? null : Number(value);
+
+    if (Number.isNaN(parsedValue)) return;
+
+    setInsulationValues((prev) => ({
+      ...prev,
+      [key]: parsedValue,
+    }));
+  };
+
+  const handleSaveInsulation = async () => {
+    if (!code) return;
+
+    try {
+      setSavingInsulation(true);
+
+      const payload: InsulationManualPayload = {
+        measurement_l1_g: insulationValues.measurement_l1_g,
+        measurement_l2_g: insulationValues.measurement_l2_g,
+        measurement_l3_g: isMonofasicBoard
+          ? null
+          : insulationValues.measurement_l3_g,
+      };
+
+      const response = hasInsulationMeasurement
+        ? await updateBoardInsulationMeasurement(code, payload)
+        : await createBoardInsulationMeasurement(code, payload);
+
+      setBoard((prev) => {
+        if (!prev) return prev;
+
+        const previousMeasurements = prev.insulationMeasurements || [];
+
+        const updatedMeasurements = hasInsulationMeasurement
+          ? previousMeasurements.map((measurement, index) =>
+              index === previousMeasurements.length - 1
+                ? response.data.measurement
+                : measurement
+            )
+          : [...previousMeasurements, response.data.measurement];
+
+        return {
+          ...prev,
+          insulationMeasurements: updatedMeasurements,
+        };
+      });
+
+      toast.success(
+        hasInsulationMeasurement
+          ? "Mediciones de aislamiento actualizadas"
+          : "Tabla de aislamiento registrada"
+      );
+    } catch (error: any) {
+      console.error(error);
+      toast.error(
+        error?.response?.data?.message ||
+          "Error guardando mediciones de aislamiento"
+      );
+    } finally {
+      setSavingInsulation(false);
+    }
+  };
+
+  const handleDeleteInsulation = async () => {
+    if (!code) return;
+
+    const confirmDelete = confirm(
+      "¿Eliminar la tabla de mediciones de aislamiento?"
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      setDeletingInsulation(true);
+
+      await deleteBoardInsulationMeasurement(code);
+
+      setBoard((prev) =>
+        prev
+          ? {
+              ...prev,
+              insulationMeasurements: [],
+            }
+          : prev
+      );
+
+      setInsulationValues(initialInsulationValues);
+
+      toast.success("Tabla de aislamiento eliminada");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(
+        error?.response?.data?.message ||
+          "Error eliminando mediciones de aislamiento"
+      );
+    } finally {
+      setDeletingInsulation(false);
+    }
   };
 
   const validate = () => {
@@ -230,6 +394,7 @@ const EditBoardPage = () => {
       .map((circuit) => ({
         circuito: circuit.circuito,
         descripcion: circuit.descripcion,
+        tipo: circuit.tipo ?? null,
       })),
   });
 
@@ -280,6 +445,14 @@ const EditBoardPage = () => {
       onRemoveCircuit={removeCircuit}
       onSubmit={handleSubmit}
       onCancel={() => navigate(-1)}
+      insulationValues={insulationValues}
+      hasInsulationMeasurement={hasInsulationMeasurement}
+      isMonofasicBoard={isMonofasicBoard}
+      savingInsulation={savingInsulation}
+      deletingInsulation={deletingInsulation}
+      onInsulationChange={handleInsulationChange}
+      onSaveInsulation={handleSaveInsulation}
+      onDeleteInsulation={handleDeleteInsulation}
     />
   );
 };

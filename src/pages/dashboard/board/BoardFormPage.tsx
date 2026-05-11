@@ -1,12 +1,13 @@
 import {
-    Building2,
-    FileImage,
-    Loader2,
-    Plus,
-    Save,
-    Trash2,
-    X,
-    Zap
+  Building2,
+  FileImage,
+  FileText,
+  Loader2,
+  Plus,
+  Save,
+  Trash2,
+  X,
+  Zap
 } from "lucide-react";
 import Checkbox from "../../../shared/components/Checkbox";
 import DragAndDrop from "../../../shared/components/DragAndDrop";
@@ -51,9 +52,15 @@ export type BoardFormValues = {
   tablero: File[];
   termografia: File[];
 
+  certificadosMantenimiento: File[];
+  certificadosOperatividad: File[];
+
   existingUnifilar: string[];
   existingTablero: string[];
   existingTermografia: string[];
+
+  existingCertificadosMantenimiento: string[];
+  existingCertificadosOperatividad: string[];
 };
 
 type Props = {
@@ -496,6 +503,53 @@ const BoardForm = ({
         </div>
       </section>
 
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+            <FileText size={24} />
+          </div>
+
+          <div>
+            <h2 className="font-bold text-slate-950">Documentos técnicos</h2>
+            <p className="text-sm text-slate-500">
+              Adjunta certificados y documentos relacionados al tablero eléctrico.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          <div>
+            <h3 className="mb-3 font-semibold text-slate-800">
+              Certificados de mantenimiento
+            </h3>
+
+            <DragAndDrop
+              multiple
+              label="Subir certificados de mantenimiento"
+              helperText="Carga certificados, informes o documentos de mantenimiento."
+              onFilesChange={(files) =>
+                onChange("certificadosMantenimiento", files)
+              }
+            />
+          </div>
+
+          <div>
+            <h3 className="mb-3 font-semibold text-slate-800">
+              Certificados de operatividad
+            </h3>
+
+            <DragAndDrop
+              multiple
+              label="Subir certificados de operatividad"
+              helperText="Carga certificados e informes de operatividad."
+              onFilesChange={(files) =>
+                onChange("certificadosOperatividad", files)
+              }
+            />
+          </div>
+        </div>
+      </section>
+
       <div className="flex flex-col-reverse gap-3 md:flex-row md:justify-end">
         <button
           type="button"
@@ -514,8 +568,8 @@ const BoardForm = ({
           {saving
             ? "Guardando..."
             : isEdit
-            ? "Guardar cambios"
-            : "Crear tablero"}
+              ? "Guardar cambios"
+              : "Crear tablero"}
         </button>
       </div>
 

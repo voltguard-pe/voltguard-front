@@ -35,9 +35,13 @@ const initialValues: BoardFormValues = {
   unifilar: [],
   tablero: [],
   termografia: [],
+  certificadosMantenimiento: [],
+  certificadosOperatividad: [],
   existingUnifilar: [],
   existingTablero: [],
   existingTermografia: [],
+  existingCertificadosMantenimiento: [],
+  existingCertificadosOperatividad: [],
 };
 
 const EditBoardPage = () => {
@@ -90,6 +94,10 @@ const EditBoardPage = () => {
           unifilar: [],
           tablero: [],
           termografia: [],
+          certificadosMantenimiento: [],
+          certificadosOperatividad: [],
+          existingCertificadosMantenimiento: [],
+          existingCertificadosOperatividad: [],
           existingUnifilar: boardData.images?.unifilar || [],
           existingTablero: boardData.images?.tablero || [],
           existingTermografia: boardData.images?.termografia || [],

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { useNavigate, useParams } from "react-router-dom";
 import ImportBoardsModal from "../../../components/dashboard/modals/ImportBoardsModal";
+import ImportInsulationsModal from "../../../components/dashboard/modals/ImportInsulationsModal";
 import {
   deleteBoard,
   publicGetCompanyBoardByCode,
@@ -32,8 +33,8 @@ const BoardDashboardPage = () => {
 
   const [showQR, setShowQR] = useState(false);
 
-
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showImportInsulationsModal, setShowImportInsulationsModal] = useState(false);
 
   // 🔥 CLAVE: empresa efectiva
   const effectivePublicCode =
@@ -43,8 +44,8 @@ const BoardDashboardPage = () => {
         : auth.companyPublicCode?.publicCode
       : publicCode;
 
-      console.log(auth)
-      console.log(effectivePublicCode)
+  console.log(auth)
+  console.log(effectivePublicCode)
 
   const qrUrl = `${window.location.origin}/dashboard/boards/${effectivePublicCode}`;
 
@@ -152,6 +153,12 @@ const BoardDashboardPage = () => {
 
         {auth?.role === "SUPERADMIN" && (
           <div className="flex gap-x-4">
+            <button
+              onClick={() => setShowImportInsulationsModal(true)}
+              className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
+            >
+              Importar mediciones de aislamiento
+            </button>
             <button
               onClick={() => setShowImportModal(true)}
               className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
@@ -341,18 +348,30 @@ const BoardDashboardPage = () => {
             </table>
           </div>
         )}
-
-        <ImportBoardsModal
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-          companies={companies}
-          onSuccess={async () => {
-            if (effectivePublicCode) {
-              const data = await publicGetCompanyBoards(effectivePublicCode);
-              setBoards(data.boards);
-            }
-          }}
-        />
+        <>
+          <ImportBoardsModal
+            isOpen={showImportModal}
+            onClose={() => setShowImportModal(false)}
+            companies={companies}
+            onSuccess={async () => {
+              if (effectivePublicCode) {
+                const data = await publicGetCompanyBoards(effectivePublicCode);
+                setBoards(data.boards);
+              }
+            }}
+          />
+          <ImportInsulationsModal
+            isOpen={showImportInsulationsModal}
+            onClose={() => setShowImportInsulationsModal(false)}
+            companies={companies}
+            onSuccess={async () => {
+              if (effectivePublicCode) {
+                const data = await publicGetCompanyBoards(effectivePublicCode);
+                setBoards(data.boards);
+              }
+            }}
+          />
+        </>
       </div>
     </section>
   );

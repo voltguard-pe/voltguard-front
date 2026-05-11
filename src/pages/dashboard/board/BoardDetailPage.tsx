@@ -2,15 +2,44 @@ import { ArrowLeft } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getBoardByCode } from "../../../services/board.service";
-import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
+import type {
+  BoardResponseDTO,
+  InsulationMeasurementRow,
+} from "../../../shared/types/BoardProps";
 
 const value = (data: unknown) =>
   data === null || data === undefined || data === "" ? "-" : String(data);
 
 const bool = (data?: boolean) => (data ? "Sí" : "No");
 
-// const formatDate = (date?: string) =>
-//   date ? new Date(date).toLocaleString("es-PE") : "-";
+const formatMeasurement = (data: number | null | undefined) => {
+  if (data === null || data === undefined) return "-";
+  return String(data);
+};
+
+const formatConfidence = (data?: number | null) => {
+  if (data === null || data === undefined) return "-";
+  return `${Math.round(data * 100)}%`;
+};
+
+const getStatusLabel = (status?: string) => {
+  if (status === "PENDING_REVIEW") return "Pendiente de revisión";
+  if (status === "CONFIRMED") return "Confirmado";
+  if (status === "FAILED") return "Fallido";
+  return value(status);
+};
+
+const getStatusClasses = (status?: string) => {
+  if (status === "CONFIRMED") {
+    return "bg-green-100 text-green-800";
+  }
+
+  if (status === "FAILED") {
+    return "bg-red-100 text-red-800";
+  }
+
+  return "bg-yellow-100 text-yellow-800";
+};
 
 const BoardDetailPage = () => {
   const navigate = useNavigate();
@@ -64,6 +93,147 @@ const BoardDetailPage = () => {
     </div>
   );
 
+  const renderInsulationMeasurements = () => {
+    const record = board?.insulationMeasurements?.[0];
+
+    return (
+      <div className="bg-white p-4 sm:p-5 rounded shadow">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+          <div>
+            <h2 className="font-semibold">Mediciones de aislamiento</h2>
+            <p className="text-xs text-gray-500">
+              Medición fase-tierra expresada en MΩ
+            </p>
+          </div>
+
+          {record && (
+            <span
+              className={`text-xs px-2 py-1 rounded w-fit ${getStatusClasses(
+                record.status
+              )}`}
+            >
+              {getStatusLabel(record.status)}
+            </span>
+          )}
+        </div>
+
+        {!record?.rows?.length ? (
+          <p className="text-gray-500 text-sm">
+            Sin mediciones de aislamiento registradas
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-4 md:hidden">
+              {record.rows.map((row: InsulationMeasurementRow, i: number) => (
+                <div key={i} className="border rounded p-4 space-y-1 text-sm">
+                  <p>
+                    <strong>Circuito:</strong> {value(row.circuit)}
+                  </p>
+                  <p>
+                    <strong>Descripción:</strong> {value(row.description)}
+                  </p>
+                  <p>
+                    <strong>L1-G:</strong>{" "}
+                    {formatMeasurement(row.measurement_l1_g)} {row.unit || "MΩ"}
+                  </p>
+                  <p>
+                    <strong>L2-G:</strong>{" "}
+                    {formatMeasurement(row.measurement_l2_g)} {row.unit || "MΩ"}
+                  </p>
+                  <p>
+                    <strong>L3-G:</strong>{" "}
+                    {formatMeasurement(row.measurement_l3_g)} {row.unit || "MΩ"}
+                  </p>
+                  <p>
+                    <strong>Confianza lectura:</strong>{" "}
+                    {formatConfidence(row.readingConfidence)}
+                  </p>
+                  <p>
+                    <strong>Confianza asociación:</strong>{" "}
+                    {formatConfidence(row.associationConfidence)}
+                  </p>
+                  <p>
+                    <strong>Observación:</strong> {value(row.observation)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-sm border min-w-[900px]">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="border p-2 text-left">Circuito</th>
+                    <th className="border p-2 text-left">Descripción</th>
+                    <th className="border p-2 text-center">L1-G</th>
+                    <th className="border p-2 text-center">L2-G</th>
+                    <th className="border p-2 text-center">L3-G</th>
+                    <th className="border p-2 text-center">Unidad</th>
+                    <th className="border p-2 text-center">
+                      Confianza lectura
+                    </th>
+                    <th className="border p-2 text-center">
+                      Confianza asociación
+                    </th>
+                    <th className="border p-2 text-left">Observación</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {record.rows.map((row: InsulationMeasurementRow, i: number) => (
+                    <tr key={i}>
+                      <td className="border p-2">{value(row.circuit)}</td>
+                      <td className="border p-2">{value(row.description)}</td>
+                      <td className="border p-2 text-center">
+                        {formatMeasurement(row.measurement_l1_g)}
+                      </td>
+                      <td className="border p-2 text-center">
+                        {formatMeasurement(row.measurement_l2_g)}
+                      </td>
+                      <td className="border p-2 text-center">
+                        {formatMeasurement(row.measurement_l3_g)}
+                      </td>
+                      <td className="border p-2 text-center">
+                        {row.unit || record.unit || "MΩ"}
+                      </td>
+                      <td className="border p-2 text-center">
+                        {formatConfidence(row.readingConfidence)}
+                      </td>
+                      <td className="border p-2 text-center">
+                        {formatConfidence(row.associationConfidence)}
+                      </td>
+                      <td className="border p-2">
+                        {value(row.observation)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {record.warnings?.length ? (
+              <div className="mt-3 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-3">
+                <p className="font-semibold mb-1">Advertencias:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  {record.warnings.map((warning, i) => (
+                    <li key={i}>{warning}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {record.importedAt && (
+              <p className="mt-3 text-xs text-gray-500">
+                Importado el{" "}
+                {new Date(record.importedAt).toLocaleString("es-PE")}
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
@@ -108,17 +278,6 @@ const BoardDetailPage = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
-          <h2 className="font-semibold mb-2">Identificación</h2>
-          {renderField("ID interno", board.code)}
-          {renderField("Código real del tablero", board.boardCode)}
-          {renderField("Empresa", companyName)}
-          {renderField(
-            "Código público de empresa",
-            (board as BoardResponseDTO & { companyPublicCode?: string }).companyPublicCode
-          )}
-        </div> */}
-
         <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
           <h2 className="font-semibold mb-2">Información general</h2>
           {renderField("Código real del tablero", board.boardCode)}
@@ -141,29 +300,6 @@ const BoardDetailPage = () => {
             <strong>Incluye neutro:</strong> {bool(board.incluyeNeutro)}
           </p>
         </div>
-
-        {/* <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
-          <h2 className="font-semibold mb-2">Interruptor principal</h2>
-          {renderField(
-            "Amperaje",
-            board.mainBreaker?.amperaje
-              ? `${board.mainBreaker.amperaje} A`
-              : "-"
-          )}
-          {renderField("Polos", board.mainBreaker?.polos)}
-          {renderField("Marca", board.mainBreaker?.marca)}
-          {renderField("Modelo", board.mainBreaker?.modelo)}
-        </div>
-
-        <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2 lg:col-span-2">
-          <h2 className="font-semibold mb-2">Protección</h2>
-          <p className="text-sm">
-            <strong>Sobretensión:</strong>{" "}
-            {bool(board.proteccion?.sobretension)}
-          </p>
-          {renderField("Marca", board.proteccion?.marca)}
-          {renderField("Modelo", board.proteccion?.modelo)}
-        </div> */}
       </div>
 
       <div className="bg-white p-4 sm:p-5 rounded shadow">
@@ -182,19 +318,6 @@ const BoardDetailPage = () => {
                   <p>
                     <strong>Descripción:</strong> {value(c.descripcion)}
                   </p>
-                  {/* <p>
-                    <strong>Amperaje:</strong>{" "}
-                    {c.amperaje ? `${c.amperaje} A` : "-"}
-                  </p>
-                  <p>
-                    <strong>Fase:</strong> {value(c.fase)}
-                  </p>
-                  <p>
-                    <strong>Tipo:</strong> {value(c.tipo)}
-                  </p>
-                  <p>
-                    <strong>Estado:</strong> {value(c.estado)}
-                  </p> */}
                 </div>
               ))}
             </div>
@@ -205,10 +328,6 @@ const BoardDetailPage = () => {
                   <tr>
                     <th className="border p-2 text-left">Circuito</th>
                     <th className="border p-2 text-left">Descripción</th>
-                    {/* <th className="border p-2 text-left">Amperaje</th>
-                    <th className="border p-2 text-left">Fase</th>
-                    <th className="border p-2 text-left">Tipo</th>
-                    <th className="border p-2 text-left">Estado</th> */}
                   </tr>
                 </thead>
 
@@ -217,12 +336,6 @@ const BoardDetailPage = () => {
                     <tr key={i}>
                       <td className="border p-2">{value(c.circuito)}</td>
                       <td className="border p-2">{value(c.descripcion)}</td>
-                      {/* <td className="border p-2">
-                        {c.amperaje ? `${c.amperaje} A` : "-"}
-                      </td>
-                      <td className="border p-2">{value(c.fase)}</td>
-                      <td className="border p-2">{value(c.tipo)}</td>
-                      <td className="border p-2">{value(c.estado)}</td> */}
                     </tr>
                   ))}
                 </tbody>
@@ -232,16 +345,11 @@ const BoardDetailPage = () => {
         )}
       </div>
 
+      {renderInsulationMeasurements()}
+
       {renderImageSection("Imágenes del tablero", board.images?.tablero)}
       {renderImageSection("Diagrama unifilar", board.images?.unifilar)}
       {renderImageSection("Termografía", board.images?.termografia)}
-
-      {/* <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
-        <h2 className="font-semibold mb-2">Auditoría</h2>
-        {renderField("Creado por", board.createdBy)}
-        {renderField("Fecha de creación", formatDate(board.createdAt))}
-        {renderField("Última actualización", formatDate(board.updatedAt))}
-      </div> */}
 
       {selectedImage && (
         <div

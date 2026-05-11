@@ -29,9 +29,12 @@ const formatMeasurement = (data: number | null | undefined) => {
   return String(data);
 };
 
-const formatConfidence = (data?: number | null) => {
+const formatMeasurementWithUnit = (
+  data: number | null | undefined,
+  unit = "MΩ"
+) => {
   if (data === null || data === undefined) return "-";
-  return `${Math.round(data * 100)}%`;
+  return `${data} ${unit}`;
 };
 
 const getStatusLabel = (status?: string) => {
@@ -142,7 +145,9 @@ const BoardDetailPage = () => {
   );
 
   const renderInsulationMeasurements = () => {
-    const record = board?.insulationMeasurements?.[0];
+    const records = board?.insulationMeasurements ?? [];
+    const record = records.length > 0 ? records[records.length - 1] : null;
+    const row = record?.rows?.[0];
 
     return (
       <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
@@ -165,114 +170,86 @@ const BoardDetailPage = () => {
           )}
         </div>
 
-        {!record?.rows?.length ? (
+        {!row ? (
           <p className="text-sm text-gray-500">
             Sin mediciones de aislamiento registradas
           </p>
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4 md:hidden">
-              {record.rows.map((row: InsulationMeasurementRow, i: number) => (
-                <div key={i} className="space-y-1 rounded border p-4 text-sm">
-                  <p>
-                    <strong>Circuito:</strong> {value(row.circuit)}
-                  </p>
-                  <p>
-                    <strong>Descripción:</strong> {value(row.description)}
-                  </p>
-                  <p>
-                    <strong>L1-G:</strong>{" "}
-                    {formatMeasurement(row.measurement_l1_g)} {row.unit || "MΩ"}
-                  </p>
-                  <p>
-                    <strong>L2-G:</strong>{" "}
-                    {formatMeasurement(row.measurement_l2_g)} {row.unit || "MΩ"}
-                  </p>
-                  <p>
-                    <strong>L3-G:</strong>{" "}
-                    {formatMeasurement(row.measurement_l3_g)} {row.unit || "MΩ"}
-                  </p>
-                  <p>
-                    <strong>Confianza lectura:</strong>{" "}
-                    {formatConfidence(row.readingConfidence)}
-                  </p>
-                  <p>
-                    <strong>Confianza asociación:</strong>{" "}
-                    {formatConfidence(row.associationConfidence)}
-                  </p>
-                  <p>
-                    <strong>Observación:</strong> {value(row.observation)}
-                  </p>
-                </div>
-              ))}
+              <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
+                <p>
+                  <strong>Descripción:</strong>{" "}
+                  {value(row.description || "Barras generales")}
+                </p>
+
+                <p>
+                  <strong>Fase 1 - Tierra:</strong>{" "}
+                  {formatMeasurementWithUnit(
+                    row.measurement_l1_g,
+                    row.unit || record.unit || "MΩ"
+                  )}
+                </p>
+
+                <p>
+                  <strong>Fase 2 - Tierra:</strong>{" "}
+                  {formatMeasurementWithUnit(
+                    row.measurement_l2_g,
+                    row.unit || record.unit || "MΩ"
+                  )}
+                </p>
+
+                <p>
+                  <strong>Fase 3 - Tierra:</strong>{" "}
+                  {formatMeasurementWithUnit(
+                    row.measurement_l3_g,
+                    row.unit || record.unit || "MΩ"
+                  )}
+                </p>
+              </div>
             </div>
 
             <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[900px] border text-sm">
+              <table className="w-full min-w-[720px] border text-sm">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="border p-2 text-left">Circuito</th>
                     <th className="border p-2 text-left">Descripción</th>
-                    <th className="border p-2 text-center">L1-G</th>
-                    <th className="border p-2 text-center">L2-G</th>
-                    <th className="border p-2 text-center">L3-G</th>
-                    <th className="border p-2 text-center">Unidad</th>
-                    <th className="border p-2 text-center">
-                      Confianza lectura
-                    </th>
-                    <th className="border p-2 text-center">
-                      Confianza asociación
-                    </th>
-                    <th className="border p-2 text-left">Observación</th>
+                    <th className="border p-2 text-center">Fase 1 - Tierra</th>
+                    <th className="border p-2 text-center">Fase 2 - Tierra</th>
+                    <th className="border p-2 text-center">Fase 3 - Tierra</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {record.rows.map(
-                    (row: InsulationMeasurementRow, i: number) => (
-                      <tr key={i}>
-                        <td className="border p-2">{value(row.circuit)}</td>
-                        <td className="border p-2">
-                          {value(row.description)}
-                        </td>
-                        <td className="border p-2 text-center">
-                          {formatMeasurement(row.measurement_l1_g)}
-                        </td>
-                        <td className="border p-2 text-center">
-                          {formatMeasurement(row.measurement_l2_g)}
-                        </td>
-                        <td className="border p-2 text-center">
-                          {formatMeasurement(row.measurement_l3_g)}
-                        </td>
-                        <td className="border p-2 text-center">
-                          {row.unit || record.unit || "MΩ"}
-                        </td>
-                        <td className="border p-2 text-center">
-                          {formatConfidence(row.readingConfidence)}
-                        </td>
-                        <td className="border p-2 text-center">
-                          {formatConfidence(row.associationConfidence)}
-                        </td>
-                        <td className="border p-2">
-                          {value(row.observation)}
-                        </td>
-                      </tr>
-                    )
-                  )}
+                  <tr>
+                    <td className="border p-2">
+                      {value(row.description || "Barras generales")}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {formatMeasurementWithUnit(
+                        row.measurement_l1_g,
+                        row.unit || record.unit || "MΩ"
+                      )}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {formatMeasurementWithUnit(
+                        row.measurement_l2_g,
+                        row.unit || record.unit || "MΩ"
+                      )}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {formatMeasurementWithUnit(
+                        row.measurement_l3_g,
+                        row.unit || record.unit || "MΩ"
+                      )}
+                    </td>
+                  </tr>
                 </tbody>
               </table>
             </div>
-
-            {record.warnings?.length ? (
-              <div className="mt-3 rounded border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-700">
-                <p className="mb-1 font-semibold">Advertencias:</p>
-                <ul className="list-disc space-y-1 pl-5">
-                  {record.warnings.map((warning, i) => (
-                    <li key={i}>{warning}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
 
             {record.importedAt && (
               <p className="mt-3 text-xs text-gray-500">

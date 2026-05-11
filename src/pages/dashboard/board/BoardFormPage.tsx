@@ -1,6 +1,7 @@
 import {
   Building2,
   FileImage,
+  FileText,
   Loader2,
   Plus,
   Save,

@@ -1,128 +1,165 @@
-import { KeyRound } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  Save,
+} from "lucide-react";
+
 import { useState } from "react";
-import { NavLink, useNavigate, useSearchParams } from 'react-router-dom';
-import Input from "../../shared/components/Input";
+import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
+
 import { resetPassword } from "../../services/auth.service";
+import Input from "../../shared/components/Input";
 
 type ChangePasswordProps = {
-    newPassword: string,
-    confirmPassword: string
-}
+  newPassword: string;
+  confirmPassword: string;
+};
 
 const ChangePasswordPage = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-    const [searchParams] = useSearchParams();
-    const navigate = useNavigate();
-    const token = searchParams.get("token");
+  const token = searchParams.get("token");
 
-    const [formData, setFormData] = useState<ChangePasswordProps>({
-        newPassword: "",
-        confirmPassword: ""
-    });
+  const [formData, setFormData] = useState<ChangePasswordProps>({
+    newPassword: "",
+    confirmPassword: "",
+  });
 
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!token) {
+      setError("Token inválido o expirado.");
+      return;
     }
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-
-        if (!token) {
-            setError("Token inválido");
-            return;
-        }
-
-        if (formData.newPassword !== formData.confirmPassword) {
-            setError("Las contraseñas no coinciden");
-            return;
-        }
-
-        try {
-            setLoading(true);
-            setError(null);
-
-            await resetPassword(token, formData.newPassword);
-
-            navigate("/auth"); // redirigir al login
-
-        } catch (err) {
-            setError("Error al cambiar la contraseña. Intenta de nuevo." + (err instanceof Error ? err.message : ""));
-        } finally {
-            setLoading(false);
-        }
+    if (formData.newPassword !== formData.confirmPassword) {
+      setError("Las contraseñas no coinciden.");
+      return;
     }
 
-    return (
-        <div className="flex flex-col w-lg gap-y-4">
-            <section className=" flex flex-col gap-y-3 shadow-lg backdrop-blur-xs bg-white/80 p-6 rounded-xl">
-                {/* Header */}
-                <h1 className="text-2xl text-center font-bold">
-                    Cambiar contraseña
-                </h1>
-                <p className="text-sm text-center text-gray-500 mb-4">
-                    Actualiza tu contraseña para mantener tu cuenta segura
-                </p>
+    try {
+      setLoading(true);
+      setError(null);
 
-                {error && (
-                    <div className="text-sm text-red-600 text-center">
-                        {error}
-                    </div>
-                )}
+      await resetPassword(token, formData.newPassword);
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* New password */}
-                    <Input
-                        label="Nueva Contraseña"
-                        type="password"
-                        name="newPassword"
-                        value={formData.newPassword}
-                        onChange={handleChange}
-                        placeholder="Nueva contraseña"
-                        icon={KeyRound}
-                    />
+      navigate("/auth");
+    } catch (err) {
+      console.error(err);
+      setError("Error al cambiar la contraseña. Intenta nuevamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                    {/* Confirm password */}
-                    <Input
-                        label="Confirmar Contraseña"
-                        type="password"
-                        name="confirmPassword"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        placeholder="Confirmar contraseña"
-                        icon={KeyRound}
-                    />
+  return (
+    <div className="w-full max-w-md space-y-5">
+      <div className="text-center">
+        {/* <div className="mx-auto flex size-16 items-center justify-center rounded-3xl bg-[#0797d5]/10 text-[#0797d5]">
+          <KeyRound size={30} />
+        </div> */}
 
-                    {/* Actions */}
-                    <div className="flex justify-end gap-3 pt-4">
-                        <NavLink
-                            to={'/'}
-                            className="px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        >
-                            Cancelar
-                        </NavLink>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-4 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-                        >
-                            {loading ? "Guardando..." : "Guardar cambios"}
-                        </button>
-                    </div>
-                </form>
-            </section>
-
-            {/* Info */}
-            <div className="text-sm text-gray-500 p-3 bg-yellow-100 rounded-lg">
-                🔒 Por seguridad, tu contraseña debe tener al menos 8 caracteres,
-                una letra mayúscula y un número.
-            </div>
+        <div className="mx-auto flex size-16 items-center justify-center">
+          <img
+            src="/voltguard.png"
+            alt="Voltguard"
+            className="size-20 object-contain"
+          />
         </div>
-    );
+
+        <h1 className="mt-5 text-3xl font-black text-slate-950">
+          Cambiar contraseña
+        </h1>
+
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Actualiza tu contraseña para mantener tu cuenta segura.
+        </p>
+      </div>
+
+      {error && (
+        <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          <AlertCircle size={18} />
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Input
+          label="Nueva contraseña"
+          type="password"
+          name="newPassword"
+          value={formData.newPassword}
+          onChange={handleChange}
+          placeholder="Nueva contraseña"
+          icon={KeyRound}
+          required
+        />
+
+        <Input
+          label="Confirmar contraseña"
+          type="password"
+          name="confirmPassword"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          placeholder="Confirmar contraseña"
+          icon={KeyRound}
+          required
+        />
+
+        <div className="rounded-3xl border border-[#8ccf2f]/30 bg-[#8ccf2f]/10 p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 size={20} className="mt-0.5 text-[#3aaa35]" />
+
+            <p className="text-sm leading-6 text-slate-600">
+              Por seguridad, tu contraseña debe tener al menos 8 caracteres,
+              una letra mayúscula y un número.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col-reverse gap-3 sm:flex-row">
+          <NavLink
+            to="/auth"
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          >
+            <ArrowLeft size={18} />
+            Cancelar
+          </NavLink>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#087fb3] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Save size={18} />
+            )}
+
+            {loading ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
 };
 
 export default ChangePasswordPage;

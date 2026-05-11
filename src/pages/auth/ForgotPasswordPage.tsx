@@ -1,9 +1,17 @@
-import { Mail } from "lucide-react";
+import axios from "axios";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Loader2,
+  Mail,
+  Send,
+} from "lucide-react";
+
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
-import axios from "axios";
-import Input from "../../shared/components/Input";
+
 import { forgotPassword } from "../../services/auth.service";
+import Input from "../../shared/components/Input";
 
 type ForgotPasswordErrorResponse = {
   retryAfterSeconds?: number;
@@ -25,18 +33,20 @@ const ForgotPasswordPage = () => {
           clearInterval(interval);
           return 0;
         }
+
         return prev - 1;
       });
     }, 1000);
   };
 
-  const handleSubmit = async (e?: React.FormEvent<HTMLFormElement>) => {
-    e?.preventDefault();
+  const handleSubmit = async (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
 
     if (!email || loading) return;
 
     try {
       setLoading(true);
+
       const response = await forgotPassword(email);
 
       setSubmitted(true);
@@ -45,6 +55,7 @@ const ForgotPasswordPage = () => {
       if (axios.isAxiosError<ForgotPasswordErrorResponse>(error)) {
         if (error.response?.status === 429) {
           const seconds = error.response.data?.retryAfterSeconds ?? 30;
+
           setSubmitted(true);
           startCooldown(seconds);
         }
@@ -55,36 +66,52 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div className="w-lg flex flex-col gap-y-3 shadow-lg backdrop-blur-xs bg-white/80 p-6 rounded-xl">
-      <h1 className="text-2xl text-center font-bold">
-        ¿Olvidaste tu contraseña?
-      </h1>
-      <p className="text-sm text-center text-gray-500 mb-4">
-        Ingresa tu correo electrónico y te enviaremos un enlace para
-        restablecer tu contraseña.
-      </p>
+    <div className="w-full max-w-md">
+      <div className="mb-8 text-center">
+        {/* <div className="mx-auto flex size-16 items-center justify-center rounded-3xl bg-[#0797d5]/10 text-[#0797d5]">
+          <Mail size={30} />
+        </div> */}
+
+        <div className="mx-auto flex size-16 items-center justify-center">
+          <img
+            src="/voltguard.png"
+            alt="Voltguard"
+            className="size-20 object-contain"
+          />
+        </div>
+
+        <h1 className="mt-5 text-3xl font-black text-slate-950">
+          ¿Olvidaste tu contraseña?
+        </h1>
+
+        <p className="mt-2 text-sm leading-6 text-slate-500">
+          Ingresa tu correo electrónico y te enviaremos instrucciones para
+          restablecer tu contraseña.
+        </p>
+      </div>
 
       {submitted ? (
-        <div className="text-center space-y-4">
-          <div className="font-medium text-center">
-            {cooldown > 0 ? (
-              <p className="text-green-600">
-                Hemos enviado las instrucciones a{" "}
-                <span className="font-bold">{email}</span> para cambiar tu
-                contraseña
-              </p>
-            ) : (
-              <p className="text-green-600">
-                Ya puedes volver a reenviar el correo.
-              </p>
-            )}
+        <div className="space-y-5 text-center">
+          <div className="rounded-3xl border border-[#8ccf2f]/30 bg-[#8ccf2f]/10 p-6">
+            <CheckCircle2 className="mx-auto text-[#3aaa35]" size={36} />
+
+            <p className="mt-4 text-sm font-semibold text-slate-700">
+              Hemos enviado las instrucciones a:
+            </p>
+
+            <p className="mt-1 break-words font-bold text-slate-950">
+              {email}
+            </p>
           </div>
 
           <button
+            type="button"
             onClick={() => handleSubmit()}
             disabled={loading || cooldown > 0}
-            className="text-indigo-600 hover:underline disabled:text-gray-400"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#087fb3] disabled:cursor-not-allowed disabled:opacity-60"
           >
+            {loading && <Loader2 size={18} className="animate-spin" />}
+
             {cooldown > 0
               ? `Reenviar en ${cooldown}s`
               : loading
@@ -93,33 +120,43 @@ const ForgotPasswordPage = () => {
           </button>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <Input
-            label="Correo Electrónico"
+            label="Correo electrónico"
             type="email"
             name="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Correo electrónico"
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="correo@empresa.com"
             icon={Mail}
+            required
           />
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#087fb3] disabled:cursor-not-allowed disabled:opacity-60"
           >
+            {loading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Send size={18} />
+            )}
+
             {loading ? "Enviando..." : "Enviar enlace"}
           </button>
         </form>
       )}
 
-      <p className="text-sm text-gray-500 mt-6 text-center">
-        ¿Recordaste tu contraseña?{" "}
-        <NavLink to="/auth" className="text-indigo-600 hover:underline">
-          Inicia sesión
+      <div className="mt-6 text-center">
+        <NavLink
+          to="/auth"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-[#0797d5] transition hover:text-[#087fb3] hover:underline"
+        >
+          <ArrowLeft size={16} />
+          Volver al inicio de sesión
         </NavLink>
-      </p>
+      </div>
     </div>
   );
 };

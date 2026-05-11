@@ -1,7 +1,22 @@
+import {
+  AlertCircle,
+  CheckCircle2,
+  FileArchive,
+  Loader2,
+  UploadCloud,
+  X,
+  Zap,
+} from "lucide-react";
+
 import { useState } from "react";
-import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
-import { runImport, validateImport } from "../../../services/import.service";
 import { toast } from "react-toastify";
+
+import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
+
+import {
+  runImport,
+  validateImport,
+} from "../../../services/import.service";
 
 type Props = {
   isOpen: boolean;
@@ -26,9 +41,6 @@ const ImportBoardsModal = ({
 
   const token = localStorage.getItem("token") || "";
 
-  // =========================
-  // 🔄 RESET STATE
-  // =========================
   const resetState = () => {
     setFile(null);
     setSelectedCompany("");
@@ -44,54 +56,51 @@ const ImportBoardsModal = ({
 
   if (!isOpen) return null;
 
-  // =========================
-  // 📂 FILE HANDLING
-  // =========================
-  const handleFile = (f: File) => {
-    if (!f.name.endsWith(".zip")) {
-      alert("Solo se permiten archivos .zip");
+  const handleFile = (selectedFile: File) => {
+    if (!selectedFile.name.endsWith(".zip")) {
+      toast.error("Solo se permiten archivos .zip");
       return;
     }
 
-    setFile(f);
+    setFile(selectedFile);
     setResult(null);
     setStatus("idle");
     setProgress(0);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
+  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+
+    const selectedFile = event.dataTransfer.files[0];
+
+    if (selectedFile) {
+      handleFile(selectedFile);
+    }
   };
 
-  // =========================
-  // 🔍 VALIDATE
-  // =========================
   const handleValidate = async () => {
     if (!file) return;
 
     setStatus("validating");
 
     try {
-      const res = await validateImport(file, token);
-      setResult(res);
+      const response = await validateImport(file, token);
 
-      if (res.errors?.length > 0) {
+      setResult(response);
+
+      if (response.errors?.length > 0) {
         setStatus("error");
         toast.error("El archivo tiene errores");
       } else {
         setStatus("valid");
         toast.success("Archivo válido");
       }
-    } catch (err) {
+    } catch (error) {
       setStatus("error");
+      toast.error("Error al validar el archivo");
     }
   };
 
-  // =========================
-  // 🔄 SIMULACIÓN PROGRESO
-  // =========================
   const simulateProgress = () => {
     let value = 0;
 
@@ -109,9 +118,6 @@ const ImportBoardsModal = ({
     return interval;
   };
 
-  // =========================
-  // 🚀 IMPORT
-  // =========================
   const handleImport = async () => {
     if (!file || !selectedCompany) return;
 
@@ -126,161 +132,259 @@ const ImportBoardsModal = ({
       clearInterval(interval);
       setProgress(100);
 
-      // 🔥 pequeño delay para que el usuario vea 100%
       setTimeout(() => {
         toast.success("Tableros importados correctamente");
         handleClose();
         onSuccess();
       }, 700);
-    } catch (err) {
+    } catch (error) {
       clearInterval(interval);
       setStatus("error");
       toast.error("Error al importar los tableros");
     }
   };
 
-  // =========================
-  // 🎨 TEXTO DINÁMICO
-  // =========================
-  const getStatusText = () => {
+  const getStatusContent = () => {
     switch (status) {
       case "validating":
-        return "Validando archivo...";
+        return {
+          icon: <Loader2 size={18} className="animate-spin" />,
+          text: "Validando archivo...",
+          className: "bg-[#0797d5]/10 text-[#0797d5]",
+        };
+
       case "valid":
-        return "Archivo válido ✅";
+        return {
+          icon: <CheckCircle2 size={18} />,
+          text: "Archivo válido y listo para importar",
+          className: "bg-[#8ccf2f]/15 text-[#3aaa35]",
+        };
+
       case "error":
-        return "Se encontraron errores ❌";
+        return {
+          icon: <AlertCircle size={18} />,
+          text: "Se encontraron errores en el archivo",
+          className: "bg-red-100 text-red-700",
+        };
+
       case "importing":
-        return `Importando tableros... ${progress}%`;
+        return {
+          icon: <Loader2 size={18} className="animate-spin" />,
+          text: `Importando tableros... ${progress}%`,
+          className: "bg-[#0797d5]/10 text-[#0797d5]",
+        };
+
       default:
-        return "Selecciona un archivo .zip";
+        return {
+          icon: <UploadCloud size={18} />,
+          text: "Selecciona un archivo ZIP para comenzar",
+          className: "bg-slate-100 text-slate-600",
+        };
     }
   };
 
+  const statusContent = getStatusContent();
+
+  const canValidate =
+    file && status !== "validating" && status !== "importing";
+
+  const canImport =
+    file && selectedCompany && status === "valid";
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white w-full max-w-lg p-6 rounded-2xl shadow-lg flex flex-col gap-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+      <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white">
+              <Zap size={24} />
+            </div>
 
-        <h2 className="text-lg font-bold">Importar tableros</h2>
+            <div>
+              <h2 className="text-lg font-bold text-slate-950">
+                Importar tableros
+              </h2>
 
-        {/* SELECT EMPRESA */}
-        <select
-          className="border p-2 rounded"
-          value={selectedCompany}
-          onChange={(e) => setSelectedCompany(e.target.value)}
-          disabled={status === "importing"}
-        >
-          <option value="">Seleccionar empresa</option>
-          {companies.map((c) => (
-            <option key={c.publicCode} value={c.publicCode}>
-              {c.name}
-            </option>
-          ))}
-        </select>
+              <p className="text-sm text-slate-500">
+                Sube un archivo ZIP para importar tableros por empresa.
+              </p>
+            </div>
+          </div>
 
-        {/* DROP ZONE */}
-        <div
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          className={`border-2 border-dashed rounded-lg p-6 text-center transition ${
-            status === "importing"
-              ? "opacity-50 pointer-events-none"
-              : "cursor-pointer hover:bg-gray-50"
-          }`}
-        >
-          <p className="text-sm text-gray-500">
-            Arrastra tu archivo ZIP aquí o haz click
-          </p>
+          <button
+            onClick={handleClose}
+            disabled={status === "importing"}
+            className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-          <input
-            type="file"
-            accept=".zip"
-            className="hidden"
-            id="fileInput"
-            onChange={(e) =>
-              e.target.files?.[0] && handleFile(e.target.files[0])
-            }
-          />
+        <div className="max-h-[75vh] space-y-5 overflow-y-auto p-6">
+          <div>
+            <label className="text-sm font-semibold text-slate-700">
+              Empresa destino
+            </label>
+
+            <select
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-[#0797d5] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+              value={selectedCompany}
+              onChange={(event) => setSelectedCompany(event.target.value)}
+              disabled={status === "importing"}
+            >
+              <option value="">Seleccionar empresa</option>
+
+              {companies.map((company) => (
+                <option key={company.publicCode} value={company.publicCode}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <label
             htmlFor="fileInput"
-            className="text-blue-600 text-sm cursor-pointer"
+            onDrop={handleDrop}
+            onDragOver={(event) => event.preventDefault()}
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed p-8 text-center transition ${
+              status === "importing"
+                ? "pointer-events-none border-slate-200 bg-slate-50 opacity-60"
+                : file
+                ? "border-[#8ccf2f] bg-[#8ccf2f]/10"
+                : "border-slate-200 bg-slate-50 hover:border-[#0797d5] hover:bg-[#0797d5]/5"
+            }`}
           >
-            Seleccionar archivo
+            <div
+              className={`flex size-16 items-center justify-center rounded-3xl ${
+                file
+                  ? "bg-[#8ccf2f]/15 text-[#3aaa35]"
+                  : "bg-[#0797d5]/10 text-[#0797d5]"
+              }`}
+            >
+              {file ? <FileArchive size={30} /> : <UploadCloud size={30} />}
+            </div>
+
+            <h3 className="mt-4 font-bold text-slate-950">
+              {file ? file.name : "Arrastra tu archivo ZIP aquí"}
+            </h3>
+
+            <p className="mt-1 text-sm text-slate-500">
+              {file
+                ? `${(file.size / 1024 / 1024).toFixed(2)} MB`
+                : "También puedes hacer click para seleccionarlo desde tu equipo."}
+            </p>
+
+            <input
+              type="file"
+              accept=".zip"
+              className="hidden"
+              id="fileInput"
+              disabled={status === "importing"}
+              onChange={(event) =>
+                event.target.files?.[0] &&
+                handleFile(event.target.files[0])
+              }
+            />
           </label>
 
-          {file && (
-            <p className="mt-2 text-sm text-gray-700">
-              📦 {file.name}
-            </p>
+          <div
+            className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold ${statusContent.className}`}
+          >
+            {statusContent.icon}
+            {statusContent.text}
+          </div>
+
+          {status === "importing" && (
+            <div>
+              <div className="mb-2 flex justify-between text-xs font-semibold text-slate-500">
+                <span>Progreso</span>
+                <span>{progress}%</span>
+              </div>
+
+              <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-3 rounded-full bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] transition-all duration-300"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {result && (
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-bold text-slate-950">
+                    Resultado de validación
+                  </h3>
+
+                  <p className="text-sm text-slate-500">
+                    Total detectado: {result.total}
+                  </p>
+                </div>
+
+                {result.errors?.length > 0 ? (
+                  <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700">
+                    {result.errors.length} errores
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-[#8ccf2f]/15 px-3 py-1 text-xs font-semibold text-[#3aaa35]">
+                    Sin errores
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-4 max-h-40 space-y-2 overflow-y-auto">
+                {result.errors?.length > 0 ? (
+                  result.errors.map((error: string, index: number) => (
+                    <div
+                      key={index}
+                      className="rounded-2xl bg-white px-4 py-3 text-xs text-red-700"
+                    >
+                      {error}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-2xl bg-white px-4 py-3 text-sm text-[#3aaa35]">
+                    El archivo fue validado correctamente.
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
 
-        {/* STATUS */}
-        <p className="text-sm text-gray-600">{getStatusText()}</p>
+        <div className="flex flex-col-reverse gap-3 border-t border-slate-200 px-6 py-5 sm:flex-row sm:justify-end">
+          <button
+            onClick={handleClose}
+            disabled={status === "importing"}
+            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cerrar
+          </button>
 
-        {/* PROGRESS BAR */}
-        {status === "importing" && (
-          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-            <div
-              className="bg-green-600 h-3 transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        )}
-
-        {/* BOTONES */}
-        <div className="flex gap-2">
           <button
             onClick={handleValidate}
-            disabled={!file || status === "validating" || status === "importing"}
-            className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+            disabled={!canValidate}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {status === "validating" ? "Validando..." : "Validar"}
+            {status === "validating" && (
+              <Loader2 size={18} className="animate-spin" />
+            )}
+
+            {status === "validating" ? "Validando..." : "Validar archivo"}
           </button>
 
           <button
             onClick={handleImport}
-            disabled={
-              !file ||
-              !selectedCompany ||
-              status !== "valid"
-            }
-            className="bg-green-600 text-white px-4 py-2 rounded disabled:opacity-50"
+            disabled={!canImport}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {status === "importing" ? "Importando..." : "Importar"}
-          </button>
-        </div>
-
-        {/* RESULTADO */}
-        {result && (
-          <div className="max-h-40 overflow-y-auto border rounded p-2">
-            <p className="text-sm font-semibold">
-              Total: {result.total}
-            </p>
-
-            {result.errors?.length > 0 ? (
-              result.errors.map((e: string, i: number) => (
-                <p key={i} className="text-red-500 text-xs">
-                  • {e}
-                </p>
-              ))
-            ) : (
-              <p className="text-green-600 text-sm">
-                Sin errores ✅
-              </p>
+            {status === "importing" && (
+              <Loader2 size={18} className="animate-spin" />
             )}
-          </div>
-        )}
 
-        {/* FOOTER */}
-        <div className="flex justify-end">
-          <button
-            onClick={handleClose}
-            disabled={status === "importing"}
-            className="bg-gray-500 text-white px-4 py-2 rounded disabled:opacity-50"
-          >
-            Cerrar
+            {status === "importing" ? "Importando..." : "Importar"}
           </button>
         </div>
       </div>

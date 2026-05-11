@@ -1,98 +1,127 @@
-import { KeyRound, Mail } from "lucide-react";
+import { AlertCircle, KeyRound, Loader2, Mail } from "lucide-react";
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { login } from "../../services/auth.service";
-import { getProfile } from "../../services/auth.service";
+
+import { getProfile, login, type LoginData } from "../../services/auth.service";
 import Input from "../../shared/components/Input";
 import { useAuth } from "../../shared/hooks/useAuth";
-import { type LoginData } from "../../services/auth.service"
 
 const LoginPage = () => {
-    const { setAuth } = useAuth();
-    const navigate = useNavigate()
+  const { setAuth } = useAuth();
+  const navigate = useNavigate();
 
-    const [formData, setFormData] = useState<LoginData>({
-        email: "",
-        password: ""
-    });
+  const [formData, setFormData] = useState<LoginData>({
+    email: "",
+    password: "",
+  });
 
-    const [errorMessage, setErrorMessage] = useState<string | null>(null);
-    const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    setErrorMessage(null);
+    setLoading(true);
+
+    try {
+      await login(formData);
+
+      const user = await getProfile();
+
+      setAuth(user);
+      navigate("/dashboard");
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Credenciales incorrectas o error al iniciar sesión.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
-        setErrorMessage(null);
-        setLoading(true);
+  return (
+    <div className="w-full max-w-md">
+      <div className="mb-8 text-center">
+        {/* <div className="mx-auto flex size-16 items-center justify-center rounded-3xl bg-[#0797d5]/10 text-[#0797d5]">
+          <Zap size={30} />
+        </div> */}
 
-        try {
-            await login(formData)
-
-            const user = await getProfile()
-
-            console.log("Usuario logueado", user)
-
-            setAuth(user)
-            navigate("/dashboard")
-        } catch (error) {
-            setErrorMessage('Error al iniciar sesión' + error)
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    return (
-        <div className="w-lg flex flex-col gap-y-3 shadow-lg backdrop-blur-xs bg-white/80 p-6 rounded-xl">
-            <h1 className="text-2xl text-center font-bold">
-                Iniciar Sesión
-            </h1>
-            <h2 className="text-sm text-center text-gray-500 mb-4">
-                Ingresa tus credenciales para acceder a tu dashboard personal
-            </h2>
-            <form onSubmit={handleSubmit} className="flex flex-col gap-y-3">
-                <Input
-                    label="Correo Electrónico"
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="Correo electrónico"
-                    icon={Mail}
-                />
-                <Input
-                    label="Contraseña"
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Contraseña"
-                    icon={KeyRound}
-                />
-                <NavLink
-                    to={"/auth/forgot-password"}
-                    className="text-end text-sm text-gray-500 hover:text-indigo-500 hover:underline my-4"
-                >
-                    ¿Olvidaste tu contraseña?
-                </NavLink>
-                {errorMessage && (
-                    <p className="text-red-500 text-sm text-center">
-                        {errorMessage}
-                    </p>
-                )}
-                <button
-                    type="submit"
-                    disabled={loading}
-                    className="bg-indigo-500 rounded-lg shadow-lg p-2 text-white font-medium cursor-pointer"
-                >
-                    {loading ? "Ingresando..." : "Ingresar"}
-                </button>
-            </form>
+        <div className="mx-auto flex size-16 items-center justify-center">
+          <img
+            src="/voltguard.png"
+            alt="Voltguard"
+            className="size-20 object-contain"
+          />
         </div>
-    );
-}
+
+        <h1 className="mt-5 text-3xl font-black text-slate-950">
+          Iniciar sesión
+        </h1>
+
+        <p className="mt-2 text-sm text-slate-500">
+          Ingresa tus credenciales para acceder a Voltguard.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Input
+          label="Correo electrónico"
+          type="email"
+          name="email"
+          value={formData.email}
+          onChange={handleChange}
+          placeholder="correo@empresa.com"
+          icon={Mail}
+          required
+        />
+
+        <Input
+          label="Contraseña"
+          type="password"
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          placeholder="Tu contraseña"
+          icon={KeyRound}
+          required
+        />
+
+        <div className="text-right">
+          <NavLink
+            to="/auth/forgot-password"
+            className="text-sm font-semibold text-[#0797d5] transition hover:text-[#087fb3] hover:underline"
+          >
+            ¿Olvidaste tu contraseña?
+          </NavLink>
+        </div>
+
+        {errorMessage && (
+          <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+            <AlertCircle size={18} />
+            {errorMessage}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#087fb3] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading && <Loader2 size={18} className="animate-spin" />}
+          {loading ? "Ingresando..." : "Ingresar"}
+        </button>
+      </form>
+    </div>
+  );
+};
 
 export default LoginPage;

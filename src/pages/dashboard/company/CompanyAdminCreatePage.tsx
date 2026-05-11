@@ -1,8 +1,19 @@
+import {
+  ArrowLeft,
+  UserPlus,
+} from "lucide-react";
+
 import { useEffect, useState } from "react";
+
 import { useNavigate } from "react-router-dom";
-import Input from "../../../shared/components/Input";
-import { createUser } from "../../../services/users.service";
+
+import { toast } from "react-toastify";
+
 import clientAxios from "../../../shared/config/clientAxios";
+
+import { createUser } from "../../../services/users.service";
+import AdminFormPage, { type AdminFormData } from "./AdminFormPage";
+
 
 type Company = {
   name: string;
@@ -12,140 +23,115 @@ type Company = {
 const CompanyAdminCreatePage = () => {
   const navigate = useNavigate();
 
-  const [firstname, setFirstname] = useState("");
-  const [lastname, setLastname] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [companyPublicCode, setCompanyPublicCode] = useState("");
+  const [companies, setCompanies] = useState<
+    Company[]
+  >([]);
 
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 🔹 traer empresas públicas
+  const [fetchingCompanies, setFetchingCompanies] =
+    useState(true);
+
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        const { data } = await clientAxios.get<Company[]>(
-          "/company"
-        );
+        const { data } =
+          await clientAxios.get<Company[]>(
+            "/company"
+          );
+
         setCompanies(data);
       } catch (error) {
-        console.error("Error cargando empresas", error);
+        console.error(error);
+
+        toast.error(
+          "Error cargando empresas"
+        );
+      } finally {
+        setFetchingCompanies(false);
       }
     };
 
     fetchCompanies();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!companyPublicCode) {
-      alert("Selecciona una empresa");
-      return;
-    }
-
+  const handleSubmit = async (
+    data: AdminFormData
+  ) => {
     try {
       setLoading(true);
 
       await createUser({
-        firstname,
-        lastname,
-        email,
-        password,
-        companyPublicCode,
+        firstname: data.firstname,
+        lastname: data.lastname,
+        email: data.email,
+        password: data.password ?? "",
+        companyPublicCode:
+          data.companyPublicCode,
       });
 
-      alert("Administrador creado correctamente 🚀");
+      toast.success(
+        "Administrador creado correctamente"
+      );
 
       navigate("/dashboard/admins");
     } catch (error) {
       console.error(error);
-      alert("Error al crear administrador");
+
+      toast.error(
+        "Error al crear administrador"
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  if (fetchingCompanies) {
+    return (
+      <section className="mx-auto max-w-4xl space-y-6">
+        <div className="h-10 w-32 animate-pulse rounded-2xl bg-slate-200" />
+
+        <div className="h-20 animate-pulse rounded-3xl bg-slate-200" />
+
+        <div className="h-[420px] animate-pulse rounded-3xl bg-slate-200" />
+      </section>
+    );
+  }
+
   return (
-    <section className="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow-sm">
-      <h1 className="text-xl font-bold text-gray-800 mb-6">
-        Crear Administrador
-      </h1>
+    <section className="mx-auto max-w-4xl space-y-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+      >
+        <ArrowLeft size={18} />
+        Volver
+      </button>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-        <Input
-          label="Nombre"
-          value={firstname}
-          onChange={(e) => setFirstname(e.target.value)}
-          required
-        />
-
-        <Input
-          label="Apellido"
-          value={lastname}
-          onChange={(e) => setLastname(e.target.value)}
-          required
-        />
-
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="col-span-2"
-        />
-
-        <Input
-          label="Contraseña"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          className="col-span-2"
-        />
-
-        {/* 🔹 Selector de empresa */}
-        <div className="col-span-2 flex flex-col gap-y-2">
-          <label className="text-sm text-gray-600 font-medium">
-            Empresa
-          </label>
-
-          <select
-            value={companyPublicCode}
-            onChange={(e) => setCompanyPublicCode(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500"
-          >
-            <option value="">Seleccionar empresa</option>
-
-            {companies.map((company) => (
-              <option key={company.publicCode} value={company.publicCode}>
-                {company.name}
-              </option>
-            ))}
-          </select>
+      <div className="flex items-center gap-3">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+          <UserPlus size={24} />
         </div>
 
-        {/* 🔹 botones */}
-        <div className="col-span-2 flex justify-end gap-3 mt-4">
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard/admins")}
-            className="px-4 py-2 text-sm bg-gray-200 rounded-lg hover:bg-gray-300"
-          >
-            Cancelar
-          </button>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-950">
+            Crear administrador
+          </h1>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-          >
-            {loading ? "Creando..." : "Crear administrador"}
-          </button>
+          <p className="text-sm text-slate-500">
+            Registra un nuevo administrador
+            para una empresa.
+          </p>
         </div>
-      </form>
+      </div>
+
+      <AdminFormPage
+        mode="create"
+        companies={companies}
+        loading={loading}
+        onSubmit={handleSubmit}
+        onCancel={() => navigate(-1)}
+      />
     </section>
   );
 };

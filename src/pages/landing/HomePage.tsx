@@ -1,274 +1,177 @@
-import { Building2, Database, QrCode, ShieldCheck } from "lucide-react"
-import { NavLink } from "react-router-dom"
+import {
+    ArrowRight,
+    Building2,
+    CheckCircle2,
+    FileText,
+    ShieldCheck,
+    Zap
+} from "lucide-react";
+
+import { useNavigate } from "react-router-dom";
 
 const ImgHome = "../../../src/assets/images/switchboard-check-electrician-with-tablet-technology-action.jpg"
 
+const features = [
+    {
+        title: "Gestión de empresas",
+        description: "Administra empresas y separa sus tableros eléctricos.",
+        icon: Building2,
+    },
+    {
+        title: "Control de tableros",
+        description: "Centraliza información técnica, diagramas y estado operativo.",
+        icon: Zap,
+    },
+    {
+        title: "Documentación técnica",
+        description: "Sube certificados, termografías y diagramas unifilares.",
+        icon: FileText,
+    },
+    {
+        title: "Usuarios y permisos",
+        description: "Gestiona administradores, superadmins y accesos seguros.",
+        icon: ShieldCheck,
+    },
+];
+
 const HomePage = () => {
+    const navigate = useNavigate();
+
     return (
-        <div className="w-full min-h-screen bg-white text-gray-800">
+        <div className="bg-slate-50">
+            <section className="relative overflow-hidden">
+                <div className="absolute left-0 top-0 h-[400px] w-[400px] rounded-full bg-[#0797d5]/10 blur-3xl" />
+                <div className="absolute right-0 top-20 h-[350px] w-[350px] rounded-full bg-[#8ccf2f]/10 blur-3xl" />
 
-            {/* HERO */}
-
-            <section className="py-24">
-                <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-16 items-center">
-
+                <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-28">
                     <div>
+                        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">
+                            <Zap size={16} className="text-[#8ccf2f]" />
+                            Plataforma inteligente de gestión eléctrica
+                        </div>
 
-                        <h1 className="text-5xl font-bold leading-tight">
-                            Gestión digital de
-                            <span className="text-blue-600"> tableros eléctricos </span>
-                            con códigos QR
+                        <h1 className="text-4xl font-black tracking-tight text-slate-950 sm:text-5xl lg:text-6xl">
+                            Gestiona tableros eléctricos con{" "}
+                            <span className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] bg-clip-text text-transparent">
+                                Voltguard
+                            </span>
                         </h1>
 
-                        <p className="mt-6 text-lg text-gray-600">
-                            Registra, documenta y consulta la ficha técnica de cada tablero
-                            eléctrico simplemente escaneando un código QR desde cualquier
-                            dispositivo.
+                        <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
+                            Centraliza empresas, tableros, diagramas, usuarios, documentos y
+                            reportes técnicos en una sola plataforma moderna y profesional.
                         </p>
 
-                        <div className="mt-8 flex gap-4">
-
-                            <NavLink
-                                to={"/auth"}
-                                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 cursor-pointer"
+                        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                            <button
+                                onClick={() => navigate("/login")}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#087fb3]"
                             >
                                 Ingresar al sistema
-                            </NavLink>
+                                <ArrowRight size={18} />
+                            </button>
 
-                            {/* <button className="border px-6 py-3 rounded-lg hover:bg-gray-100">
-                                Ver cómo funciona
-                            </button> */}
-
+                            <button
+                                onClick={() =>
+                                    document
+                                        .getElementById("features")
+                                        ?.scrollIntoView({ behavior: "smooth" })
+                                }
+                                className="rounded-2xl border border-slate-200 bg-white px-6 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                            >
+                                Ver funcionalidades
+                            </button>
                         </div>
-
                     </div>
 
-                    <div className="bg-gray-100 rounded-xl h-[400px] flex items-center justify-center text-gray-400 overflow-hidden">
-
-                        <img
-                            src={ImgHome}
-                            alt="imagen"
-                            className="object-cover w-full h-full"
-                        />
+                    <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-xl">
+                        <div className="rounded-[1.5rem] bg-slate-50">
+                            <img
+                                src={ImgHome}
+                                alt="imagen"
+                                className="object-cover w-full h-full rounded-[1.5rem]"
+                            />
+                        </div>
                     </div>
-
                 </div>
             </section>
 
-            {/* PROBLEMA */}
-
-            <section className="bg-gray-50 py-20">
-                <div className="max-w-6xl mx-auto px-6 text-center">
-
-                    <h2 className="text-3xl font-bold">
-                        Problema común en la gestión de tableros
-                    </h2>
-
-                    <p className="mt-6 text-gray-600 max-w-2xl mx-auto">
-                        La información técnica de los tableros eléctricos suele estar
-                        dispersa entre documentos físicos, archivos desorganizados o
-                        simplemente se pierde con el tiempo.
-                    </p>
-
-                    <div className="grid md:grid-cols-3 gap-8 mt-12">
-
-                        <div className="bg-white p-6 rounded-xl shadow-sm">
-                            📁 Documentación dispersa
-                        </div>
-
-                        <div className="bg-white p-6 rounded-xl shadow-sm">
-                            🔎 Difícil acceso a información
-                        </div>
-
-                        <div className="bg-white p-6 rounded-xl shadow-sm">
-                            ⚠️ Falta de trazabilidad
-                        </div>
-
-                    </div>
-
-                </div>
-            </section>
-
-            {/* SOLUCION */}
-
-            <section className="py-20">
-                <div className="max-w-6xl mx-auto px-6 text-center">
-
-                    <h2 className="text-3xl font-bold">
-                        Una solución simple y eficiente
-                    </h2>
-
-                    <p className="mt-6 text-gray-600 max-w-2xl mx-auto">
-                        Nuestra plataforma centraliza la información técnica de cada
-                        tablero eléctrico y la vincula con un código QR único que permite
-                        acceder a la ficha técnica en segundos.
-                    </p>
-
-                </div>
-            </section>
-
-            {/* COMO FUNCIONA */}
-
-            <section className="bg-gray-50 py-20">
-
-                <div className="max-w-6xl mx-auto px-6">
-
-                    <h2 className="text-3xl font-bold text-center">
-                        Cómo funciona
-                    </h2>
-
-                    <div className="grid md:grid-cols-3 gap-12 mt-16">
-
-                        <div className="text-center">
-
-                            <Database className="mx-auto text-blue-600" size={40} />
-
-                            <h3 className="mt-4 font-semibold text-lg">
-                                Registrar tablero
-                            </h3>
-
-                            <p className="text-gray-600 mt-2">
-                                Ingresa los datos técnicos, ubicación e imágenes del tablero
-                                eléctrico.
-                            </p>
-
-                        </div>
-
-                        <div className="text-center">
-
-                            <QrCode className="mx-auto text-blue-600" size={40} />
-
-                            <h3 className="mt-4 font-semibold text-lg">
-                                Generar código QR
-                            </h3>
-
-                            <p className="text-gray-600 mt-2">
-                                El sistema genera automáticamente un QR único para cada
-                                tablero.
-                            </p>
-
-                        </div>
-
-                        <div className="text-center">
-
-                            <ShieldCheck className="mx-auto text-blue-600" size={40} />
-
-                            <h3 className="mt-4 font-semibold text-lg">
-                                Consultar información
-                            </h3>
-
-                            <p className="text-gray-600 mt-2">
-                                Escanea el QR para ver la ficha técnica completa desde tu
-                                celular.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-            {/* FEATURES */}
-
-            <section className="py-20">
-
-                <div className="max-w-6xl mx-auto px-6">
-
-                    <h2 className="text-3xl font-bold text-center">
+            <section
+                id="features"
+                className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8"
+            >
+                <div className="mb-14 text-center">
+                    <p className="text-sm font-bold uppercase tracking-widest text-[#0797d5]">
                         Funcionalidades
-                    </h2>
-
-                    <div className="grid md:grid-cols-2 gap-8 mt-12">
-
-                        <Feature
-                            icon={<Building2 />}
-                            title="Multiempresa"
-                            text="Cada empresa administra sus propios tableros eléctricos."
-                        />
-
-                        <Feature
-                            icon={<QrCode />}
-                            title="QR único por tablero"
-                            text="Identificación rápida mediante escaneo."
-                        />
-
-                        <Feature
-                            icon={<Database />}
-                            title="Ficha técnica digital"
-                            text="Datos técnicos centralizados con imágenes."
-                        />
-
-                        <Feature
-                            icon={<ShieldCheck />}
-                            title="Información segura"
-                            text="Sistema centralizado y organizado."
-                        />
-
-                    </div>
-
-                </div>
-
-            </section>
-
-            {/* CTA */}
-
-            <section className="bg-blue-600 text-white py-20">
-
-                <div className="max-w-4xl mx-auto text-center px-6">
-
-                    <h2 className="text-3xl font-bold">
-                        Comienza a gestionar tus tableros eléctricos
-                    </h2>
-
-                    <p className="mt-4 text-blue-100">
-                        Digitaliza la información técnica de tus tableros y accede a ella
-                        en segundos mediante códigos QR.
                     </p>
 
-                    <button className="mt-8 bg-white text-blue-600 px-8 py-3 rounded-lg font-medium">
-                        Iniciar sesión
-                    </button>
+                    <h2 className="mt-3 text-3xl font-black text-slate-950 sm:text-4xl">
+                        Todo lo que necesitas para la gestión eléctrica
+                    </h2>
 
+                    <p className="mx-auto mt-4 max-w-2xl text-slate-600">
+                        Diseñado para empresas que necesitan control técnico,
+                        documentación y trazabilidad.
+                    </p>
                 </div>
 
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+                    {features.map((feature) => {
+                        const Icon = feature.icon;
+
+                        return (
+                            <div
+                                key={feature.title}
+                                className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                            >
+                                <div className="flex size-14 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+                                    <Icon size={28} />
+                                </div>
+
+                                <h3 className="mt-5 text-lg font-bold text-slate-950">
+                                    {feature.title}
+                                </h3>
+
+                                <p className="mt-3 text-sm leading-7 text-slate-600">
+                                    {feature.description}
+                                </p>
+                            </div>
+                        );
+                    })}
+                </div>
             </section>
 
+            <section className="px-4 pb-20 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl overflow-hidden rounded-[2rem] bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-10 shadow-xl">
+                    <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-sm font-semibold text-white">
+                                <CheckCircle2 size={16} />
+                                Plataforma operativa
+                            </div>
+
+                            <h2 className="max-w-2xl text-3xl font-black text-white sm:text-4xl">
+                                Lleva el control total de tus tableros eléctricos
+                            </h2>
+
+                            <p className="mt-4 max-w-2xl text-white/90">
+                                Gestiona empresas, usuarios, documentos y tableros desde una
+                                sola plataforma moderna y centralizada.
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={() => navigate("/login")}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-4 text-sm font-bold text-slate-900 transition hover:bg-slate-100"
+                        >
+                            Comenzar ahora
+                            <ArrowRight size={18} />
+                        </button>
+                    </div>
+                </div>
+            </section>
         </div>
-    )
-}
-
-function Feature({
-    icon,
-    title,
-    text,
-}: {
-    icon: React.ReactNode
-    title: string
-    text: string
-}) {
-    return (
-        <div className="flex gap-4 p-6 border rounded-xl">
-
-            <div className="text-blue-600">
-                {icon}
-            </div>
-
-            <div>
-
-                <h3 className="font-semibold">
-                    {title}
-                </h3>
-
-                <p className="text-gray-600 text-sm mt-1">
-                    {text}
-                </p>
-
-            </div>
-
-        </div>
-    )
-}
+    );
+};
 
 export default HomePage;

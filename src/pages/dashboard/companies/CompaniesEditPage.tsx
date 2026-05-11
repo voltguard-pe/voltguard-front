@@ -1,19 +1,41 @@
+import {
+  ArrowLeft,
+  ShieldCheck,
+} from "lucide-react";
+
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import Input from "../../../shared/components/Input";
+
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
+import { toast } from "react-toastify";
+
 import {
   getCompanyByCode,
   updateCompany,
 } from "../../../services/company.service";
+import type { CompaniesFormData } from "./CompaniesFormPage";
+import CompaniesFormPage from "./CompaniesFormPage";
+
 
 const CompaniesEditPage = () => {
-  const { publicCode } = useParams<{ publicCode: string }>();
+  const { publicCode } =
+    useParams<{
+      publicCode: string;
+    }>();
+
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
-  const [ruc, setRuc] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
+
+  const [company, setCompany] =
+    useState<CompaniesFormData | null>(null);
 
   useEffect(() => {
     if (!publicCode) {
@@ -23,11 +45,21 @@ const CompaniesEditPage = () => {
 
     const fetchCompany = async () => {
       try {
-        const data = await getCompanyByCode(publicCode);
-        setName(data.name || "");
-        setRuc(data.ruc || "");
+        const data =
+          await getCompanyByCode(
+            publicCode
+          );
+
+        setCompany({
+          name: data.name || "",
+          ruc: data.ruc || "",
+        });
       } catch (error) {
-        console.error("Error al cargar empresa", error);
+        console.error(error);
+
+        toast.error(
+          "Error cargando empresa"
+        );
       } finally {
         setLoading(false);
       }
@@ -36,73 +68,94 @@ const CompaniesEditPage = () => {
     fetchCompany();
   }, [publicCode]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+  const handleSubmit = async (
+    data: CompaniesFormData
+  ) => {
     if (!publicCode) return;
 
     try {
       setSaving(true);
 
-      await updateCompany(publicCode, {
-        name: name.trim(),
-        ruc: ruc.trim(),
-      });
+      await updateCompany(
+        publicCode,
+        {
+          name: data.name,
+          ruc: data.ruc,
+        }
+      );
 
-      alert("Empresa actualizada correctamente 🚀");
+      toast.success(
+        "Empresa actualizada correctamente"
+      );
+
       navigate("/dashboard/companies");
     } catch (error) {
-      console.error("Error al actualizar empresa", error);
-      alert("Error al actualizar empresa");
+      console.error(error);
+
+      toast.error(
+        "Error actualizando empresa"
+      );
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <p className="text-sm text-gray-500">Cargando empresa...</p>;
+    return (
+      <section className="mx-auto max-w-4xl space-y-6">
+        <div className="h-10 w-32 animate-pulse rounded-2xl bg-slate-200" />
+
+        <div className="h-20 animate-pulse rounded-3xl bg-slate-200" />
+
+        <div className="h-[320px] animate-pulse rounded-3xl bg-slate-200" />
+      </section>
+    );
+  }
+
+  if (!company) {
+    return (
+      <section className="mx-auto max-w-4xl">
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700">
+          Empresa no encontrada
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section className="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow-sm">
-      <h1 className="text-xl font-bold text-gray-800 mb-6">
-        Editar Empresa
-      </h1>
+    <section className="mx-auto max-w-4xl space-y-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+      >
+        <ArrowLeft size={18} />
+        Volver
+      </button>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-        <Input
-          label="Nombre"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="col-span-2"
-        />
-
-        <Input
-          label="RUC"
-          value={ruc}
-          onChange={(e) => setRuc(e.target.value)}
-          className="col-span-2"
-        />
-
-        <div className="col-span-2 flex justify-end gap-3 mt-4">
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard/companies")}
-            className="px-4 py-2 text-sm bg-gray-200 rounded-lg hover:bg-gray-300"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {saving ? "Guardando..." : "Guardar cambios"}
-          </button>
+      <div className="flex items-center gap-3">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
+          <ShieldCheck size={24} />
         </div>
-      </form>
+
+        <div>
+          <h1 className="text-2xl font-bold text-slate-950">
+            Editar empresa
+          </h1>
+
+          <p className="text-sm text-slate-500">
+            Modifica la información de la
+            empresa.
+          </p>
+        </div>
+      </div>
+
+      <CompaniesFormPage
+        mode="edit"
+        loading={saving}
+        initialValues={company}
+        onSubmit={handleSubmit}
+        onCancel={() => navigate(-1)}
+      />
     </section>
   );
 };

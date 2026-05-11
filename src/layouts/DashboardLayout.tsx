@@ -1,37 +1,39 @@
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+
 import SidebarComponent from "../components/dashboard/SidebarComponent";
 import NavbarComponent from "../components/dashboard/NavbarComponent";
 import FooterComponent from "../components/dashboard/FooterComponent";
-import { useState } from "react";
-import { ToastContainer } from 'react-toastify';
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <section className="h-screen flex bg-slate-100">
-      {/* Sidebar */}
+    <section className="min-h-dvh bg-slate-50 lg:flex">
       <SidebarComponent
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      {/* Content */}
-      <div className="flex flex-col flex-1 w-full">
+      <div className="flex min-h-dvh min-w-0 flex-1 flex-col overflow-x-hidden">
         <NavbarComponent onOpenSidebar={() => setIsSidebarOpen(true)} />
 
-        <main className="flex-1 p-4 overflow-y-scroll md:p-6">
+        <main className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-6 lg:p-8">
           <ToastContainer
-  position="top-right"
-  autoClose={3000}
-  hideProgressBar={false}
-  newestOnTop
-  closeOnClick
-  pauseOnHover
-  draggable
-  theme="colored"
-/>
-          <Outlet />
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            pauseOnHover
+            draggable
+            theme="colored"
+          />
+
+          <div className="mx-auto w-full max-w-[1600px] min-w-0">
+            <Outlet />
+          </div>
         </main>
 
         <FooterComponent />

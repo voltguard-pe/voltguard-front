@@ -1,79 +1,104 @@
-import { Download, X } from "lucide-react";
+import { Copy, ExternalLink, QrCode, X } from "lucide-react";
+import QRCode from "react-qr-code";
+import { toast } from "react-toastify";
 
-interface Props {
-  boardName: string;
+type QRModalProps = {
+  isOpen: boolean;
   qrUrl: string;
+  companyName?: string;
   onClose: () => void;
-}
+};
 
-const QrModal = ({ boardName, qrUrl, onClose }: Props) => {
-  const handleDownload = () => {
-    const link = document.createElement("a");
-    link.href = qrUrl;
-    link.download = `${boardName}-qr.png`;
-    link.click();
+const QRModal = ({
+  isOpen,
+  qrUrl,
+  companyName = "Empresa",
+  onClose,
+}: QRModalProps) => {
+  if (!isOpen) return null;
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(qrUrl);
+    toast.success("URL copiada correctamente");
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-6 text-white">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-white/20">
+                <QrCode size={26} />
+              </div>
 
-      <div className="bg-white rounded-xl shadow-lg w-[400px] p-6 relative">
-
-        {/* cerrar */}
-        <button
-          onClick={onClose}
-          className="absolute right-4 top-4 text-gray-500 hover:text-gray-700"
-        >
-          <X size={18} />
-        </button>
-
-        <div className="flex flex-col items-center gap-4">
-
-          <h2 className="text-lg font-semibold text-gray-800">
-            Código QR
-          </h2>
-
-          <p className="text-sm text-gray-500 text-center">
-            Escanea este código para ver la ficha técnica del tablero
-          </p>
-
-          {/* QR */}
-
-          <div className="bg-gray-100 p-4 rounded-lg">
-            <img
-              src={qrUrl}
-              alt="QR Code"
-              className="w-52 h-52 object-contain"
-            />
-          </div>
-
-          {/* acciones */}
-
-          <div className="flex gap-3 mt-2">
+              <div>
+                <h2 className="text-lg font-bold">QR de la empresa</h2>
+                <p className="text-sm text-white/90">{companyName}</p>
+              </div>
+            </div>
 
             <button
-              onClick={handleDownload}
-              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
-            >
-              <Download size={16} />
-              Descargar
-            </button>
-
-            <button
+              type="button"
               onClick={onClose}
-              className="border px-4 py-2 rounded-lg text-sm hover:bg-gray-100"
+              className="flex size-10 items-center justify-center rounded-2xl bg-white/15 transition hover:bg-white/25"
             >
-              Cerrar
+              <X size={20} />
             </button>
-
           </div>
-
         </div>
 
-      </div>
+        <div className="p-6">
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div className="rounded-3xl bg-white p-5 shadow-sm">
+              <QRCode value={qrUrl} size={220} className="mx-auto h-auto w-full max-w-[220px]" />
+            </div>
+          </div>
 
+          <p className="mt-5 text-center text-sm text-slate-500">
+            Escanea este código para acceder a los tableros de la empresa.
+          </p>
+
+          <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              URL pública
+            </p>
+
+            <p className="break-all text-sm font-medium text-slate-700">
+              {qrUrl}
+            </p>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={handleCopy}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              <Copy size={18} />
+              Copiar URL
+            </button>
+
+            <a
+              href={qrUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
+            >
+              <ExternalLink size={18} />
+              Abrir enlace
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default QrModal;
+export default QRModal;

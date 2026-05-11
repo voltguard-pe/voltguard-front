@@ -138,15 +138,15 @@ const BoardDetailPage = () => {
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 
   const renderInsulationMeasurements = () => {
     const record = board?.insulationMeasurements?.[0];
 
     return (
-      <div className="bg-white p-4 sm:p-5 rounded shadow">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="font-semibold">Mediciones de aislamiento</h2>
             <p className="text-xs text-gray-500">
@@ -156,7 +156,7 @@ const BoardDetailPage = () => {
 
           {record && (
             <span
-              className={`text-xs px-2 py-1 rounded w-fit ${getStatusClasses(
+              className={`w-fit rounded px-2 py-1 text-xs ${getStatusClasses(
                 record.status
               )}`}
             >
@@ -166,14 +166,14 @@ const BoardDetailPage = () => {
         </div>
 
         {!record?.rows?.length ? (
-          <p className="text-gray-500 text-sm">
+          <p className="text-sm text-gray-500">
             Sin mediciones de aislamiento registradas
           </p>
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4 md:hidden">
               {record.rows.map((row: InsulationMeasurementRow, i: number) => (
-                <div key={i} className="border rounded p-4 space-y-1 text-sm">
+                <div key={i} className="space-y-1 rounded border p-4 text-sm">
                   <p>
                     <strong>Circuito:</strong> {value(row.circuit)}
                   </p>
@@ -207,8 +207,8 @@ const BoardDetailPage = () => {
               ))}
             </div>
 
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm border min-w-[900px]">
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[900px] border text-sm">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="border p-2 text-left">Circuito</th>
@@ -228,41 +228,45 @@ const BoardDetailPage = () => {
                 </thead>
 
                 <tbody>
-                  {record.rows.map((row: InsulationMeasurementRow, i: number) => (
-                    <tr key={i}>
-                      <td className="border p-2">{value(row.circuit)}</td>
-                      <td className="border p-2">{value(row.description)}</td>
-                      <td className="border p-2 text-center">
-                        {formatMeasurement(row.measurement_l1_g)}
-                      </td>
-                      <td className="border p-2 text-center">
-                        {formatMeasurement(row.measurement_l2_g)}
-                      </td>
-                      <td className="border p-2 text-center">
-                        {formatMeasurement(row.measurement_l3_g)}
-                      </td>
-                      <td className="border p-2 text-center">
-                        {row.unit || record.unit || "MΩ"}
-                      </td>
-                      <td className="border p-2 text-center">
-                        {formatConfidence(row.readingConfidence)}
-                      </td>
-                      <td className="border p-2 text-center">
-                        {formatConfidence(row.associationConfidence)}
-                      </td>
-                      <td className="border p-2">
-                        {value(row.observation)}
-                      </td>
-                    </tr>
-                  ))}
+                  {record.rows.map(
+                    (row: InsulationMeasurementRow, i: number) => (
+                      <tr key={i}>
+                        <td className="border p-2">{value(row.circuit)}</td>
+                        <td className="border p-2">
+                          {value(row.description)}
+                        </td>
+                        <td className="border p-2 text-center">
+                          {formatMeasurement(row.measurement_l1_g)}
+                        </td>
+                        <td className="border p-2 text-center">
+                          {formatMeasurement(row.measurement_l2_g)}
+                        </td>
+                        <td className="border p-2 text-center">
+                          {formatMeasurement(row.measurement_l3_g)}
+                        </td>
+                        <td className="border p-2 text-center">
+                          {row.unit || record.unit || "MΩ"}
+                        </td>
+                        <td className="border p-2 text-center">
+                          {formatConfidence(row.readingConfidence)}
+                        </td>
+                        <td className="border p-2 text-center">
+                          {formatConfidence(row.associationConfidence)}
+                        </td>
+                        <td className="border p-2">
+                          {value(row.observation)}
+                        </td>
+                      </tr>
+                    )
+                  )}
                 </tbody>
               </table>
             </div>
 
             {record.warnings?.length ? (
-              <div className="mt-3 text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-3">
-                <p className="font-semibold mb-1">Advertencias:</p>
-                <ul className="list-disc pl-5 space-y-1">
+              <div className="mt-3 rounded border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-700">
+                <p className="mb-1 font-semibold">Advertencias:</p>
+                <ul className="list-disc space-y-1 pl-5">
                   {record.warnings.map((warning, i) => (
                     <li key={i}>{warning}</li>
                   ))}
@@ -321,6 +325,7 @@ const BoardDetailPage = () => {
   return (
     <section className="mx-auto max-w-7xl space-y-6">
       <button
+        type="button"
         onClick={() => navigate(-1)}
         className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
       >
@@ -337,9 +342,7 @@ const BoardDetailPage = () => {
                 Tablero eléctrico
               </div>
 
-              <h1 className="text-2xl font-bold md:text-3xl">
-                {board.name}
-              </h1>
+              <h1 className="text-2xl font-bold md:text-3xl">{board.name}</h1>
 
               <p className="mt-2 flex items-center gap-2 text-sm text-white/90">
                 <Building2 size={16} />
@@ -402,40 +405,46 @@ const BoardDetailPage = () => {
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-5 flex items-center gap-3">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
-              <Info size={24} />
-            </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <h2 className="mb-4 font-semibold">Información general</h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
-          <h2 className="font-semibold mb-2">Información general</h2>
-          {renderField("Código real del tablero", board.boardCode)}
-          {renderField("Nombre", board.name)}
-          {renderField("Tipo", board.type)}
-          {renderField("Sistema", board.sistema)}
-          {renderField("Estado general", board.estadoGeneral)}
-          {renderField("Ubicación", board.location)}
-          {renderField("Descripción", board.description)}
+          <div className="space-y-2">
+            {renderField("Código real del tablero", board.boardCode)}
+            {renderField("Nombre", board.name)}
+            {renderField("Tipo", board.type)}
+            {renderField("Sistema", board.sistema)}
+            {renderField("Estado general", board.estadoGeneral)}
+            {renderField("Ubicación", board.location)}
+            {renderField("Descripción", board.description)}
+          </div>
         </div>
 
-        <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
-          <h2 className="font-semibold mb-2">Información eléctrica</h2>
-          {renderField(
-            "Tensión nominal",
-            board.tensionNominal ? `${board.tensionNominal} V` : "-"
-          )}
-          {renderField("Número de fases", board.numeroFases)}
-          <p className="text-sm">
-            <strong>Incluye neutro:</strong> {bool(board.incluyeNeutro)}
-          </p>
+        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+          <h2 className="mb-4 font-semibold">Información eléctrica</h2>
+
+          <div className="space-y-2">
+            {renderField(
+              "Tensión nominal",
+              board.tensionNominal ? `${board.tensionNominal} V` : "-"
+            )}
+            {renderField("Número de fases", board.numeroFases)}
+
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Incluye neutro
+              </p>
+
+              <p className="mt-1 break-words text-sm font-semibold text-slate-800">
+                {bool(board.incluyeNeutro)}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white p-4 sm:p-5 rounded shadow">
-        <h2 className="font-semibold mb-3">Leyenda</h2>
+      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <h2 className="mb-3 font-semibold">Leyenda</h2>
 
         {!board.circuits?.length ? (
           <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
@@ -445,7 +454,7 @@ const BoardDetailPage = () => {
           <>
             <div className="grid grid-cols-1 gap-4 md:hidden">
               {board.circuits.map((c, i) => (
-                <div key={i} className="border rounded p-4 space-y-1 text-sm">
+                <div key={i} className="space-y-1 rounded border p-4 text-sm">
                   <p>
                     <strong>Circuito:</strong> {value(c.circuito)}
                   </p>
@@ -456,8 +465,8 @@ const BoardDetailPage = () => {
               ))}
             </div>
 
-            <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-sm border min-w-[720px]">
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[720px] border text-sm">
                 <thead className="bg-gray-100">
                   <tr>
                     <th className="border p-2 text-left">Circuito</th>
@@ -481,9 +490,23 @@ const BoardDetailPage = () => {
 
       {renderInsulationMeasurements()}
 
-      {renderImageSection("Imágenes del tablero", board.images?.tablero)}
-      {renderImageSection("Diagrama unifilar", board.images?.unifilar)}
-      {renderImageSection("Termografía", board.images?.termografia)}
+      {renderImageSection(
+        "Imágenes del tablero",
+        "Fotografías generales del tablero eléctrico",
+        board.images?.tablero
+      )}
+
+      {renderImageSection(
+        "Diagrama unifilar",
+        "Imágenes del diagrama unifilar registrado",
+        board.images?.unifilar
+      )}
+
+      {renderImageSection(
+        "Termografía",
+        "Imágenes termográficas asociadas al tablero",
+        board.images?.termografia
+      )}
 
       {selectedImage && (
         <div

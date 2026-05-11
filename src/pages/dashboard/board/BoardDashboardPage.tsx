@@ -3,7 +3,6 @@ import {
   ChevronDown,
   Eye,
   FileDown,
-  Import,
   MapPin,
   Pencil,
   Plus,
@@ -18,6 +17,8 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import ImportBoardsModal from "../../../components/dashboard/modals/ImportBoardsModal";
 import ImportInsulationsModal from "../../../components/dashboard/modals/ImportInsulationsModal";
+import QRModal from "../../../components/dashboard/modals/ViewQRModal";
+
 import {
   deleteBoard,
   publicGetCompanyBoardByCode,
@@ -31,7 +32,6 @@ import type { PublicCompanyBoardsItemDTO } from "../../../shared/types/BoardProp
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
-import QRModal from "../../../components/dashboard/modals/ViewQRModal";
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
@@ -43,25 +43,22 @@ const BoardDashboardPage = () => {
     useState<CompanyResponseDTO | null>(null);
 
   const [boards, setBoards] = useState<PublicCompanyBoardsItemDTO[]>([]);
+  const [search, setSearch] = useState("");
 
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingBoards, setLoadingBoards] = useState(false);
 
   const [showQR, setShowQR] = useState(false);
-
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showImportInsulationsModal, setShowImportInsulationsModal] = useState(false);
+  const [showImportInsulationsModal, setShowImportInsulationsModal] =
+    useState(false);
 
-  // 🔥 CLAVE: empresa efectiva
   const effectivePublicCode =
     auth?.role === "ADMIN"
       ? typeof auth.companyPublicCode === "string"
         ? auth.companyPublicCode
         : auth.companyPublicCode?.publicCode
       : publicCode;
-
-  console.log(auth)
-  console.log(effectivePublicCode)
 
   const qrUrl = `${window.location.origin}/dashboard/boards/${effectivePublicCode}`;
 
@@ -71,13 +68,11 @@ const BoardDashboardPage = () => {
         setLoadingCompanies(true);
 
         const data = await getCompanies();
-
         setCompanies(data);
 
         if (publicCode) {
           const companyFound =
-            data.find((company) => company.publicCode === publicCode) ||
-            null;
+            data.find((company) => company.publicCode === publicCode) || null;
 
           setSelectedCompany(companyFound);
         }
@@ -101,7 +96,6 @@ const BoardDashboardPage = () => {
         setLoadingBoards(true);
 
         const data = await publicGetCompanyBoards(companyPublicCode);
-
         setBoards(data.boards);
       } catch (error) {
         console.error("Error cargando tableros", error);
@@ -121,12 +115,12 @@ const BoardDashboardPage = () => {
 
   const filteredBoards = useMemo(() => {
     return boards.filter((board) => {
-      const value = search.toLowerCase();
+      const searchValue = search.toLowerCase();
 
       return (
-        board.name?.toLowerCase().includes(value) ||
-        board.boardCode?.toLowerCase().includes(value) ||
-        board.location?.toLowerCase().includes(value)
+        board.name?.toLowerCase().includes(searchValue) ||
+        board.boardCode?.toLowerCase().includes(searchValue) ||
+        board.location?.toLowerCase().includes(searchValue)
       );
     });
   }, [boards, search]);
@@ -143,7 +137,6 @@ const BoardDashboardPage = () => {
       null;
 
     setSelectedCompany(companyFound);
-
     navigate(`/dashboard/boards/${selectedPublicCode}`);
   };
 
@@ -178,11 +171,18 @@ const BoardDashboardPage = () => {
     }
   };
 
+  const refreshBoards = async () => {
+    if (!effectivePublicCode) return;
+
+    const data = await publicGetCompanyBoards(effectivePublicCode);
+    setBoards(data.boards);
+  };
+
   const showEmptyCompanyState =
     auth?.role === "SUPERADMIN" && !effectivePublicCode;
 
   const showNoBoardsState =
-    !loadingBoards && effectivePublicCode && filteredBoards.length === 0;
+    !loadingBoards && Boolean(effectivePublicCode) && filteredBoards.length === 0;
 
   return (
     <section className="space-y-6">
@@ -200,21 +200,26 @@ const BoardDashboardPage = () => {
         </div>
 
         {auth?.role === "SUPERADMIN" && (
-          <div className="flex gap-x-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <button
+              type="button"
               onClick={() => setShowImportInsulationsModal(true)}
-              className="flex items-center gap-2 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
+              className="flex items-center justify-center gap-2 rounded-lg bg-yellow-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-yellow-600"
             >
               Importar mediciones de aislamiento
             </button>
+
             <button
+              type="button"
               onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+              className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700"
             >
               Importar tableros
             </button>
+
             <button
-              className="flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 transition w-full md:w-auto"
+              type="button"
+              className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
               onClick={() => navigate("/dashboard/boards/create")}
             >
               <Plus size={18} />
@@ -223,16 +228,16 @@ const BoardDashboardPage = () => {
           </div>
         )}
 
-          {auth?.role === "ADMIN" && effectivePublicCode && (
-            <button
-              onClick={() => setShowQR(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
-            >
-              <QrCode size={18} />
-              Ver QR empresa
-            </button>
-          )}
-        </div>
+        {auth?.role === "ADMIN" && effectivePublicCode && (
+          <button
+            type="button"
+            onClick={() => setShowQR(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
+          >
+            <QrCode size={18} />
+            Ver QR empresa
+          </button>
+        )}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -299,7 +304,7 @@ const BoardDashboardPage = () => {
       </div>
 
       {auth?.role === "SUPERADMIN" && (
-        <div className="flex justify-between items-end rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
           <div className="w-full">
             <label className="text-sm font-semibold text-slate-700">
               Empresa
@@ -327,7 +332,7 @@ const BoardDashboardPage = () => {
 
               <ChevronDown
                 size={18}
-                className="pointer-events-none absolute left-[calc(100%-40px)] top-1/2 -translate-y-1/2 text-slate-400 md:left-[392px]"
+                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 md:left-[392px] md:right-auto"
               />
             </div>
           </div>
@@ -385,6 +390,7 @@ const BoardDashboardPage = () => {
 
             {auth?.role === "SUPERADMIN" && (
               <button
+                type="button"
                 onClick={() => navigate("/dashboard/boards/create")}
                 className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
               >
@@ -444,6 +450,7 @@ const BoardDashboardPage = () => {
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => handleGeneratePDF(board.code)}
                           className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
                           title="Generar PDF"
@@ -452,6 +459,7 @@ const BoardDashboardPage = () => {
                         </button>
 
                         <button
+                          type="button"
                           onClick={() =>
                             navigate(
                               `/dashboard/boards/${effectivePublicCode}/${board.code}`
@@ -466,6 +474,7 @@ const BoardDashboardPage = () => {
                         {auth?.role === "SUPERADMIN" && (
                           <>
                             <button
+                              type="button"
                               onClick={() =>
                                 navigate(
                                   `/dashboard/boards/${effectivePublicCode}/${board.code}/edit`
@@ -478,6 +487,7 @@ const BoardDashboardPage = () => {
                             </button>
 
                             <button
+                              type="button"
                               onClick={() => handleDelete(board.code)}
                               className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-100 hover:text-red-700"
                               title="Eliminar tablero"
@@ -494,31 +504,31 @@ const BoardDashboardPage = () => {
             </table>
           </div>
         )}
-        <>
-          <ImportBoardsModal
-            isOpen={showImportModal}
-            onClose={() => setShowImportModal(false)}
-            companies={companies}
-            onSuccess={async () => {
-              if (effectivePublicCode) {
-                const data = await publicGetCompanyBoards(effectivePublicCode);
-                setBoards(data.boards);
-              }
-            }}
-          />
-          <ImportInsulationsModal
-            isOpen={showImportInsulationsModal}
-            onClose={() => setShowImportInsulationsModal(false)}
-            companies={companies}
-            onSuccess={async () => {
-              if (effectivePublicCode) {
-                const data = await publicGetCompanyBoards(effectivePublicCode);
-                setBoards(data.boards);
-              }
-            }}
-          />
-        </>
       </div>
+
+      <ImportBoardsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        companies={companies}
+        onSuccess={refreshBoards}
+      />
+
+      <ImportInsulationsModal
+        isOpen={showImportInsulationsModal}
+        onClose={() => setShowImportInsulationsModal(false)}
+        companies={companies}
+        onSuccess={refreshBoards}
+      />
+
+      <QRModal
+        isOpen={showQR}
+        onClose={() => setShowQR(false)}
+        qrUrl={qrUrl}
+        companyName={
+          selectedCompany?.name ||
+          (auth?.role === "ADMIN" ? "Mi empresa" : "Empresa")
+        }
+      />
     </section>
   );
 };

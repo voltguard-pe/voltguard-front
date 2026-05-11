@@ -1,4 +1,4 @@
-import { Eye, EyeClosed, type LucideIcon } from "lucide-react";
+import { Eye, EyeOff, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
 type InputProps = {
@@ -15,8 +15,6 @@ type InputProps = {
   min?: number;
   max?: number;
   step?: number;
-
-  // 🔥 NUEVO
   error?: string;
 };
 
@@ -38,44 +36,30 @@ const Input = ({
 }: InputProps) => {
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (type === "password" && e.target.value === "") {
+  const inputId = name || label.toLowerCase().replace(/\s+/g, "-");
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (type === "password" && event.target.value === "") {
       setShowPassword(false);
     }
-    onChange(e);
+
+    onChange(event);
   };
 
-  const inputId = name || label;
-
   return (
-    <div className={`flex flex-col gap-y-1 ${className ?? ""}`}>
-      
-      {/* LABEL */}
-      <label
-        htmlFor={inputId}
-        className="text-sm text-gray-600 font-medium"
-      >
+    <div className={`flex flex-col gap-1.5 ${className ?? ""}`}>
+      <label htmlFor={inputId} className="text-sm font-semibold text-slate-700">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
 
-      {/* INPUT WRAPPER */}
       <div className="relative">
-
-        {/* ICON */}
         {Icon && (
-          <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 size-5" />
+          <Icon className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-slate-400" />
         )}
 
-        {/* INPUT */}
         <input
           id={inputId}
-          type={
-            type === "password"
-              ? showPassword
-                ? "text"
-                : "password"
-              : type
-          }
+          type={type === "password" ? (showPassword ? "text" : "password") : type}
           name={name}
           value={value}
           onChange={handleChange}
@@ -87,45 +71,28 @@ const Input = ({
           step={step}
           aria-invalid={!!error}
           aria-describedby={error ? `${inputId}-error` : undefined}
-          className={`w-full text-sm rounded-lg py-2 px-3 outline-none transition-all
-            ${Icon ? "pl-10" : "px-3"}
-            
-            ${
-              error
-                ? "border border-red-500 focus:ring-4 focus:ring-red-200 focus:border-red-500"
-                : "border border-gray-300 focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500"
-            }
-
-            ${
-              disabled
-                ? "bg-gray-100 cursor-not-allowed"
-                : ""
-            }
-          `}
+          className={`w-full rounded-2xl border bg-white py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
+            Icon ? "pl-12" : "pl-4"
+          } ${type === "password" ? "pr-12" : "pr-4"} ${
+            error
+              ? "border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+              : "border-slate-200 focus:border-[#0797d5] focus:ring-4 focus:ring-[#0797d5]/10"
+          }`}
         />
 
-        {/* PASSWORD TOGGLE */}
         {type === "password" && value !== "" && (
           <button
             type="button"
             onClick={() => setShowPassword((prev) => !prev)}
-            className="absolute right-3 top-1/2 -translate-y-1/2"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-600"
           >
-            {showPassword ? (
-              <Eye className="w-4 h-4 text-gray-400" />
-            ) : (
-              <EyeClosed className="w-4 h-4 text-gray-400" />
-            )}
+            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
           </button>
         )}
       </div>
 
-      {/* 🔥 ERROR MESSAGE */}
       {error && (
-        <span
-          id={`${inputId}-error`}
-          className="text-xs text-red-500"
-        >
+        <span id={`${inputId}-error`} className="text-xs text-red-500">
           {error}
         </span>
       )}

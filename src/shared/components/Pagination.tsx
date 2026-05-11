@@ -7,41 +7,43 @@ interface PaginationProps {
 }
 
 const Pagination = ({ page, totalPages, onPageChange }: PaginationProps) => {
-//   if (totalPages <= 1) return null;
+  if (totalPages <= 1) return null;
+
+  const pages = Array.from({ length: totalPages });
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      {/* Previous */}
+    <div className="flex flex-wrap items-center justify-center gap-2">
       <button
+        type="button"
         onClick={() => onPageChange(page - 1)}
         disabled={page === 0}
-        className="p-2 rounded-lg border text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="flex size-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <ChevronLeft size={16} />
+        <ChevronLeft size={18} />
       </button>
 
-      {/* Pages */}
-      {Array.from({ length: totalPages }).map((_, index) => (
+      {pages.map((_, index) => (
         <button
           key={index}
+          type="button"
           onClick={() => onPageChange(index)}
-          className={`px-3 py-1 rounded-lg text-sm border transition
-            ${page === index
-              ? "bg-indigo-600 text-white border-indigo-600"
-              : "text-gray-600 hover:bg-gray-100"
-            }`}
+          className={`flex size-10 items-center justify-center rounded-xl border text-sm font-semibold transition ${
+            page === index
+              ? "border-[#0797d5] bg-[#0797d5] text-white shadow-sm"
+              : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+          }`}
         >
           {index + 1}
         </button>
       ))}
 
-      {/* Next */}
       <button
+        type="button"
         onClick={() => onPageChange(page + 1)}
         disabled={page === totalPages - 1}
-        className="p-2 rounded-lg border text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="flex size-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        <ChevronRight size={16} />
+        <ChevronRight size={18} />
       </button>
     </div>
   );

@@ -1,109 +1,132 @@
-import { BarChart3, Users, DollarSign, TrendingUp } from "lucide-react";
+import {
+  Building2,
+  FileText,
+  ShieldCheck,
+  Users,
+  Zap,
+} from "lucide-react";
+import StatCardComponent from "../../components/dashboard/StatCardComponent";
 
-const stats = [
-  {
-    title: "Ingresos",
-    value: "$12,450",
-    icon: DollarSign,
-  },
-  {
-    title: "Usuarios",
-    value: "1,284",
-    icon: Users,
-  },
-  {
-    title: "Crecimiento",
-    value: "+18%",
-    icon: TrendingUp,
-  },
-  {
-    title: "Reportes",
-    value: "32",
-    icon: BarChart3,
-  },
-];
 
 const HomeDashboardPage = () => {
   return (
-    <section className="flex flex-col gap-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">
-          Bienvenido de nuevo 👋
+    <div className="space-y-6">
+      <section>
+        <h1 className="text-3xl font-bold text-slate-950">
+          Bienvenido a Voltguard
         </h1>
-        <p className="text-sm text-gray-500">
-          Aquí tienes un resumen de tu actividad
+
+        <p className="mt-2 text-slate-500">
+          Controla empresas, usuarios, tableros y
+          documentos desde un solo lugar.
         </p>
-      </div>
+      </section>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <div
-            key={index}
-            className="bg-white rounded-xl p-5 shadow-sm flex items-center justify-between"
-          >
-            <div>
-              <p className="text-sm text-gray-500">{stat.title}</p>
-              <p className="text-2xl font-semibold text-gray-800">
-                {stat.value}
-              </p>
-            </div>
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCardComponent
+          title="Usuarios"
+          value={128}
+          icon={Users}
+          helper="Usuarios registrados"
+        />
 
-            <div className="p-3 rounded-lg bg-indigo-100 text-indigo-600">
-              <stat.icon size={24} />
-            </div>
+        <StatCardComponent
+          title="Admins"
+          value={12}
+          icon={ShieldCheck}
+          helper="Administradores activos"
+        />
+
+        <StatCardComponent
+          title="Empresas"
+          value={8}
+          icon={Building2}
+          helper="Empresas vinculadas"
+        />
+
+        <StatCardComponent
+          title="Tableros"
+          value={46}
+          icon={Zap}
+          helper="Tableros eléctricos"
+        />
+
+        <StatCardComponent
+          title="Documentos"
+          value={214}
+          icon={FileText}
+          helper="Archivos almacenados"
+        />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+          <h2 className="text-lg font-bold text-slate-950">
+            Estado de tableros
+          </h2>
+
+          <div className="mt-6 space-y-5">
+            {[
+              {
+                label: "Operativos",
+                value: 76,
+              },
+              {
+                label: "En revisión",
+                value: 18,
+              },
+              {
+                label: "Con alerta",
+                value: 6,
+              },
+            ].map((item) => (
+              <div key={item.label}>
+                <div className="mb-2 flex justify-between text-sm">
+                  <span className="font-medium text-slate-700">
+                    {item.label}
+                  </span>
+
+                  <span className="text-slate-500">
+                    {item.value}%
+                  </span>
+                </div>
+
+                <div className="h-3 rounded-full bg-slate-100">
+                  <div
+                    className="h-3 rounded-full bg-gradient-to-r from-[#0797d5] to-[#8ccf2f]"
+                    style={{
+                      width: `${item.value}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-950">
             Actividad reciente
           </h2>
 
-          <div className="space-y-3">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Nuevo usuario registrado</span>
-              <span>Hace 2 horas</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Reporte generado</span>
-              <span>Ayer</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Pago recibido</span>
-              <span>Hace 3 días</span>
-            </div>
+          <div className="mt-5 space-y-4">
+            {[
+              "Documento agregado a Volvo.",
+              "Administrador creado.",
+              "Empresa actualizada.",
+              "Tablero TG-01 en revisión.",
+            ].map((item) => (
+              <div
+                key={item}
+                className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600"
+              >
+                {item}
+              </div>
+            ))}
           </div>
         </div>
-
-        {/* Side */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">
-            Estado del sistema
-          </h2>
-
-          <ul className="space-y-3 text-sm text-gray-600">
-            <li className="flex justify-between">
-              <span>Servidor</span>
-              <span className="text-green-600 font-medium">Activo</span>
-            </li>
-            <li className="flex justify-between">
-              <span>API</span>
-              <span className="text-green-600 font-medium">Operativa</span>
-            </li>
-            <li className="flex justify-between">
-              <span>Base de datos</span>
-              <span className="text-yellow-600 font-medium">Revisión</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 };
 

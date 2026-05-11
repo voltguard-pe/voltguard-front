@@ -1,123 +1,143 @@
-import { ChevronDown, LogOut, Menu, User } from "lucide-react";
-import { NavLink } from 'react-router-dom';
-import { useAuth } from "../../shared/hooks/useAuth";
-import { getInitials } from "../../shared/utils/initialsName";
+import {
+  ChevronDown,
+  LogOut,
+  Menu,
+  UserCircle
+} from "lucide-react";
+
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../shared/hooks/useAuth";
 
-const NavbarComponent = ({ onOpenSidebar }: { onOpenSidebar: () => void }) => {
+type NavbarComponentProps = {
+  onOpenSidebar: () => void;
+};
+
+const NavbarComponent = ({ onOpenSidebar }: NavbarComponentProps) => {
   const { auth, handleLogout } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
-  const fullName = `${auth?.firstname} ${auth?.lastname}`;
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
       }
     };
 
-    const handleScroll = () => {
-      if (isOpen) setIsOpen(false);
-    };
-
     document.addEventListener("mousedown", handleClickOutside);
-    window.addEventListener("scroll", handleScroll, true); // 👈 importante
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
-      window.removeEventListener("scroll", handleScroll, true);
     };
-  }, [isOpen]);
+  }, []);
 
   return (
-    <header className="h-16 bg-white flex items-center  px-4 md:px-6">
+    <header className="sticky top-0 z-30 h-20 shrink-0 border-b border-slate-200 bg-white/90 backdrop-blur">
+      <div className="flex h-full min-w-0 items-center justify-between gap-4 px-4 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            onClick={onOpenSidebar}
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-100 lg:hidden"
+          >
+            <Menu size={22} />
+          </button>
 
-      <button
-        className="md:hidden"
-        onClick={onOpenSidebar}
-      >
-        <Menu size={22} />
-      </button>
+          <div className="min-w-0">
+            <h2 className="truncate text-lg font-bold text-slate-950 md:text-2xl">
+              Dashboard
+            </h2>
 
-      <div className="flex items-center gap-3 md:gap-4 ml-auto">
+            <p className="hidden truncate text-sm text-slate-500 sm:block">
+              Sistema de gestión de tableros eléctricos
+            </p>
+          </div>
+        </div>
 
-        {/* Profile */}
-        {auth?._id ? (
-          <div className="relative" ref={dropdownRef}>
-
-            {/* Botón avatar */}
+        <div className="flex shrink-0 items-center gap-3">
+          <div ref={dropdownRef} className="relative">
             <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="flex items-center gap-2 md:gap-3 px-2 md:px-4 py-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 transition"
+              onClick={() => setIsDropdownOpen((prev) => !prev)}
+              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 transition hover:bg-slate-50"
             >
-              <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs md:text-sm font-semibold">
-                {getInitials(auth.firstname, auth.lastname)}
+              <div className="flex size-9 items-center justify-center rounded-xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white">
+                <UserCircle size={21} />
               </div>
 
-              {/* Mobile */}
-              <span className="md:hidden text-sm font-medium text-gray-700">
-                {auth.firstname}
-              </span>
+              <div className="hidden min-w-0 text-left md:block">
+                <p className="max-w-36 truncate text-sm font-semibold text-slate-950">
+                  {auth?.firstname || "Usuario"}
+                </p>
 
-              {/* Desktop */}
-              <div className="hidden md:flex flex-col leading-tight text-left">
-                <span className="font-medium text-gray-800">
-                  {fullName}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {auth.role === "SUPERADMIN"
-                    ? "Super Administrador"
-                    : auth.role === "ADMIN"
-                      ? "Administrador"
-                      : "Usuario"}
-                </span>
+                <p className="text-xs text-slate-500">
+                  {auth?.role || "Sin rol"}
+                </p>
               </div>
-              <ChevronDown size={16} />
+
+              <ChevronDown
+                size={17}
+                className={`hidden text-slate-400 transition md:block ${
+                  isDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
             </button>
 
-            {/* Dropdown */}
-            {isOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-md py-2 z-50">
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-3 w-64 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl">
+                <div className="border-b border-slate-100 p-4">
+                  <p className="text-sm font-bold text-slate-950">
+                    {auth?.firstname || "Usuario"} {auth?.lastname || ""}
+                  </p>
 
-                <NavLink
-                  to="/dashboard/profile"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  <User size={16} />
-                  Perfil
-                </NavLink>
+                  <p className="mt-1 truncate text-xs text-slate-500">
+                    {auth?.email || "Sin correo"}
+                  </p>
 
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                >
-                  <LogOut size={16} />
-                  Cerrar sesión
-                </button>
+                  <span className="mt-3 inline-flex rounded-full bg-[#0797d5]/10 px-3 py-1 text-xs font-semibold text-[#0797d5]">
+                    {auth?.role || "Sin rol"}
+                  </span>
+                </div>
 
+                <div className="p-2">
+                  <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      navigate("/dashboard/profile");
+                    }}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+                  >
+                    <UserCircle size={18} />
+                    Mi perfil
+                  </button>
+
+                  {/* <button
+                    onClick={() => {
+                      setIsDropdownOpen(false);
+                      navigate("/dashboard/settings");
+                    }}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-950"
+                  >
+                    <Settings size={18} />
+                    Configuración
+                  </button> */}
+
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-50"
+                  >
+                    <LogOut size={18} />
+                    Cerrar sesión
+                  </button>
+                </div>
               </div>
             )}
           </div>
-        ) : (
-          <>
-            <NavLink
-              to="/public/boards"
-              className="hidden sm:inline-block text-blue-600 px-3 md:px-4 py-2 rounded-lg text-sm hover:bg-blue-100 transition"
-            >
-              Explorar
-            </NavLink>
-
-            <NavLink
-              to="/auth"
-              className="bg-blue-600 text-white px-3 md:px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition"
-            >
-              Iniciar sesión
-            </NavLink>
-          </>
-        )}
+        </div>
       </div>
     </header>
   );

@@ -1,76 +1,85 @@
+import {
+  ArrowLeft,
+  Building2,
+} from "lucide-react";
+
 import { useState } from "react";
+
 import { useNavigate } from "react-router-dom";
-import Input from "../../../shared/components/Input";
+
+import { toast } from "react-toastify";
+
 import { createCompany } from "../../../services/company.service";
+import type { CompaniesFormData } from "./CompaniesFormPage";
+import CompaniesFormPage from "./CompaniesFormPage";
+
 
 const CompaniesCreatePage = () => {
   const navigate = useNavigate();
 
-  const [name, setName] = useState("");
-  const [ruc, setRuc] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] =
+    useState(false);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+  const handleSubmit = async (
+    data: CompaniesFormData
+  ) => {
     try {
       setLoading(true);
 
       await createCompany({
-        name: name.trim(),
-        ruc: ruc.trim(),
+        name: data.name,
+        ruc: data.ruc,
       });
 
-      alert("Empresa creada correctamente 🚀");
+      toast.success(
+        "Empresa creada correctamente"
+      );
+
       navigate("/dashboard/companies");
     } catch (error) {
-      console.error("Error al crear empresa", error);
-      alert("Error al crear empresa");
+      console.error(error);
+
+      toast.error(
+        "Error al crear empresa"
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <section className="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow-sm">
-      <h1 className="text-xl font-bold text-gray-800 mb-6">
-        Crear Empresa
-      </h1>
+    <section className="mx-auto max-w-4xl space-y-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+      >
+        <ArrowLeft size={18} />
+        Volver
+      </button>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-        <Input
-          label="Nombre"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          className="col-span-2"
-        />
-
-        <Input
-          label="RUC"
-          value={ruc}
-          onChange={(e) => setRuc(e.target.value)}
-          className="col-span-2"
-        />
-
-        <div className="col-span-2 flex justify-end gap-3 mt-4">
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard/companies")}
-            className="px-4 py-2 text-sm bg-gray-200 rounded-lg hover:bg-gray-300"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {loading ? "Creando..." : "Crear empresa"}
-          </button>
+      <div className="flex items-center gap-3">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+          <Building2 size={24} />
         </div>
-      </form>
+
+        <div>
+          <h1 className="text-2xl font-bold text-slate-950">
+            Crear empresa
+          </h1>
+
+          <p className="text-sm text-slate-500">
+            Registra una nueva empresa en
+            Voltguard.
+          </p>
+        </div>
+      </div>
+
+      <CompaniesFormPage
+        mode="create"
+        loading={loading}
+        onSubmit={handleSubmit}
+        onCancel={() => navigate(-1)}
+      />
     </section>
   );
 };

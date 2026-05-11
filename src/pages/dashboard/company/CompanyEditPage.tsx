@@ -1,65 +1,77 @@
+import {
+  ArrowLeft,
+  ShieldCheck,
+} from "lucide-react";
+
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import Input from "../../../shared/components/Input";
-import { getCompanies } from "../../../services/company.service";
-import { getAdminById, updateAdmin } from "../../../services/users.service";
-import type { CompanyOptionDTO } from "../../../shared/types/CompanyProps";
+
+import {
+  useNavigate,
+  useParams,
+} from "react-router-dom";
+
+import { toast } from "react-toastify";
+
+import clientAxios from "../../../shared/config/clientAxios";
+
+import {
+  getUserById,
+  updateUser,
+} from "../../../services/users.service";
+
+import type {
+  UpdateUserDTO,
+  UserProps,
+} from "../../../shared/types/UserProps";
+import type { AdminFormData } from "./AdminFormPage";
+import AdminFormPage from "./AdminFormPage";
+
+
+type Company = {
+  name: string;
+  publicCode: string;
+};
 
 const CompanyEditPage = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
+
   const navigate = useNavigate();
 
-  const [firstname, setFirstname] = useState("");
-  const [lastname, setLastname] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [companyPublicCode, setCompanyPublicCode] = useState("");
-  const [isActive, setIsActive] = useState(true);
+  const [user, setUser] =
+    useState<UserProps | null>(null);
 
-  const [companies, setCompanies] = useState<CompanyOptionDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [notFound, setNotFound] = useState(false);
+  const [companies, setCompanies] = useState<
+    Company[]
+  >([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [saving, setSaving] =
+    useState(false);
 
   useEffect(() => {
-    if (!id) {
-      setLoading(false);
-      setNotFound(true);
-      return;
-    }
-
     const fetchData = async () => {
+      if (!id) return;
+
       try {
-        const [adminData, companiesData] = await Promise.all([
-          getAdminById(id),
-          getCompanies(),
-        ]);
+        const [userData, companiesData] =
+          await Promise.all([
+            getUserById(id),
+            clientAxios.get<Company[]>(
+              "/company"
+            ),
+          ]);
 
-        if (adminData.role !== "ADMIN") {
-          setNotFound(true);
-          return;
-        }
+        setUser(userData);
 
-        setFirstname(adminData.firstname ?? "");
-        setLastname(adminData.lastname ?? "");
-        setEmail(adminData.email ?? "");
-        setIsActive(adminData.isActive ?? true);
-
-        if (typeof adminData.companyPublicCode === "string") {
-          setCompanyPublicCode(adminData.companyPublicCode);
-        } else if (adminData.companyPublicCode?.publicCode) {
-          setCompanyPublicCode(adminData.companyPublicCode.publicCode);
-        }
-
-        setCompanies(
-          companiesData.map((company) => ({
-            name: company.name,
-            publicCode: company.publicCode,
-          }))
-        );
+        setCompanies(companiesData.data);
       } catch (error) {
-        console.error("Error al cargar administrador", error);
-        setNotFound(true);
+        console.error(error);
+
+        toast.error(
+          "Error cargando administrador"
+        );
       } finally {
         setLoading(false);
       }
@@ -68,139 +80,110 @@ const CompanyEditPage = () => {
     fetchData();
   }, [id]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!id) return;
+  const handleSubmit = async (
+    data: AdminFormData
+  ) => {
+    if (!user) return;
 
     try {
       setSaving(true);
 
-      const payload: {
-        firstname: string;
-        lastname: string;
-        email: string;
-        isActive: boolean;
-        companyPublicCode: string;
-        password?: string;
-      } = {
-        firstname: firstname.trim(),
-        lastname: lastname.trim(),
-        email: email.trim(),
-        isActive,
-        companyPublicCode,
+      const payload: Partial<UpdateUserDTO> = {
+        firstname: data.firstname,
+        lastname: data.lastname,
+        email: data.email,
+        companyPublicCode:
+          data.companyPublicCode,
       };
 
-      if (password.trim()) {
-        payload.password = password.trim();
-      }
+      await updateUser(
+        String(user._id),
+        payload
+      );
 
-      await updateAdmin(id, payload);
+      toast.success(
+        "Administrador actualizado correctamente"
+      );
 
-      alert("Administrador actualizado correctamente 🚀");
       navigate("/dashboard/admins");
     } catch (error) {
-      console.error("Error al actualizar administrador", error);
-      alert("Error al actualizar administrador");
+      console.error(error);
+
+      toast.error(
+        "Error actualizando administrador"
+      );
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <p className="text-sm text-gray-500">Cargando administrador...</p>;
+    return (
+      <section className="mx-auto max-w-4xl space-y-6">
+        <div className="h-10 w-32 animate-pulse rounded-2xl bg-slate-200" />
+
+        <div className="h-20 animate-pulse rounded-3xl bg-slate-200" />
+
+        <div className="h-[420px] animate-pulse rounded-3xl bg-slate-200" />
+      </section>
+    );
   }
 
-  if (notFound) {
-    return <p className="text-sm text-red-500">Administrador no encontrado.</p>;
+  if (!user) {
+    return (
+      <section className="mx-auto max-w-4xl">
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-sm font-semibold text-red-700">
+          Administrador no encontrado
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section className="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow-sm">
-      <h1 className="text-xl font-bold text-gray-800 mb-6">
-        Editar Administrador
-      </h1>
+    <section className="mx-auto max-w-4xl space-y-6">
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+      >
+        <ArrowLeft size={18} />
+        Volver
+      </button>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-        <Input
-          label="Nombre"
-          value={firstname}
-          onChange={(e) => setFirstname(e.target.value)}
-          required
-        />
-
-        <Input
-          label="Apellido"
-          value={lastname}
-          onChange={(e) => setLastname(e.target.value)}
-          required
-        />
-
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          className="col-span-2"
-        />
-
-        <Input
-          label="Nueva contraseña"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="col-span-2"
-          placeholder="Déjalo vacío si no deseas cambiarla"
-        />
-
-        <div className="col-span-2 flex flex-col gap-y-2">
-          <label className="text-sm text-gray-600 font-medium">
-            Empresa
-          </label>
-
-          <select
-            value={companyPublicCode}
-            onChange={(e) => setCompanyPublicCode(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-4 focus:ring-indigo-200 focus:border-indigo-500"
-          >
-            <option value="">Seleccionar empresa</option>
-            {companies.map((company) => (
-              <option key={company.publicCode} value={company.publicCode}>
-                {company.name}
-              </option>
-            ))}
-          </select>
+      <div className="flex items-center gap-3">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
+          <ShieldCheck size={24} />
         </div>
 
-        <label className="col-span-2 flex items-center gap-2 text-sm text-gray-700">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-            className="w-4 h-4"
-          />
-          Usuario activo
-        </label>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-950">
+            Editar administrador
+          </h1>
 
-        <div className="col-span-2 flex justify-end gap-3 mt-4">
-          <button
-            type="button"
-            onClick={() => navigate("/dashboard/admins")}
-            className="px-4 py-2 text-sm bg-gray-200 rounded-lg hover:bg-gray-300"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {saving ? "Guardando..." : "Guardar cambios"}
-          </button>
+          <p className="text-sm text-slate-500">
+            Modifica los datos del
+            administrador.
+          </p>
         </div>
-      </form>
+      </div>
+
+      <AdminFormPage
+        mode="edit"
+        companies={companies}
+        loading={saving}
+        initialValues={{
+          firstname: user.firstname,
+          lastname: user.lastname,
+          email: user.email,
+          companyPublicCode:
+            typeof user.companyPublicCode ===
+            "string"
+              ? user.companyPublicCode
+              : user.companyPublicCode
+                  ?.publicCode ?? "",
+        }}
+        onSubmit={handleSubmit}
+        onCancel={() => navigate(-1)}
+      />
     </section>
   );
 };

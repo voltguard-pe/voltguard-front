@@ -1,6 +1,18 @@
-import { ArrowLeft } from "lucide-react";
+import {
+  ArrowLeft,
+  Building2,
+  CheckCircle2,
+  FileImage,
+  ImageIcon,
+  Info,
+  MapPin,
+  X,
+  Zap,
+} from "lucide-react";
+
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import { getBoardByCode } from "../../../services/board.service";
 import type {
   BoardResponseDTO,
@@ -66,27 +78,63 @@ const BoardDetailPage = () => {
   }, [code, publicCode]);
 
   const renderField = (label: string, data: unknown) => (
-    <p className="text-sm break-words">
-      <strong>{label}:</strong> {value(data)}
-    </p>
+    <div className="rounded-2xl bg-slate-50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-1 break-words text-sm font-semibold text-slate-800">
+        {value(data)}
+      </p>
+    </div>
   );
 
-  const renderImageSection = (title: string, images: string[] = []) => (
-    <div className="bg-white p-4 sm:p-5 rounded shadow">
-      <h2 className="font-semibold mb-3">{title}</h2>
+  const renderImageSection = (
+    title: string,
+    description: string,
+    images: string[] = []
+  ) => (
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
+          <ImageIcon size={24} />
+        </div>
+
+        <div>
+          <h2 className="font-bold text-slate-950">{title}</h2>
+          <p className="text-sm text-slate-500">{description}</p>
+        </div>
+      </div>
 
       {images.length === 0 ? (
-        <p className="text-gray-500 text-sm">Sin imágenes registradas</p>
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
+          <FileImage size={36} className="text-slate-300" />
+
+          <p className="mt-3 text-sm font-semibold text-slate-600">
+            Sin imágenes registradas
+          </p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {images.map((img, i) => (
-            <img
-              key={i}
-              src={img}
-              alt={`${title} ${i + 1}`}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {images.map((img, index) => (
+            <button
+              key={`${img}-${index}`}
+              type="button"
               onClick={() => setSelectedImage(img)}
-              className="h-40 sm:h-48 w-full object-cover cursor-pointer rounded border hover:opacity-90 transition"
-            />
+              className="group overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 text-left"
+            >
+              <img
+                src={img}
+                alt={`${title} ${index + 1}`}
+                className="h-44 w-full object-cover transition duration-300 group-hover:scale-105"
+              />
+
+              <div className="p-3">
+                <p className="truncate text-xs font-semibold text-slate-600">
+                  Imagen {index + 1}
+                </p>
+              </div>
+            </button>
           ))}
         </div>
       )}
@@ -236,24 +284,33 @@ const BoardDetailPage = () => {
 
   if (loading) {
     return (
-      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <p>Cargando...</p>
+      <section className="mx-auto max-w-7xl space-y-6">
+        <div className="h-28 animate-pulse rounded-3xl bg-slate-200" />
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="h-72 animate-pulse rounded-3xl bg-slate-200" />
+          <div className="h-72 animate-pulse rounded-3xl bg-slate-200" />
+        </div>
+        <div className="h-96 animate-pulse rounded-3xl bg-slate-200" />
       </section>
     );
   }
 
   if (error) {
     return (
-      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <p className="text-red-500">{error}</p>
+      <section className="mx-auto max-w-7xl">
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-red-700">
+          {error}
+        </div>
       </section>
     );
   }
 
   if (!board) {
     return (
-      <section className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <p>No encontrado</p>
+      <section className="mx-auto max-w-7xl">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 text-slate-500">
+          No encontrado
+        </div>
       </section>
     );
   }
@@ -262,20 +319,95 @@ const BoardDetailPage = () => {
     typeof board.company === "object" ? board.company.name : "Sin empresa";
 
   return (
-    <section className="space-y-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+    <section className="mx-auto max-w-7xl space-y-6">
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-sm hover:underline"
+        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
       >
-        <ArrowLeft size={18} /> Volver
+        <ArrowLeft size={18} />
+        Volver
       </button>
 
-      <div className="space-y-1">
-        <h1 className="text-xl sm:text-2xl font-bold break-words">
-          {board.name}
-        </h1>
-        <p className="text-sm text-gray-500 break-words">{companyName}</p>
-      </div>
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-6 text-white">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                <Zap size={14} />
+                Tablero eléctrico
+              </div>
+
+              <h1 className="text-2xl font-bold md:text-3xl">
+                {board.name}
+              </h1>
+
+              <p className="mt-2 flex items-center gap-2 text-sm text-white/90">
+                <Building2 size={16} />
+                {companyName}
+              </p>
+            </div>
+
+            <div className="rounded-3xl bg-white/15 p-4 backdrop-blur">
+              <p className="text-xs font-semibold uppercase text-white/80">
+                Código
+              </p>
+
+              <p className="mt-1 text-xl font-bold">
+                {value(board.boardCode)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <MapPin className="text-[#0797d5]" size={24} />
+            <p className="mt-3 text-xs font-semibold uppercase text-slate-400">
+              Ubicación
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {value(board.location)}
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <Info className="text-[#0797d5]" size={24} />
+            <p className="mt-3 text-xs font-semibold uppercase text-slate-400">
+              Tipo
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {value(board.type)}
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <Zap className="text-[#0797d5]" size={24} />
+            <p className="mt-3 text-xs font-semibold uppercase text-slate-400">
+              Sistema
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {value(board.sistema)}
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-slate-50 p-5">
+            <CheckCircle2 className="text-[#3aaa35]" size={24} />
+            <p className="mt-3 text-xs font-semibold uppercase text-slate-400">
+              Estado
+            </p>
+            <p className="mt-1 text-sm font-semibold text-slate-800">
+              {value(board.estadoGeneral)}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+              <Info size={24} />
+            </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white p-4 sm:p-5 rounded shadow space-y-2">
@@ -306,7 +438,9 @@ const BoardDetailPage = () => {
         <h2 className="font-semibold mb-3">Leyenda</h2>
 
         {!board.circuits?.length ? (
-          <p className="text-gray-500 text-sm">Sin circuitos registrados</p>
+          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+            Sin circuitos registrados
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-1 gap-4 md:hidden">
@@ -353,13 +487,22 @@ const BoardDetailPage = () => {
 
       {selectedImage && (
         <div
-          className="fixed inset-0 bg-black/80 flex justify-center items-center z-50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
           onClick={() => setSelectedImage(null)}
         >
+          <button
+            type="button"
+            onClick={() => setSelectedImage(null)}
+            className="absolute right-5 top-5 flex size-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow"
+          >
+            <X size={22} />
+          </button>
+
           <img
             src={selectedImage}
             alt="Vista ampliada"
-            className="max-w-full max-h-full rounded"
+            className="max-h-[90vh] max-w-[90vw] rounded-3xl object-contain shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
           />
         </div>
       )}

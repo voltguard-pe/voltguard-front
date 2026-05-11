@@ -1,7 +1,21 @@
-import { ChevronDown, Eye, Pencil, Plus, QrCode, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
-import QRCode from "react-qr-code";
+import {
+  Building2,
+  ChevronDown,
+  Eye,
+  FileDown,
+  Import,
+  MapPin,
+  Pencil,
+  Plus,
+  QrCode,
+  Search,
+  Trash2,
+  Zap,
+} from "lucide-react";
+
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+
 import ImportBoardsModal from "../../../components/dashboard/modals/ImportBoardsModal";
 import ImportInsulationsModal from "../../../components/dashboard/modals/ImportInsulationsModal";
 import {
@@ -9,14 +23,15 @@ import {
   publicGetCompanyBoardByCode,
   publicGetCompanyBoards,
 } from "../../../services/board.service";
+
 import { getCompanies } from "../../../services/company.service";
 import { useAuth } from "../../../shared/hooks/useAuth";
-import { PdfIcon } from "../../../shared/icons/Icons";
-import type {
-  PublicCompanyBoardsItemDTO,
-} from "../../../shared/types/BoardProps";
+
+import type { PublicCompanyBoardsItemDTO } from "../../../shared/types/BoardProps";
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
+
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
+import QRModal from "../../../components/dashboard/modals/ViewQRModal";
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
@@ -26,6 +41,7 @@ const BoardDashboardPage = () => {
   const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
   const [selectedCompany, setSelectedCompany] =
     useState<CompanyResponseDTO | null>(null);
+
   const [boards, setBoards] = useState<PublicCompanyBoardsItemDTO[]>([]);
 
   const [loadingCompanies, setLoadingCompanies] = useState(true);
@@ -49,21 +65,20 @@ const BoardDashboardPage = () => {
 
   const qrUrl = `${window.location.origin}/dashboard/boards/${effectivePublicCode}`;
 
-
-  // =========================
-  // 🔹 FETCH EMPRESAS (solo SUPERADMIN)
-  // =========================
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
         setLoadingCompanies(true);
 
         const data = await getCompanies();
+
         setCompanies(data);
 
         if (publicCode) {
           const companyFound =
-            data.find((c) => c.publicCode === publicCode) || null;
+            data.find((company) => company.publicCode === publicCode) ||
+            null;
+
           setSelectedCompany(companyFound);
         }
       } catch (error) {
@@ -80,14 +95,13 @@ const BoardDashboardPage = () => {
     }
   }, [auth, publicCode]);
 
-  // =========================
-  // 🔹 FETCH BOARDS
-  // =========================
   useEffect(() => {
     const fetchBoards = async (companyPublicCode: string) => {
       try {
         setLoadingBoards(true);
+
         const data = await publicGetCompanyBoards(companyPublicCode);
+
         setBoards(data.boards);
       } catch (error) {
         console.error("Error cargando tableros", error);
@@ -105,21 +119,34 @@ const BoardDashboardPage = () => {
     fetchBoards(effectivePublicCode);
   }, [effectivePublicCode]);
 
-  // =========================
-  // 🔹 CAMBIAR EMPRESA (solo SUPERADMIN)
-  // =========================
+  const filteredBoards = useMemo(() => {
+    return boards.filter((board) => {
+      const value = search.toLowerCase();
+
+      return (
+        board.name?.toLowerCase().includes(value) ||
+        board.boardCode?.toLowerCase().includes(value) ||
+        board.location?.toLowerCase().includes(value)
+      );
+    });
+  }, [boards, search]);
+
   const handleSelectCompany = (selectedPublicCode: string) => {
     if (!selectedPublicCode) {
+      setSelectedCompany(null);
       navigate("/dashboard/boards");
       return;
     }
 
+    const companyFound =
+      companies.find((company) => company.publicCode === selectedPublicCode) ||
+      null;
+
+    setSelectedCompany(companyFound);
+
     navigate(`/dashboard/boards/${selectedPublicCode}`);
   };
 
-  // =========================
-  // 🔹 DELETE
-  // =========================
   const handleDelete = async (code: string) => {
     if (!effectivePublicCode) return;
 
@@ -128,26 +155,47 @@ const BoardDashboardPage = () => {
 
     try {
       await deleteBoard(effectivePublicCode, code);
-      setBoards((prev) => prev.filter((b) => b.code !== code));
-      alert("Eliminado correctamente");
+
+      setBoards((prev) => prev.filter((board) => board.code !== code));
     } catch (error) {
-      console.error(error);
-      alert("Error al eliminar");
+      console.error("Error al eliminar tablero", error);
+      alert("Error al eliminar tablero");
     }
   };
 
+  const handleGeneratePDF = async (boardCode: string) => {
+    if (!effectivePublicCode) return;
+
+    try {
+      const fullBoard = await publicGetCompanyBoardByCode(
+        effectivePublicCode,
+        boardCode
+      );
+
+      generateBoardPDF(fullBoard);
+    } catch (error) {
+      console.error("Error generando PDF", error);
+    }
+  };
+
+  const showEmptyCompanyState =
+    auth?.role === "SUPERADMIN" && !effectivePublicCode;
+
+  const showNoBoardsState =
+    !loadingBoards && effectivePublicCode && filteredBoards.length === 0;
+
   return (
-    <section className="flex flex-col gap-y-6">
-      {/* HEADER */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <section className="space-y-6">
+      <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-800">
-            Tableros
+          <h1 className="text-2xl font-bold text-slate-950">
+            Gestionar tableros
           </h1>
-          <p className="text-sm text-gray-500">
+
+          <p className="mt-1 text-sm text-slate-500">
             {auth?.role === "ADMIN"
-              ? "Mostrando tableros de tu empresa"
-              : "Selecciona una empresa para ver sus tableros"}
+              ? "Visualiza los tableros eléctricos asociados a tu empresa."
+              : "Selecciona una empresa para administrar sus tableros eléctricos."}
           </p>
         </div>
 
@@ -175,137 +223,232 @@ const BoardDashboardPage = () => {
           </div>
         )}
 
-        {auth?.role === "ADMIN" && effectivePublicCode && (
-          <button
-            onClick={() => setShowQR(true)}
-            className="flex items-center justify-center gap-2 bg-gray-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 transition w-full md:w-auto cursor-pointer"
-          >
-            <QrCode size={16} />
-            Ver QR
-          </button>
-        )}
-
-        {showQR && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white p-6 rounded-xl shadow-lg flex flex-col items-center gap-4">
-              <h2 className="text-lg font-semibold">QR de la empresa</h2>
-
-              <QRCode value={qrUrl} size={200} />
-
-              <p className="text-xs text-gray-500 text-center break-all">
-                {qrUrl}
-              </p>
-
-              <button
-                onClick={() => setShowQR(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        )}
+          {auth?.role === "ADMIN" && effectivePublicCode && (
+            <button
+              onClick={() => setShowQR(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
+            >
+              <QrCode size={18} />
+              Ver QR empresa
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* SELECT SOLO SUPERADMIN */}
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">Total tableros</p>
+              <h3 className="mt-2 text-3xl font-bold text-slate-950">
+                {boards.length}
+              </h3>
+            </div>
+
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+              <Zap size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">Con ubicación</p>
+              <h3 className="mt-2 text-3xl font-bold text-slate-950">
+                {boards.filter((board) => board.location).length}
+              </h3>
+            </div>
+
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
+              <MapPin size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">Resultados visibles</p>
+              <h3 className="mt-2 text-3xl font-bold text-slate-950">
+                {filteredBoards.length}
+              </h3>
+            </div>
+
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+              <Search size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-slate-500">Empresa actual</p>
+              <h3 className="mt-2 truncate text-xl font-bold text-slate-950">
+                {selectedCompany?.name ||
+                  (auth?.role === "ADMIN" ? "Mi empresa" : "No seleccionada")}
+              </h3>
+            </div>
+
+            <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+              <Building2 size={24} />
+            </div>
+          </div>
+        </div>
+      </div>
+
       {auth?.role === "SUPERADMIN" && (
-        <div className="bg-white p-4 rounded-xl shadow-sm">
-          <div className="relative">
-            <select
-              className="w-full border rounded-lg px-4 py-3 pr-10 text-sm appearance-none bg-white"
-              value={selectedCompany?.publicCode || ""}
-              onChange={(e) => handleSelectCompany(e.target.value)}
-              disabled={loadingCompanies}
-            >
-              <option value="">
-                {loadingCompanies
-                  ? "Cargando empresas..."
-                  : "Seleccionar empresa"}
-              </option>
+        <div className="flex justify-between items-end rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="w-full">
+            <label className="text-sm font-semibold text-slate-700">
+              Empresa
+            </label>
 
-              {companies.map((company) => (
-                <option key={company.publicCode} value={company.publicCode}>
-                  {company.name}
+            <div className="relative mt-2">
+              <select
+                className="w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-700 outline-none transition focus:border-[#0797d5] md:max-w-md"
+                value={selectedCompany?.publicCode || ""}
+                onChange={(event) => handleSelectCompany(event.target.value)}
+                disabled={loadingCompanies}
+              >
+                <option value="">
+                  {loadingCompanies
+                    ? "Cargando empresas..."
+                    : "Seleccionar empresa"}
                 </option>
-              ))}
-            </select>
 
-            <ChevronDown
-              size={18}
-              className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                {companies.map((company) => (
+                  <option key={company.publicCode} value={company.publicCode}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+
+              <ChevronDown
+                size={18}
+                className="pointer-events-none absolute left-[calc(100%-40px)] top-1/2 -translate-y-1/2 text-slate-400 md:left-[392px]"
+              />
+            </div>
+          </div>
+
+          <div className="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:max-w-md">
+            <Search size={18} className="text-slate-400" />
+
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por nombre, código o ubicación..."
+              className="w-full bg-transparent text-sm outline-none"
             />
           </div>
         </div>
       )}
 
-      {/* TABLA */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        {/* 🔥 ADMIN: nunca mostrar "selecciona empresa" */}
-        {auth?.role === "ADMIN" && loadingBoards ? (
-          <div className="p-6">
-            <p className="text-sm text-gray-500">Cargando tableros...</p>
-          </div>
-        ) : auth?.role === "ADMIN" && boards.length === 0 ? (
-          <div className="p-6">
-            <p className="text-sm text-gray-500">
-              Tu empresa no tiene tableros registrados
-            </p>
-          </div>
-        ) : auth?.role === "SUPERADMIN" && !effectivePublicCode ? (
-          <div className="p-6">
-            <p className="text-sm text-gray-500">
-              Selecciona una empresa para ver sus tableros
+      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        {showEmptyCompanyState ? (
+          <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+            <div className="flex size-16 items-center justify-center rounded-3xl bg-[#0797d5]/10 text-[#0797d5]">
+              <Building2 size={30} />
+            </div>
+
+            <h3 className="mt-4 text-lg font-bold text-slate-950">
+              Selecciona una empresa
+            </h3>
+
+            <p className="mt-1 max-w-md text-sm text-slate-500">
+              Para ver, crear o editar tableros primero debes seleccionar una
+              empresa.
             </p>
           </div>
         ) : loadingBoards ? (
-          <div className="p-6">
-            <p className="text-sm text-gray-500">Cargando tableros...</p>
+          <div className="space-y-4 p-6">
+            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
           </div>
-        ) : boards.length === 0 ? (
-          <div className="p-6">
-            <p className="text-sm text-gray-500">
-              Esta empresa no tiene tableros registrados
+        ) : showNoBoardsState ? (
+          <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+            <div className="flex size-16 items-center justify-center rounded-3xl bg-[#8ccf2f]/15 text-[#3aaa35]">
+              <Zap size={30} />
+            </div>
+
+            <h3 className="mt-4 text-lg font-bold text-slate-950">
+              No hay tableros registrados
+            </h3>
+
+            <p className="mt-1 max-w-md text-sm text-slate-500">
+              Esta empresa todavía no tiene tableros o no hay resultados para la
+              búsqueda actual.
             </p>
+
+            {auth?.role === "SUPERADMIN" && (
+              <button
+                onClick={() => navigate("/dashboard/boards/create")}
+                className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
+              >
+                <Plus size={18} />
+                Crear tablero
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[600px] text-sm">
-              <thead className="bg-gray-50 text-gray-600">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="bg-slate-50 text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">
-                    Nombre
-                  </th>
-                  <th className="px-4 py-3 text-left font-medium">
-                    Ubicación
-                  </th>
-                  <th className="px-4 py-3 text-right font-medium">
+                  <th className="px-5 py-4 font-semibold">Tablero</th>
+                  <th className="px-5 py-4 font-semibold">Código</th>
+                  <th className="px-5 py-4 font-semibold">Ubicación</th>
+                  <th className="px-5 py-4 text-right font-semibold">
                     Acciones
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-gray-200">
-                {boards.map((board) => (
-                  <tr key={board.code} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium text-gray-800">
-                      {board.name}
+              <tbody className="divide-y divide-slate-100">
+                {filteredBoards.map((board) => (
+                  <tr key={board.code} className="transition hover:bg-slate-50">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white">
+                          <Zap size={18} />
+                        </div>
+
+                        <div>
+                          <p className="font-semibold text-slate-950">
+                            {board.name}
+                          </p>
+
+                          <p className="text-xs text-slate-500">
+                            Tablero eléctrico
+                          </p>
+                        </div>
+                      </div>
                     </td>
 
-                    <td className="px-4 py-3 text-gray-600">
-                      {board.location || "Sin ubicación"}
+                    <td className="px-5 py-4">
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                        {board.boardCode}
+                      </span>
                     </td>
 
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-4 text-slate-600">
+                      <div className="flex items-center gap-2">
+                        <MapPin size={16} className="text-slate-400" />
+                        {board.location || "Sin ubicación"}
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
                         <button
-                          onClick={async () => {
-                            if (!effectivePublicCode) return;
-                            const fullBoard = await publicGetCompanyBoardByCode(effectivePublicCode, board.code);
-                            generateBoardPDF(fullBoard);
-                          }}
-                          className="p-2 hover:bg-gray-200 rounded"
+                          onClick={() => handleGeneratePDF(board.code)}
+                          className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                          title="Generar PDF"
                         >
-                          <PdfIcon size={18} />
+                          <FileDown size={18} />
                         </button>
 
                         <button
@@ -314,7 +457,8 @@ const BoardDashboardPage = () => {
                               `/dashboard/boards/${effectivePublicCode}/${board.code}`
                             )
                           }
-                          className="p-2 hover:bg-indigo-200 rounded text-indigo-600"
+                          className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-[#0797d5]/10 hover:text-[#0797d5]"
+                          title="Ver tablero"
                         >
                           <Eye size={18} />
                         </button>
@@ -327,14 +471,16 @@ const BoardDashboardPage = () => {
                                   `/dashboard/boards/${effectivePublicCode}/${board.code}/edit`
                                 )
                               }
-                              className="p-2 hover:bg-yellow-200 rounded text-yellow-600"
+                              className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-[#8ccf2f]/15 hover:text-[#3aaa35]"
+                              title="Editar tablero"
                             >
                               <Pencil size={18} />
                             </button>
 
                             <button
                               onClick={() => handleDelete(board.code)}
-                              className="p-2 hover:bg-red-200 rounded text-red-600"
+                              className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-100 hover:text-red-700"
+                              title="Eliminar tablero"
                             >
                               <Trash2 size={18} />
                             </button>

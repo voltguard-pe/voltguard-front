@@ -7,59 +7,247 @@ const value = (data: unknown) =>
 
 const bool = (data?: boolean) => (data ? "Sí" : "No");
 
-// const formatDate = (date?: string) =>
-//   date ? new Date(date).toLocaleString("es-PE") : "-";
+const BLUE: [number, number, number] = [7, 151, 213];
+// const BLUE_DARK = [8, 127, 179] as const;
+const GREEN: [number, number, number] = [140, 207, 47];
+// const GREEN_DARK = [58, 170, 53] as const;
+const SLATE: [number, number, number] = [15, 23, 42];
+const SLATE_MUTED: [number, number, number] = [100, 116, 139];
+const BORDER: [number, number, number] = [226, 232, 240];
+const SOFT: [number, number, number] = [248, 250, 252];
 
 export const generateBoardPDF = async (
   board: PublicBoardByCodeResponseDTO
 ) => {
-  const doc = new jsPDF({ format: "a4" });
+  const doc = new jsPDF({
+    format: "a4",
+    unit: "mm",
+  });
 
   const pageWidth = 210;
+  // const pageHeight = 297;
   const marginX = 14;
-  const bottomLimit = 270;
+  const contentWidth = pageWidth - marginX * 2;
+  const bottomLimit = 274;
 
   const companyName =
     typeof board.company === "object" ? board.company.name : "Sin empresa";
 
   const drawHeader = () => {
-    doc.setFillColor(30, 64, 175);
-    doc.rect(0, 0, pageWidth, 25, "F");
+    doc.setFillColor(...BLUE);
+    doc.rect(0, 0, pageWidth, 30, "F");
+
+    doc.setFillColor(...GREEN);
+    doc.rect(0, 27, pageWidth, 3, "F");
 
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("VOLTGUARD", 14, 15);
+    doc.setFontSize(18);
+    doc.text("VOLTGUARD", marginX, 14);
 
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text("Sistema de gestion de tableros electricos", marginX, 20);
+
+    doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text("REPORTE DE TABLERO ELÉCTRICO", 120, 15);
+    doc.text("REPORTE TECNICO DE TABLERO", pageWidth - marginX, 15, {
+      align: "right",
+    });
 
-    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(companyName, pageWidth - marginX, 21, {
+      align: "right",
+    });
+
+    doc.setTextColor(...SLATE);
+  };
+
+  const drawFooter = () => {
+    const pages = doc.getNumberOfPages();
+
+    for (let index = 1; index <= pages; index++) {
+      doc.setPage(index);
+
+      doc.setDrawColor(...BORDER);
+      doc.line(marginX, 282, pageWidth - marginX, 282);
+
+      doc.setTextColor(...SLATE_MUTED);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+
+      doc.text(
+        `Generado el ${new Date().toLocaleString("es-PE")}`,
+        marginX,
+        289
+      );
+
+      doc.text(`Pagina ${index} de ${pages}`, pageWidth - marginX, 289, {
+        align: "right",
+      });
+
+      doc.setTextColor(...SLATE);
+    }
   };
 
   const checkPage = (y: number, space = 30) => {
     if (y + space > bottomLimit) {
       doc.addPage();
       drawHeader();
-      return 35;
+      return 42;
     }
 
     return y;
   };
 
   const sectionTitle = (title: string, y: number) => {
-    y = checkPage(y, 20);
+    y = checkPage(y, 22);
 
+    doc.setFillColor(...SOFT);
+    doc.roundedRect(marginX, y - 6, contentWidth, 12, 3, 3, "F");
+
+    doc.setFillColor(...BLUE);
+    doc.roundedRect(marginX, y - 6, 3, 12, 1.5, 1.5, "F");
+
+    doc.setTextColor(...SLATE);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text(title, marginX, y);
+    doc.setFontSize(12);
+    doc.text(title, marginX + 8, y + 1);
 
-    return y + 6;
+    return y + 12;
+  };
+
+  const drawHero = (y: number) => {
+    doc.setFillColor(...SLATE);
+    doc.roundedRect(marginX, y, contentWidth, 34, 5, 5, "F");
+
+    doc.setFillColor(...BLUE);
+    doc.roundedRect(marginX, y, 5, 34, 2, 2, "F");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(17);
+    doc.text(value(board.name), marginX + 10, y + 13, {
+      maxWidth: 120,
+    });
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(companyName, marginX + 10, y + 22, {
+      maxWidth: 120,
+    });
+
+    doc.setFillColor(255, 255, 255);
+    doc.roundedRect(pageWidth - marginX - 48, y + 7, 40, 20, 4, 4, "F");
+
+    doc.setTextColor(...SLATE_MUTED);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7);
+    doc.text("CODIGO", pageWidth - marginX - 28, y + 14, {
+      align: "center",
+    });
+
+    doc.setTextColor(...SLATE);
+    doc.setFontSize(12);
+    doc.text(value(board.boardCode), pageWidth - marginX - 28, y + 22, {
+      align: "center",
+    });
+
+    doc.setTextColor(...SLATE);
+
+    return y + 44;
+  };
+
+  const drawSummaryCards = (y: number) => {
+    y = checkPage(y, 32);
+
+    const gap = 4;
+    const cardWidth = (contentWidth - gap * 3) / 4;
+    const cards = [
+      ["Tipo", value(board.type)],
+      ["Sistema", value(board.sistema)],
+      ["Estado", value(board.estadoGeneral)],
+      ["Fases", value(board.numeroFases)],
+    ];
+
+    cards.forEach(([label, data], index) => {
+      const x = marginX + index * (cardWidth + gap);
+
+      doc.setFillColor(...SOFT);
+      doc.roundedRect(x, y, cardWidth, 24, 4, 4, "F");
+
+      doc.setDrawColor(...BORDER);
+      doc.roundedRect(x, y, cardWidth, 24, 4, 4, "S");
+
+      doc.setTextColor(...SLATE_MUTED);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(7);
+      doc.text(label.toUpperCase(), x + 4, y + 8);
+
+      doc.setTextColor(...SLATE);
+      doc.setFontSize(9);
+      doc.text(data, x + 4, y + 17, {
+        maxWidth: cardWidth - 8,
+      });
+    });
+
+    return y + 34;
+  };
+
+  const drawKeyValueTable = (
+    title: string,
+    rows: [string, string][],
+    startY: number
+  ) => {
+    startY = sectionTitle(title, startY);
+
+    autoTable(doc, {
+      startY,
+      head: [["Campo", "Valor"]],
+      body: rows,
+      margin: { left: marginX, right: marginX },
+      theme: "grid",
+      styles: {
+        font: "helvetica",
+        fontSize: 8.5,
+        cellPadding: 3,
+        lineColor: BORDER,
+        lineWidth: 0.1,
+        textColor: SLATE,
+        overflow: "linebreak",
+      },
+      headStyles: {
+        fillColor: BLUE,
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+      },
+      alternateRowStyles: {
+        fillColor: SOFT,
+      },
+      columnStyles: {
+        0: {
+          cellWidth: 58,
+          fontStyle: "bold",
+          textColor: SLATE,
+        },
+        1: {
+          cellWidth: contentWidth - 58,
+          textColor: SLATE_MUTED,
+        },
+      },
+    });
+
+    return (doc as any).lastAutoTable.finalY + 10;
   };
 
   const loadImage = async (url: string) => {
-    const res = await fetch(url.replace("/upload/", "/upload/w_1200/"));
-    const blob = await res.blob();
+    const optimizedUrl = url.includes("/upload/")
+      ? url.replace("/upload/", "/upload/w_1400/")
+      : url;
+
+    const response = await fetch(optimizedUrl);
+    const blob = await response.blob();
 
     return new Promise<{ data: string; img: HTMLImageElement }>((resolve) => {
       const reader = new FileReader();
@@ -79,236 +267,188 @@ export const generateBoardPDF = async (
     });
   };
 
-  const getDim = (img: HTMLImageElement, maxW = 182, maxH = 120) => {
+  const getImageDimensions = (
+    img: HTMLImageElement,
+    maxW = 176,
+    maxH = 120
+  ) => {
     const ratio = img.width / img.height;
-    let w = maxW;
-    let h = w / ratio;
 
-    if (h > maxH) {
-      h = maxH;
-      w = h * ratio;
+    let width = maxW;
+    let height = width / ratio;
+
+    if (height > maxH) {
+      height = maxH;
+      width = height * ratio;
     }
 
-    return { w, h };
+    return { width, height };
   };
 
-  const drawKeyValueTable = (
+  const drawImages = async (
     title: string,
-    rows: [string, string][],
-    startY: number
+    description: string,
+    images: string[] = []
   ) => {
-    startY = sectionTitle(title, startY);
-
-    autoTable(doc, {
-      startY,
-      head: [["Campo", "Valor"]],
-      body: rows,
-      margin: { left: marginX, right: marginX },
-      styles: {
-        fontSize: 9,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [30, 64, 175],
-        textColor: [255, 255, 255],
-      },
-      columnStyles: {
-        0: { cellWidth: 60, fontStyle: "bold" },
-        1: { cellWidth: 122 },
-      },
-    });
-
-    return (doc as any).lastAutoTable.finalY + 10;
-  };
-
-  drawHeader();
-
-  let y = 35;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(value(board.name), marginX, y);
-
-  y += 8;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(`Empresa: ${companyName}`, marginX, y);
-
-  y += 10;
-
-  // y = drawKeyValueTable(
-  //   "Identificación",
-  //   [
-  //     ["ID interno", value(board.code)],
-  //     ["Empresa", companyName],
-  //   ],
-  //   y
-  // );
-
-  y = drawKeyValueTable(
-    "Información general",
-    [
-      ["Código real del tablero", value(board.boardCode)],
-      ["Nombre", value(board.name)],
-      ["Tipo", value(board.type)],
-      ["Sistema", value(board.sistema)],
-      ["Estado general", value(board.estadoGeneral)],
-      ["Ubicación", value(board.location)],
-      ["Descripción", value(board.description)],
-    ],
-    y
-  );
-
-  y = drawKeyValueTable(
-    "Información eléctrica",
-    [
-      [
-        "Tensión nominal",
-        board.tensionNominal ? `${board.tensionNominal} V` : "-",
-      ],
-      ["Número de fases", value(board.numeroFases)],
-      ["Incluye neutro", bool(board.incluyeNeutro)],
-    ],
-    y
-  );
-
-  // y = drawKeyValueTable(
-  //   "Main Breaker",
-  //   [
-  //     [
-  //       "Amperaje",
-  //       board.mainBreaker?.amperaje
-  //         ? `${board.mainBreaker.amperaje} A`
-  //         : "-",
-  //     ],
-  //     ["Polos", value(board.mainBreaker?.polos)],
-  //     ["Marca", value(board.mainBreaker?.marca)],
-  //     ["Modelo", value(board.mainBreaker?.modelo)],
-  //   ],
-  //   y
-  // );
-
-  // y = drawKeyValueTable(
-  //   "Protección",
-  //   [
-  //     ["Sobretensión", bool(board.proteccion?.sobretension)],
-  //     ["Marca", value(board.proteccion?.marca)],
-  //     ["Modelo", value(board.proteccion?.modelo)],
-  //   ],
-  //   y
-  // );
-
-  y = checkPage(y, 60);
-
-  y = sectionTitle("Circuitos", y);
-
-  autoTable(doc, {
-    startY: y,
-    // head: [["Circuito", "Descripción", "Amperaje", "Fase", "Tipo", "Estado"]],
-    head: [["Circuito", "Descripción"]],
-    body:
-      board.circuits?.length > 0
-        ? board.circuits.map((c) => [
-            value(c.circuito),
-            value(c.descripcion),
-            // c.amperaje ? `${c.amperaje} A` : "-",
-            // value(c.fase),
-            // value(c.tipo),
-            // value(c.estado),
-          ])
-        : [["-", "Sin circuitos registrados", "-", "-", "-", "-"]],
-    margin: { left: marginX, right: marginX },
-    styles: {
-      fontSize: 8,
-      cellPadding: 2,
-    },
-    headStyles: {
-      fillColor: [30, 64, 175],
-      textColor: [255, 255, 255],
-    },
-  });
-
-  y = (doc as any).lastAutoTable.finalY + 10;
-
-  y = drawKeyValueTable(
-    "Imágenes registradas",
-    [
-      ["Imágenes del tablero", String(board.images?.tablero?.length || 0)],
-      ["Diagramas unifilares", String(board.images?.unifilar?.length || 0)],
-      ["Termografías", String(board.images?.termografia?.length || 0)],
-    ],
-    y
-  );
-
-  // y = drawKeyValueTable(
-  //   "Auditoría",
-  //   [
-  //     ["Creado por", value((board as any).createdBy)],
-  //     ["Fecha de creación", formatDate(board.createdAt)],
-  //     ["Última actualización", formatDate((board as any).updatedAt)],
-  //   ],
-  //   y
-  // );
-
-  const drawImages = async (title: string, images: string[] = []) => {
     if (!images.length) return;
 
     doc.addPage();
     drawHeader();
 
-    let imgY = 35;
+    let y = 42;
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.text(title, marginX, imgY);
+    y = sectionTitle(title, y);
 
-    imgY += 10;
+    doc.setTextColor(...SLATE_MUTED);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.text(description, marginX, y, {
+      maxWidth: contentWidth,
+    });
 
-    for (let i = 0; i < images.length; i++) {
+    y += 10;
+
+    for (let index = 0; index < images.length; index++) {
       try {
-        const { data, img } = await loadImage(images[i]);
-        const dim = getDim(img, 182, 120);
+        const { data, img } = await loadImage(images[index]);
+        const { width, height } = getImageDimensions(img);
 
-        if (imgY + dim.h > bottomLimit) {
+        if (y + height + 18 > bottomLimit) {
           doc.addPage();
           drawHeader();
-          imgY = 35;
+          y = 42;
         }
 
+        doc.setFillColor(...SOFT);
+        doc.roundedRect(marginX, y, contentWidth, height + 18, 4, 4, "F");
+
+        doc.setDrawColor(...BORDER);
+        doc.roundedRect(marginX, y, contentWidth, height + 18, 4, 4, "S");
+
+        doc.setTextColor(...SLATE);
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.text(`${title} ${i + 1}`, marginX, imgY);
+        doc.setFontSize(9);
+        doc.text(`${title} ${index + 1}`, marginX + 5, y + 8);
 
-        imgY += 5;
+        const x = (pageWidth - width) / 2;
 
-        const x = (pageWidth - dim.w) / 2;
+        doc.addImage(data, "JPEG", x, y + 12, width, height);
 
-        doc.addImage(data, "JPEG", x, imgY, dim.w, dim.h);
-
-        imgY += dim.h + 12;
+        y += height + 25;
       } catch (error) {
         console.error("Error cargando imagen PDF:", error);
       }
     }
   };
 
-  await drawImages("Imagen del tablero", board.images?.tablero || []);
-  await drawImages("Diagrama unifilar", board.images?.unifilar || []);
-  await drawImages("Termografía", board.images?.termografia || []);
+  drawHeader();
 
-  const pages = doc.getNumberOfPages();
+  let y = 42;
 
-  for (let i = 1; i <= pages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(9);
-    doc.setTextColor(150);
+  y = drawHero(y);
+  y = drawSummaryCards(y);
 
-    doc.text(`Generado el ${new Date().toLocaleString("es-PE")}`, 14, 290);
-    doc.text(`Página ${i} de ${pages}`, 170, 290);
+  y = drawKeyValueTable(
+    "Informacion general",
+    [
+      ["Codigo real del tablero", value(board.boardCode)],
+      ["Nombre", value(board.name)],
+      ["Tipo", value(board.type)],
+      ["Sistema", value(board.sistema)],
+      ["Estado general", value(board.estadoGeneral)],
+      ["Ubicacion", value(board.location)],
+      ["Descripcion", value(board.description)],
+    ],
+    y
+  );
 
-    doc.setTextColor(0, 0, 0);
-  }
+  y = drawKeyValueTable(
+    "Informacion electrica",
+    [
+      [
+        "Tension nominal",
+        board.tensionNominal ? `${board.tensionNominal} V` : "-",
+      ],
+      ["Numero de fases", value(board.numeroFases)],
+      ["Incluye neutro", bool(board.incluyeNeutro)],
+    ],
+    y
+  );
+
+  y = checkPage(y, 70);
+  y = sectionTitle("Circuitos", y);
+
+  autoTable(doc, {
+    startY: y,
+    head: [["Circuito", "Descripcion"]],
+    body:
+      board.circuits?.length > 0
+        ? board.circuits.map((circuit) => [
+            value(circuit.circuito),
+            value(circuit.descripcion),
+          ])
+        : [["-", "Sin circuitos registrados"]],
+    margin: { left: marginX, right: marginX },
+    theme: "grid",
+    styles: {
+      font: "helvetica",
+      fontSize: 8.5,
+      cellPadding: 3,
+      lineColor: BORDER,
+      lineWidth: 0.1,
+      textColor: SLATE,
+      overflow: "linebreak",
+    },
+    headStyles: {
+      fillColor: BLUE,
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+    },
+    alternateRowStyles: {
+      fillColor: SOFT,
+    },
+    columnStyles: {
+      0: {
+        cellWidth: 44,
+        fontStyle: "bold",
+      },
+      1: {
+        cellWidth: contentWidth - 44,
+      },
+    },
+  });
+
+  y = (doc as any).lastAutoTable.finalY + 10;
+
+  y = drawKeyValueTable(
+    "Imagenes registradas",
+    [
+      ["Imagenes del tablero", String(board.images?.tablero?.length || 0)],
+      ["Diagramas unifilares", String(board.images?.unifilar?.length || 0)],
+      ["Termografias", String(board.images?.termografia?.length || 0)],
+    ],
+    y
+  );
+
+  await drawImages(
+    "Imagen del tablero",
+    "Fotos generales, interiores o exteriores del tablero electrico.",
+    board.images?.tablero || []
+  );
+
+  await drawImages(
+    "Diagrama unifilar",
+    "Imagenes asociadas al diagrama unifilar del tablero.",
+    board.images?.unifilar || []
+  );
+
+  await drawImages(
+    "Termografia",
+    "Imagenes termograficas o evidencias visuales de inspeccion.",
+    board.images?.termografia || []
+  );
+
+  drawFooter();
 
   window.open(doc.output("bloburl"));
 };

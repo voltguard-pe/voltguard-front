@@ -9,6 +9,8 @@ type SelectProps = {
   className?: string;
   required?: boolean;
   error?: string;
+  disabled?: boolean;
+  placeholder?: string;
 };
 
 const Select = ({
@@ -20,41 +22,52 @@ const Select = ({
   className,
   required = false,
   error,
+  disabled = false,
+  placeholder = "Seleccionar",
 }: SelectProps) => {
+  const inputId = name || label.toLowerCase().replace(/\s+/g, "-");
+
   return (
-    <div className={`flex flex-col gap-y-2 ${className ?? ""}`}>
-      <label className="text-sm text-gray-600 font-medium">
+    <div className={`flex flex-col gap-1.5 ${className ?? ""}`}>
+      <label htmlFor={inputId} className="text-sm font-semibold text-slate-700">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
 
       <div className="relative">
         <select
+          id={inputId}
           name={name}
           value={value}
           onChange={onChange}
           required={required}
-          className={`w-full appearance-none text-sm border rounded-lg py-2 px-3 pr-10 outline-none transition-all bg-white ${
+          disabled={disabled}
+          aria-invalid={!!error}
+          aria-describedby={error ? `${inputId}-error` : undefined}
+          className={`w-full appearance-none rounded-2xl border bg-white px-4 py-3 pr-12 text-sm text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${
             error
-              ? "border-red-500 focus:ring-red-200"
-              : "border-gray-300 focus:ring-indigo-200 focus:border-indigo-500"
+              ? "border-red-500 focus:border-red-500 focus:ring-4 focus:ring-red-100"
+              : "border-slate-200 focus:border-[#0797d5] focus:ring-4 focus:ring-[#0797d5]/10"
           }`}
         >
-          <option value="">Seleccionar</option>
+          <option value="">{placeholder}</option>
 
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>
 
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-          <ChevronDown className="w-4 h-4 text-gray-400" />
-        </span>
+        <ChevronDown
+          size={18}
+          className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+        />
       </div>
 
       {error && (
-        <span className="text-xs text-red-500">{error}</span>
+        <span id={`${inputId}-error`} className="text-xs text-red-500">
+          {error}
+        </span>
       )}
     </div>
   );

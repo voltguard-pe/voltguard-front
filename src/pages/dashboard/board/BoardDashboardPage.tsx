@@ -33,6 +33,7 @@ import type { PublicCompanyBoardsItemDTO } from "../../../shared/types/BoardProp
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
+import ImportUnifilarBoardModal from "../../../components/dashboard/modals/ImportUnifilarBoardModal";
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
@@ -53,6 +54,7 @@ const BoardDashboardPage = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   const [showImportInsulationsModal, setShowImportInsulationsModal] =
     useState(false);
+  const [showImportUnifilarModal, setShowImportUnifilarModal] = useState(false);
 
   const effectivePublicCode =
     auth?.role === "ADMIN"
@@ -209,6 +211,15 @@ const BoardDashboardPage = () => {
             >
               <Import size={18} />
               Importar mediciones de aislamiento
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowImportUnifilarModal(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              <Import size={18} />
+              Crear tablero desde unifilar
             </button>
 
             <button
@@ -517,6 +528,13 @@ const BoardDashboardPage = () => {
       <ImportInsulationsModal
         isOpen={showImportInsulationsModal}
         onClose={() => setShowImportInsulationsModal(false)}
+        companies={companies}
+        onSuccess={refreshBoards}
+      />
+
+      <ImportUnifilarBoardModal
+        isOpen={showImportUnifilarModal}
+        onClose={() => setShowImportUnifilarModal(false)}
         companies={companies}
         onSuccess={refreshBoards}
       />

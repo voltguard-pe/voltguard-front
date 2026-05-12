@@ -29,6 +29,7 @@ import DashboardRouter from './routes/DashboardRouter'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRouter'
 import BoardDetailPage from './pages/dashboard/board/BoardDetailPage'
+import DocumentDashboardPage from './pages/dashboard/document/DocumentDashboardPage'
 
 function App() {
   return (
@@ -75,6 +76,10 @@ function App() {
                 <Route path="companies" element={<CompaniesDashboardPages />} />
                 <Route path="companies/create" element={<CompaniesCreatePage />} />
                 <Route path="companies/:publicCode/edit" element={<CompaniesEditPage />} />
+
+                <Route path="documents" element={<DocumentDashboardPage />} />
+                {/* <Route path="documents/create" element={<CompaniesCreatePage />} />
+                <Route path="documents/:publicCode/edit" element={<CompaniesEditPage />} /> */}
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>

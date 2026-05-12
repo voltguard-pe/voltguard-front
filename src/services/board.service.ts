@@ -68,6 +68,15 @@ export const createBoard = async (data: BoardCreateDTO) => {
     formData.append("termografia", file)
   );
 
+  // 📄 documentos técnicos
+  data.certificadosMantenimiento?.forEach((file) =>
+    formData.append("certificadosMantenimiento", file)
+  );
+
+  data.certificadosOperatividad?.forEach((file) =>
+    formData.append("certificadosOperatividad", file)
+  );
+
   const res = await clientAxios.post("/board", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
@@ -156,6 +165,21 @@ export const updateBoard = async (
     );
 
   // =========================
+  // 📦 EXISTING DOCUMENTS
+  // =========================
+  if (data.existingCertificadosMantenimiento)
+    formData.append(
+      "existingCertificadosMantenimiento",
+      JSON.stringify(data.existingCertificadosMantenimiento)
+    );
+
+  if (data.existingCertificadosOperatividad)
+    formData.append(
+      "existingCertificadosOperatividad",
+      JSON.stringify(data.existingCertificadosOperatividad)
+    );
+
+  // =========================
   // 🖼 NUEVAS IMÁGENES
   // =========================
   data.unifilar?.forEach((file) =>
@@ -168,6 +192,17 @@ export const updateBoard = async (
 
   data.termografia?.forEach((file) =>
     formData.append("termografia", file)
+  );
+
+  // =========================
+  // 📄 NUEVOS DOCUMENTOS
+  // =========================
+  data.certificadosMantenimiento?.forEach((file) =>
+    formData.append("certificadosMantenimiento", file)
+  );
+
+  data.certificadosOperatividad?.forEach((file) =>
+    formData.append("certificadosOperatividad", file)
   );
 
   const res = await clientAxios.put(

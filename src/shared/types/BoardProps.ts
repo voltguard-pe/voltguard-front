@@ -160,6 +160,9 @@ export interface BoardCreateDTO {
   tablero?: File[];
   unifilar?: File[];
   termografia?: File[];
+
+  certificadosMantenimiento?: File[];
+  certificadosOperatividad?: File[];
 }
 
 // =========================
@@ -189,6 +192,21 @@ export interface BoardUpdateDTO {
   unifilar?: File[];
   tablero?: File[];
   termografia?: File[];
+
+  certificadosMantenimiento?: File[];
+  certificadosOperatividad?: File[];
+
+  existingCertificadosMantenimiento?: {
+    url: string;
+    public_id: string;
+    originalName: string;
+  }[];
+
+  existingCertificadosOperatividad?: {
+    url: string;
+    public_id: string;
+    originalName: string;
+  }[];
 }
 
 // =========================

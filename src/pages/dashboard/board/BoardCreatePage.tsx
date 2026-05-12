@@ -30,6 +30,10 @@ const initialValues: BoardFormValues = {
   existingUnifilar: [],
   existingTablero: [],
   existingTermografia: [],
+  certificadosMantenimiento: [],
+  certificadosOperatividad: [],
+  existingCertificadosMantenimiento: [],
+  existingCertificadosOperatividad: [],
 };
 
 const CreateBoardPage = () => {

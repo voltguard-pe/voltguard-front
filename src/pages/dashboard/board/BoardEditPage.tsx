@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
-import type { InsulationMeasurementRecord } from "../../../shared/types/BoardProps";
 
 import { getBoardByCode, updateBoard } from "../../../services/board.service";
 
@@ -39,9 +38,13 @@ const initialValues: BoardFormValues = {
   unifilar: [],
   tablero: [],
   termografia: [],
+  certificadosMantenimiento: [],
+  certificadosOperatividad: [],
   existingUnifilar: [],
   existingTablero: [],
   existingTermografia: [],
+  existingCertificadosMantenimiento: [],
+  existingCertificadosOperatividad: [],
 };
 
 const initialInsulationValues: InsulationManualPayload = {
@@ -107,6 +110,10 @@ const EditBoardPage = () => {
           unifilar: [],
           tablero: [],
           termografia: [],
+          certificadosMantenimiento: [],
+          certificadosOperatividad: [],
+          existingCertificadosMantenimiento: [],
+          existingCertificadosOperatividad: [],
           existingUnifilar: boardData.images?.unifilar || [],
           existingTablero: boardData.images?.tablero || [],
           existingTermografia: boardData.images?.termografia || [],

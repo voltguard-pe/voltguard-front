@@ -15,19 +15,13 @@ import { useNavigate, useParams } from "react-router-dom";
 
 import { getBoardByCode } from "../../../services/board.service";
 import type {
-  BoardResponseDTO,
-  InsulationMeasurementRow,
+  BoardResponseDTO
 } from "../../../shared/types/BoardProps";
 
 const value = (data: unknown) =>
   data === null || data === undefined || data === "" ? "-" : String(data);
 
 const bool = (data?: boolean) => (data ? "Sí" : "No");
-
-const formatMeasurement = (data: number | null | undefined) => {
-  if (data === null || data === undefined) return "-";
-  return String(data);
-};
 
 const formatMeasurementWithUnit = (
   data: number | null | undefined,
@@ -43,18 +37,6 @@ const formatMeasurementWithUnit = (
 //   if (status === "FAILED") return "Fallido";
 //   return value(status);
 // };
-
-const getStatusClasses = (status?: string) => {
-  if (status === "CONFIRMED") {
-    return "bg-green-100 text-green-800";
-  }
-
-  if (status === "FAILED") {
-    return "bg-red-100 text-red-800";
-  }
-
-  return "bg-yellow-100 text-yellow-800";
-};
 
 const BoardDetailPage = () => {
   const navigate = useNavigate();

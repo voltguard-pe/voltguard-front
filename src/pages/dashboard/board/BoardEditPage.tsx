@@ -45,6 +45,7 @@ const initialValues: BoardFormValues = {
 };
 
 const initialInsulationValues: InsulationManualPayload = {
+  description: "Barras generales",
   measurement_l1_g: null,
   measurement_l2_g: null,
   measurement_l3_g: null,
@@ -120,6 +121,7 @@ const EditBoardPage = () => {
         const latestRow = latestInsulation?.rows?.[0];
 
         setInsulationValues({
+          description: latestRow?.description || "Barras generales",
           measurement_l1_g: latestRow?.measurement_l1_g ?? null,
           measurement_l2_g: latestRow?.measurement_l2_g ?? null,
           measurement_l3_g: latestRow?.measurement_l3_g ?? null,
@@ -211,6 +213,14 @@ const EditBoardPage = () => {
     key: keyof InsulationManualPayload,
     value: string
   ) => {
+    if (key === "description") {
+      setInsulationValues((prev) => ({
+        ...prev,
+        description: value,
+      }));
+      return;
+    }
+
     if (key === "measurement_l3_g" && isMonofasicBoard) {
       setInsulationValues((prev) => ({
         ...prev,
@@ -236,6 +246,7 @@ const EditBoardPage = () => {
       setSavingInsulation(true);
 
       const payload: InsulationManualPayload = {
+        description: insulationValues.description,
         measurement_l1_g: insulationValues.measurement_l1_g,
         measurement_l2_g: insulationValues.measurement_l2_g,
         measurement_l3_g: isMonofasicBoard
@@ -254,10 +265,10 @@ const EditBoardPage = () => {
 
         const updatedMeasurements = hasInsulationMeasurement
           ? previousMeasurements.map((measurement, index) =>
-              index === previousMeasurements.length - 1
-                ? response.data.measurement
-                : measurement
-            )
+            index === previousMeasurements.length - 1
+              ? response.data.measurement
+              : measurement
+          )
           : [...previousMeasurements, response.data.measurement];
 
         return {
@@ -275,7 +286,7 @@ const EditBoardPage = () => {
       console.error(error);
       toast.error(
         error?.response?.data?.message ||
-          "Error guardando mediciones de aislamiento"
+        "Error guardando mediciones de aislamiento"
       );
     } finally {
       setSavingInsulation(false);
@@ -299,9 +310,9 @@ const EditBoardPage = () => {
       setBoard((prev) =>
         prev
           ? {
-              ...prev,
-              insulationMeasurements: [],
-            }
+            ...prev,
+            insulationMeasurements: [],
+          }
           : prev
       );
 
@@ -312,7 +323,7 @@ const EditBoardPage = () => {
       console.error(error);
       toast.error(
         error?.response?.data?.message ||
-          "Error eliminando mediciones de aislamiento"
+        "Error eliminando mediciones de aislamiento"
       );
     } finally {
       setDeletingInsulation(false);

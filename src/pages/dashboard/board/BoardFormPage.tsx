@@ -249,14 +249,21 @@ const BoardForm = ({
           )}
         </div>
 
-        <div className="mb-5 rounded-2xl bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+        <div className="mb-5">
+          <label className="text-sm font-semibold text-slate-700">
             Descripción
-          </p>
+          </label>
 
-          <p className="mt-1 text-sm font-semibold text-slate-800">
-            Barras generales
-          </p>
+          <input
+            type="text"
+            value={insulationValues.description}
+            onChange={(event) =>
+              onInsulationChange("description", event.target.value)
+            }
+            disabled={savingInsulation || deletingInsulation}
+            className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-[#0797d5] disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400"
+            placeholder="Ej. Barras generales"
+          />
         </div>
 
         <div className="grid gap-5 md:grid-cols-3">

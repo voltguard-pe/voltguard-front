@@ -2,8 +2,7 @@ import clientAxios from "../shared/config/clientAxios";
 
 import type {
     InsulationMeasurementRecord,
-    InsulationMeasurementRow,
-    InsulationStatus,
+    InsulationMeasurementRow
 } from "../shared/types/BoardProps";
 
 export interface InsulationValidationBoard {

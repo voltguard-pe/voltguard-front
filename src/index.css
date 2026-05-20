@@ -17,3 +17,34 @@ input[type="password"]::-webkit-credentials-auto-fill-button {
   pointer-events: none;
   position: absolute;
 }
+
+
+.logo-build {
+  animation: buildLogo 1.8s ease-in-out infinite;
+}
+
+@keyframes buildLogo {
+  0% {
+    clip-path: inset(100% 0 0 0);
+    opacity: 0;
+    transform: scale(0.96);
+  }
+
+  45% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  70% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}

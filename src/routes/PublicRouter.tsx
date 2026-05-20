@@ -1,19 +1,21 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useSearchParams } from "react-router-dom";
 import { useAuth } from "../shared/hooks/useAuth";
 
 const PublicRoute = () => {
   const { auth, loading } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  if (loading) {
-    return (
-            <div className="min-h-screen flex items-center justify-center">
-      <span className="text-slate-400">Cargando sesión…</span>
-    </div>
-    )
-  };
+  const redirectParam = searchParams.get("redirect");
+
+  const redirect =
+    redirectParam && redirectParam.startsWith("/")
+      ? redirectParam
+      : "/dashboard";
+
+  if (loading) return null;
 
   if (auth) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={redirect} replace />;
   }
 
   return <Outlet />;

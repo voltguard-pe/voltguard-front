@@ -1,12 +1,14 @@
 import { createContext, useEffect, useState } from "react";
-import { logout } from "../services/auth.service";
-import { getProfile } from "../services/auth.service";
+import { useNavigate } from "react-router-dom";
+
+import { logout, getProfile } from "../services/auth.service";
 import type { UserProps } from "../shared/types/UserProps";
 
 interface AuthContextType {
   auth: UserProps | null;
-  setAuth: (auth: UserProps | null) => void
+  setAuth: (auth: UserProps | null) => void;
   loading: boolean;
+  isLoggingOut: boolean;
   handleLogout: () => Promise<void>;
 }
 
@@ -15,35 +17,46 @@ const AuthContext = createContext<AuthContextType>({} as AuthContextType);
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [auth, setAuth] = useState<UserProps | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const authentication = async () => {
       try {
-        const user = await getProfile()
-        setAuth(user)
+        const user = await getProfile();
+        setAuth(user);
       } catch {
-        setAuth(null)
+        setAuth(null);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    authentication()
-  }, [])
+    authentication();
+  }, []);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
+
     try {
-      await logout()
+      await logout();
     } catch (error) {
       console.error("Error al cerrar sesión", error);
     } finally {
-      setAuth(null)
+      navigate("/", {
+        replace: true,
+      });
+
+      setAuth(null);
+      setIsLoggingOut(false);
+
     }
-  }
+  };
 
   return (
     <AuthContext.Provider
-      value={{ auth, setAuth, loading, handleLogout }}
+      value={{ auth, setAuth, loading, isLoggingOut, handleLogout }}
     >
       {children}
     </AuthContext.Provider>
@@ -51,4 +64,3 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 export { AuthContext, AuthProvider };
-

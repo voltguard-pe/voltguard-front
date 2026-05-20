@@ -1,6 +1,6 @@
 import { AlertCircle, KeyRound, Loader2, Mail } from "lucide-react";
 import { useState } from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
 
 import { getProfile, login, type LoginData } from "../../services/auth.service";
 import Input from "../../shared/components/Input";
@@ -9,6 +9,15 @@ import { useAuth } from "../../shared/hooks/useAuth";
 const LoginPage = () => {
   const { setAuth } = useAuth();
   const navigate = useNavigate();
+
+  const [searchParams] = useSearchParams();
+
+  const redirectParam = searchParams.get("redirect");
+
+  const redirect =
+    redirectParam && redirectParam.startsWith("/")
+      ? redirectParam
+      : "/dashboard";
 
   const [formData, setFormData] = useState<LoginData>({
     email: "",
@@ -39,7 +48,9 @@ const LoginPage = () => {
       const user = await getProfile();
 
       setAuth(user);
-      navigate("/dashboard");
+      navigate(redirect, {
+        replace: true,
+      });
     } catch (error) {
       console.error(error);
       setErrorMessage("Credenciales incorrectas o error al iniciar sesión.");

@@ -42,8 +42,8 @@ export type BoardFormValues = {
   tensionNominal?: number;
   numeroFases?: number;
   incluyeNeutro: boolean;
-  sistema?: "MONOFASICO" | "TRIFASICO";
-  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+  sistema?: "MONOFÁSICO" | "TRIFÁSICO";
+  estadoGeneral?: "OPERATIVO" | "OBSERVACIÓN" | "CRÍTICO";
   location: string;
   description: string;
   company: string;
@@ -499,45 +499,45 @@ const BoardForm = ({
           <Select
             label="Sistema eléctrico"
             value={values.sistema || ""}
-            onChange={(e) =>
+            onChange={(value) =>
               onChange(
                 "sistema",
-                e.target.value
-                  ? (e.target.value as "MONOFASICO" | "TRIFASICO")
+                value
+                  ? (value as "MONOFÁSICO" | "TRIFÁSICO")
                   : undefined
               )
             }
             options={[
-              { label: "Monofásico", value: "MONOFASICO" },
-              { label: "Trifásico", value: "TRIFASICO" },
+              { label: "Monofásico", value: "MONOFÁSICO" },
+              { label: "Trifásico", value: "TRIFÁSICO" },
             ]}
           />
 
           <Select
             label="Estado general"
             value={values.estadoGeneral || ""}
-            onChange={(e) =>
+            onChange={(value) =>
               onChange(
                 "estadoGeneral",
-                e.target.value
-                  ? (e.target.value as "OPERATIVO" | "OBSERVACION" | "CRITICO")
+                value
+                  ? (value as "OPERATIVO" | "OBSERVACIÓN" | "CRÍTICO")
                   : undefined
               )
             }
             options={[
               { label: "Operativo", value: "OPERATIVO" },
-              { label: "Observación", value: "OBSERVACION" },
-              { label: "Crítico", value: "CRITICO" },
+              { label: "Observación", value: "OBSERVACIÓN" },
+              { label: "Crítico", value: "CRÍTICO" },
             ]}
           />
 
           <Select
             label="Empresa responsable"
-            value={values.company}
+            value={values.company || ""}
             required
             error={errors.company}
             disabled={isEdit}
-            onChange={(e) => onChange("company", e.target.value)}
+            onChange={(value) => onChange("company", value)}
             options={companies.map((company) => ({
               label: company.name,
               value: company.publicCode,

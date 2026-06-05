@@ -1,6 +1,5 @@
 import {
   Building2,
-  ChevronDown,
   Eye,
   FileDown,
   Import,
@@ -34,6 +33,7 @@ import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
 import ImportUnifilarBoardModal from "../../../components/dashboard/modals/ImportUnifilarBoardModal";
+import Select from "../../../shared/components/Select";
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
@@ -189,13 +189,17 @@ const BoardDashboardPage = () => {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center">
+      
+      {/* ── ENCABEZADO Y ACCIONES GENERALES ── */}
+      <div 
+        style={{ animation: "fadeUp 0.4s ease both" }}
+        className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center"
+      >
         <div>
-          <h1 className="text-2xl font-bold text-slate-950">
+          <h1 className="text-2xl font-black text-slate-950 tracking-tight">
             Gestionar tableros
           </h1>
-
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-slate-500">
             {auth?.role === "ADMIN"
               ? "Visualiza los tableros eléctricos asociados a tu empresa."
               : "Selecciona una empresa para administrar sus tableros eléctricos."}
@@ -203,38 +207,38 @@ const BoardDashboardPage = () => {
         </div>
 
         {auth?.role === "SUPERADMIN" && (
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
+          <div className="flex flex-col gap-2.5 md:flex-row md:items-center">
             <button
               type="button"
               onClick={() => setShowImportInsulationsModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
             >
-              <Import size={18} />
+              <Import size={15} />
               Importar mediciones de aislamiento
             </button>
 
             <button
               type="button"
               onClick={() => setShowImportUnifilarModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
             >
-              <Import size={18} />
+              <Import size={15} />
               Crear tablero desde unifilar
             </button>
 
             <button
               onClick={() => setShowImportModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
             >
-              <Import size={18} />
+              <Import size={15} />
               Importar tableros
             </button>
 
             <button
               onClick={() => navigate("/dashboard/boards/create")}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-4 py-2.5 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer"
             >
-              <Plus size={18} />
+              <Plus size={15} />
               Nuevo tablero
             </button>
           </div>
@@ -244,230 +248,189 @@ const BoardDashboardPage = () => {
           <button
             type="button"
             onClick={() => setShowQR(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-2.5 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer"
           >
-            <QrCode size={18} />
+            <QrCode size={16} />
             Ver QR empresa
           </button>
         )}
       </div>
 
+      {/* ── MINI INDICADORES (CASCADA) ── */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total tableros</p>
-              <h3 className="mt-2 text-3xl font-bold text-slate-950">
-                {boards.length}
-              </h3>
+        {[
+          { title: "Total tableros", value: boards.length, icon: Zap, bg: "bg-[#0797d5]/10 text-[#0797d5]", delay: "40ms" },
+          { title: "Con ubicación", value: boards.filter(b => b.location).length, icon: MapPin, bg: "bg-[#8ccf2f]/15 text-[#3aaa35]", delay: "80ms" },
+          { title: "Resultados visibles", value: filteredBoards.length, icon: Search, bg: "bg-slate-100 text-slate-700", delay: "120ms" },
+          { 
+            title: "Empresa actual", 
+            value: selectedCompany?.name || (auth?.role === "ADMIN" ? "Mi empresa" : "No seleccionada"), 
+            icon: Building2, 
+            bg: "bg-slate-100 text-slate-700", 
+            delay: "160ms",
+            isTruncate: true 
+          }
+        ].map((card, i) => {
+          const CardIcon = card.icon;
+          return (
+            <div 
+              key={i}
+              style={{ animation: "fadeUp 0.4s ease both", animationDelay: card.delay }}
+              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-slate-500">{card.title}</p>
+                  <h3 className={`mt-1.5 font-black text-slate-950 tracking-tight ${card.isTruncate ? "text-base truncate" : "text-2xl"}`}>
+                    {card.value}
+                  </h3>
+                </div>
+                <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${card.bg}`}>
+                  <CardIcon size={20} />
+                </div>
+              </div>
             </div>
-
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
-              <Zap size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Con ubicación</p>
-              <h3 className="mt-2 text-3xl font-bold text-slate-950">
-                {boards.filter((board) => board.location).length}
-              </h3>
-            </div>
-
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
-              <MapPin size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Resultados visibles</p>
-              <h3 className="mt-2 text-3xl font-bold text-slate-950">
-                {filteredBoards.length}
-              </h3>
-            </div>
-
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-              <Search size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Empresa actual</p>
-              <h3 className="mt-2 truncate text-xl font-bold text-slate-950">
-                {selectedCompany?.name ||
-                  (auth?.role === "ADMIN" ? "Mi empresa" : "No seleccionada")}
-              </h3>
-            </div>
-
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-              <Building2 size={24} />
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
+      {/* ── FILTROS SUPERADMIN ── */}
       {auth?.role === "SUPERADMIN" && (
-        <div className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between">
-          <div className="w-full">
-            <label className="text-sm font-semibold text-slate-700">
-              Empresa
-            </label>
-
-            <div className="relative mt-2">
-              <select
-                className="w-full appearance-none rounded-2xl border border-slate-200 bg-white px-4 py-3 pr-10 text-sm text-slate-700 outline-none transition focus:border-[#0797d5] md:max-w-md"
-                value={selectedCompany?.publicCode || ""}
-                onChange={(event) => handleSelectCompany(event.target.value)}
-                disabled={loadingCompanies}
-              >
-                <option value="">
-                  {loadingCompanies
-                    ? "Cargando empresas..."
-                    : "Seleccionar empresa"}
-                </option>
-
-                {companies.map((company) => (
-                  <option key={company.publicCode} value={company.publicCode}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-
-              <ChevronDown
-                size={18}
-                className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 md:left-[392px] md:right-auto"
-              />
-            </div>
+        <div 
+          style={{ animation: "fadeUp 0.4s ease 200ms both" }}
+          className="relative z-20 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between"
+        >
+          <div className="w-full lg:max-w-md">
+            <Select
+              label="Empresa"
+              value={selectedCompany?.publicCode || ""}
+              onChange={(value) => handleSelectCompany(value)}
+              disabled={loadingCompanies}
+              placeholder={loadingCompanies ? "Cargando empresas..." : "Seleccionar empresa"}
+              options={companies.map((company) => ({
+                label: company.name,
+                value: company.publicCode,
+              }))}
+            />
           </div>
 
-          <div className="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:max-w-md">
+          <div className="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 md:max-w-md">
             <Search size={18} className="text-slate-400" />
-
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar por nombre, código o ubicación..."
-              className="w-full bg-transparent text-sm outline-none"
+              className="w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
             />
           </div>
         </div>
       )}
 
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      {/* ── TABLA / CONTENEDOR PRINCIPAL ── */}
+      <div 
+        style={{ animation: "fadeUp 0.5s ease 240ms both" }}
+        className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+      >
         {showEmptyCompanyState ? (
-          <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <div className="flex size-16 items-center justify-center rounded-3xl bg-[#0797d5]/10 text-[#0797d5]">
-              <Building2 size={30} />
+          <div className="flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-up" style={{ animationDuration: "350ms" }}>
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+              <Building2 size={26} />
             </div>
-
-            <h3 className="mt-4 text-lg font-bold text-slate-950">
+            <h3 className="mt-4 text-base font-bold text-slate-950">
               Selecciona una empresa
             </h3>
-
-            <p className="mt-1 max-w-md text-sm text-slate-500">
-              Para ver, crear o editar tableros primero debes seleccionar una
-              empresa.
+            <p className="mt-1 max-w-xs text-xs text-slate-500 leading-relaxed">
+              Para ver, crear o editar tableros primero debes seleccionar una empresa en el menú desplegable superior.
             </p>
           </div>
         ) : loadingBoards ? (
-          <div className="space-y-4 p-6">
-            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
-            <div className="h-12 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="space-y-3 p-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-12 animate-pulse rounded-2xl bg-slate-50" />
+            ))}
           </div>
         ) : showNoBoardsState ? (
-          <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-            <div className="flex size-16 items-center justify-center rounded-3xl bg-[#8ccf2f]/15 text-[#3aaa35]">
-              <Zap size={30} />
+          <div className="flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-up" style={{ animationDuration: "350ms" }}>
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
+              <Zap size={26} />
             </div>
-
-            <h3 className="mt-4 text-lg font-bold text-slate-950">
+            <h3 className="mt-4 text-base font-bold text-slate-950">
               No hay tableros registrados
             </h3>
-
-            <p className="mt-1 max-w-md text-sm text-slate-500">
-              Esta empresa todavía no tiene tableros o no hay resultados para la
-              búsqueda actual.
+            <p className="mt-1 max-w-xs text-xs text-slate-500 leading-relaxed">
+              Esta empresa todavía no tiene tableros o no hay resultados coincidentes para la búsqueda actual.
             </p>
-
             {auth?.role === "SUPERADMIN" && (
               <button
                 type="button"
                 onClick={() => navigate("/dashboard/boards/create")}
-                className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3]"
+                className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-[#0797d5] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#087fb3] cursor-pointer"
               >
-                <Plus size={18} />
+                <Plus size={14} />
                 Crear tablero
               </button>
             )}
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="bg-slate-50 text-slate-500">
+            <table className="w-full min-w-[760px] text-left text-sm border-collapse">
+              <thead className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
                 <tr>
-                  <th className="px-5 py-4 font-semibold">Tablero</th>
-                  <th className="px-5 py-4 font-semibold">Código</th>
-                  <th className="px-5 py-4 font-semibold">Ubicación</th>
-                  <th className="px-5 py-4 text-right font-semibold">
-                    Acciones
-                  </th>
+                  <th className="px-6 py-4">Tablero</th>
+                  <th className="px-6 py-4">Código</th>
+                  <th className="px-6 py-4">Ubicación</th>
+                  <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100">
-                {filteredBoards.map((board) => (
-                  <tr key={board.code} className="transition hover:bg-slate-50">
-                    <td className="px-5 py-4">
+              <tbody className="divide-y divide-slate-100 text-sm">
+                {filteredBoards.map((board, index) => (
+                  <tr 
+                    key={board.code} 
+                    style={{ 
+                      animation: "fadeUp 0.35s ease both",
+                      animationDelay: `${index * 30}ms` // Cascada ultra veloz para las filas
+                    }}
+                    className="transition-colors duration-150 hover:bg-slate-50/60"
+                  >
+                    <td className="px-6 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white">
-                          <Zap size={18} />
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0797d5] to-[#8ccf2f] text-white shadow-sm">
+                          <Zap size={16} />
                         </div>
-
                         <div>
-                          <p className="font-semibold text-slate-950">
+                          <p className="font-bold text-slate-950">
                             {board.name}
                           </p>
-
-                          <p className="text-xs text-slate-500">
+                          <p className="text-[11px] text-slate-400 mt-0.5">
                             Tablero eléctrico
                           </p>
                         </div>
                       </div>
                     </td>
 
-                    <td className="px-5 py-4">
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                    <td className="px-6 py-3.5">
+                      <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 tracking-tight">
                         {board.boardCode}
                       </span>
                     </td>
 
-                    <td className="px-5 py-4 text-slate-600">
-                      <div className="flex items-center gap-2">
-                        <MapPin size={16} className="text-slate-400" />
-                        {board.location || "Sin ubicación"}
+                    <td className="px-6 py-3.5 text-slate-600 font-medium">
+                      <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                        <MapPin size={14} className="text-slate-400 shrink-0" />
+                        <span className="truncate max-w-[200px]">{board.location || "Sin ubicación"}</span>
                       </div>
                     </td>
 
-                    <td className="px-5 py-4">
-                      <div className="flex justify-end gap-2">
+                    <td className="px-6 py-3.5">
+                      <div className="flex justify-end gap-1">
                         <button
                           type="button"
                           onClick={() => handleGeneratePDF(board.code)}
-                          className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
+                          className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
                           title="Generar PDF"
                         >
-                          <FileDown size={18} />
+                          <FileDown size={16} />
                         </button>
 
                         <button
@@ -477,10 +440,10 @@ const BoardDashboardPage = () => {
                               `/dashboard/boards/${effectivePublicCode}/${board.code}`
                             )
                           }
-                          className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-[#0797d5]/10 hover:text-[#0797d5]"
+                          className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-[#0797d5]/10 hover:text-[#0797d5] cursor-pointer"
                           title="Ver tablero"
                         >
-                          <Eye size={18} />
+                          <Eye size={16} />
                         </button>
 
                         {auth?.role === "SUPERADMIN" && (
@@ -492,19 +455,19 @@ const BoardDashboardPage = () => {
                                   `/dashboard/boards/${effectivePublicCode}/${board.code}/edit`
                                 )
                               }
-                              className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-[#8ccf2f]/15 hover:text-[#3aaa35]"
+                              className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-[#8ccf2f]/15 hover:text-[#3aaa35] cursor-pointer"
                               title="Editar tablero"
                             >
-                              <Pencil size={18} />
+                              <Pencil size={16} />
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleDelete(board.code)}
-                              className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-100 hover:text-red-700"
+                              className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-600 cursor-pointer"
                               title="Eliminar tablero"
                             >
-                              <Trash2 size={18} />
+                              <Trash2 size={16} />
                             </button>
                           </>
                         )}
@@ -518,6 +481,7 @@ const BoardDashboardPage = () => {
         )}
       </div>
 
+      {/* ── MODALES ── */}
       <ImportBoardsModal
         isOpen={showImportModal}
         onClose={() => setShowImportModal(false)}

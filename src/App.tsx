@@ -30,14 +30,20 @@ import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRouter'
 import BoardDetailPage from './pages/dashboard/board/BoardDetailPage'
 import DocumentDashboardPage from './pages/dashboard/document/DocumentDashboardPage'
+import SuccessStoriesPage from './pages/landing/SuccessStoriesPage'
+import PlansPage from './pages/landing/PlansPage'
+import ScrollToTop from './shared/components/ScrollToTop'
 
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <AuthProvider>
         <Routes>
           <Route path='/' element={<LandingLayout />}>
             <Route index element={<HomePage />} />
+            <Route path="success-stories" element={<SuccessStoriesPage />} />
+            <Route path="plans" element={<PlansPage />} />
           </Route>
 
           <Route element={<PublicRoute />}>

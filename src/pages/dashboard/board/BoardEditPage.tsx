@@ -149,7 +149,7 @@ const EditBoardPage = () => {
   );
 
   const isMonofasicBoard =
-    values.sistema === "MONOFASICO" || Number(values.numeroFases) < 3;
+    values.sistema === "MONOFÁSICO" || Number(values.numeroFases) < 3;
 
   const handleChange = <K extends keyof BoardFormValues>(
     key: K,

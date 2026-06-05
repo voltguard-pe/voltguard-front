@@ -17,7 +17,7 @@ export interface BoardCircuit {
 
   // Campo interno para lógica de mediciones de aislamiento.
   // No es necesario mostrarlo en la tabla de leyenda.
-  tipo?: "MONOFASICO" | "TRIFASICO" | null;
+  tipo?: "MONOFÁSICO" | "TRIFÁSICO" | null;
 }
 
 // =========================
@@ -58,7 +58,7 @@ export interface InsulationCircuitMeasurement {
   descripcion?: string | null;
 
   // Puede venir desde el backend/IA, pero no es obligatorio mostrarlo.
-  tipoCircuito?: "MONOFASICO" | "TRIFASICO" | string | null;
+  tipoCircuito?: "MONOFÁSICO" | "TRIFÁSICO" | string | null;
 
   faseTierra: InsulationPhaseMeasurement[];
 
@@ -111,7 +111,7 @@ export interface BoardResponseDTO {
 
   // Sistema general del tablero.
   // No reemplaza al tipo de cada circuito.
-  sistema?: "MONOFASICO" | "TRIFASICO";
+  sistema?: "MONOFÁSICO" | "TRIFÁSICO";
 
   location: string;
   description: string;
@@ -121,11 +121,16 @@ export interface BoardResponseDTO {
 
   images: BoardImages;
 
+  nfpa?: BoardNfpaData;
+
+  certificadoMantenimiento?: string;
+  certificadoOperatividad?: string;
+
   // Últimos o históricos registros de mediciones de aislamiento.
   // Normalmente el backend puede devolver el último registro como [0].
   insulationMeasurements?: InsulationMeasurementRecord[];
 
-  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+  estadoGeneral?: "OPERATIVO" | "OBSERVACIÓN" | "CRÍTICO";
 
   company: CompanySummaryDTO;
   createdBy: string | UserSummaryDTO;
@@ -146,8 +151,8 @@ export interface BoardCreateDTO {
   numeroFases: number;
   incluyeNeutro: boolean;
 
-  sistema?: "MONOFASICO" | "TRIFASICO";
-  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+  sistema?: "MONOFÁSICO" | "TRIFÁSICO";
+  estadoGeneral?: "OPERATIVO" | "OBSERVACIÓN" | "CRÍTICO";
 
   location?: string;
   description?: string;
@@ -177,8 +182,8 @@ export interface BoardUpdateDTO {
   numeroFases?: number;
   incluyeNeutro?: boolean;
 
-  sistema?: "MONOFASICO" | "TRIFASICO";
-  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+  sistema?: "MONOFÁSICO" | "TRIFÁSICO";
+  estadoGeneral?: "OPERATIVO" | "OBSERVACIÓN" | "CRÍTICO";
 
   location?: string;
   description?: string;
@@ -222,14 +227,14 @@ export interface PublicCompanyBoardsItemDTO {
   numeroFases: number;
   incluyeNeutro: boolean;
 
-  sistema?: "MONOFASICO" | "TRIFASICO";
+  sistema?: "MONOFÁSICO" | "TRIFÁSICO";
 
   location: string;
   description: string;
 
   images: BoardImages;
 
-  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+  estadoGeneral?: "OPERATIVO" | "OBSERVACIÓN" | "CRÍTICO";
 
   createdAt: string;
 }
@@ -249,7 +254,7 @@ export interface PublicBoardByCodeResponseDTO {
 
   // Este campo ya estaba bien aquí.
   // No lo agregues nuevamente.
-  sistema?: "MONOFASICO" | "TRIFASICO";
+  sistema?: "MONOFÁSICO" | "TRIFÁSICO";
 
   location: string;
   description: string;
@@ -261,7 +266,7 @@ export interface PublicBoardByCodeResponseDTO {
   // Para mostrar la tabla debajo de la leyenda en la vista pública/detalle.
   insulationMeasurements?: InsulationMeasurementRecord[];
 
-  estadoGeneral?: "OPERATIVO" | "OBSERVACION" | "CRITICO";
+  estadoGeneral?: "OPERATIVO" | "OBSERVACIÓN" | "CRÍTICO";
 
   createdAt: string;
 
@@ -278,4 +283,22 @@ export interface PublicCompanyBoardsResponseDTO {
   };
 
   boards: PublicCompanyBoardsItemDTO[];
+}
+
+// =========================
+// ⚡ NFPA 70E DATA
+// =========================
+export interface BoardNfpaData {
+  amperajePrincipal: number;
+  tipoInterruptor: string;
+  corrienteCortocircuito: number;
+  distanciaTrabajo: string;
+  distanciaArco: string;
+  energiaIncidente: string;
+  categoriaRiesgo: number;
+  limiteAproximacion: string;
+  distanciaRestringida: string;
+  guantesClase: string;
+  eppRequerido: string[];
+  calculadoPorIA: boolean;
 }

@@ -7,16 +7,30 @@ import {
   Info,
   MapPin,
   X,
-  Zap,
+  Zap
 } from "lucide-react";
 
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getBoardByCode } from "../../../services/board.service";
-import type {
-  BoardResponseDTO
-} from "../../../shared/types/BoardProps";
+import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
+import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+
+const groundingData = [
+  { date: "Ene", ohms: 4.2 },
+  { date: "Feb", ohms: 4.5 },
+  { date: "Mar", ohms: 5.1 },
+  { date: "Abr", ohms: 4.8 },
+  { date: "May", ohms: 6.3 },
+];
+
+const loadChartData = [
+  { fase: "R", carga: 32 },
+  { fase: "S", carga: 34 },
+  { fase: "T", carga: 34 },
+];
 
 const value = (data: unknown) =>
   data === null || data === undefined || data === "" ? "-" : String(data);
@@ -30,13 +44,6 @@ const formatMeasurementWithUnit = (
   if (data === null || data === undefined) return "-";
   return `${data} ${unit}`;
 };
-
-// const getStatusLabel = (status?: string) => {
-//   if (status === "PENDING_REVIEW") return "Pendiente de revisión";
-//   if (status === "CONFIRMED") return "Confirmado";
-//   if (status === "FAILED") return "Fallido";
-//   return value(status);
-// };
 
 const BoardDetailPage = () => {
   const navigate = useNavigate();
@@ -62,13 +69,15 @@ const BoardDetailPage = () => {
     fetchBoard();
   }, [code, publicCode]);
 
-  const renderField = (label: string, data: unknown) => (
-    <div className="rounded-2xl bg-slate-50 p-4">
+  const renderField = (label: string, data: unknown, index: number) => (
+    <div
+      style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${index * 30}ms` }}
+      className="rounded-2xl bg-slate-50 p-4 transition-all hover:bg-slate-100/80"
+    >
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
         {label}
       </p>
-
-      <p className="mt-1 break-words text-sm font-semibold text-slate-800">
+      <p className="mt-1 break-words text-sm font-bold text-slate-800">
         {value(data)}
       </p>
     </div>
@@ -79,23 +88,21 @@ const BoardDetailPage = () => {
     description: string,
     images: string[] = []
   ) => (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
       <div className="mb-5 flex items-center gap-3">
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
-          <ImageIcon size={24} />
+        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#8ccf2f]/12 text-[#3aaa35]">
+          <ImageIcon size={22} />
         </div>
-
         <div>
-          <h2 className="font-bold text-slate-950">{title}</h2>
-          <p className="text-sm text-slate-500">{description}</p>
+          <h2 className="font-bold text-slate-950 text-base tracking-tight">{title}</h2>
+          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
         </div>
       </div>
 
       {images.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
-          <FileImage size={36} className="text-slate-300" />
-
-          <p className="mt-3 text-sm font-semibold text-slate-600">
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+          <FileImage size={32} className="text-slate-300" />
+          <p className="mt-2 text-xs font-bold text-slate-500">
             Sin imágenes registradas
           </p>
         </div>
@@ -106,16 +113,17 @@ const BoardDetailPage = () => {
               key={`${img}-${index}`}
               type="button"
               onClick={() => setSelectedImage(img)}
-              className="group overflow-hidden rounded-3xl border border-slate-200 bg-slate-50 text-left"
+              className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 text-left cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm"
             >
-              <img
-                src={img}
-                alt={`${title} ${index + 1}`}
-                className="h-44 w-full object-cover transition duration-300 group-hover:scale-105"
-              />
-
+              <div className="overflow-hidden h-44 w-full">
+                <img
+                  src={img}
+                  alt={`${title} ${index + 1}`}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+              </div>
               <div className="p-3">
-                <p className="truncate text-xs font-semibold text-slate-600">
+                <p className="truncate text-xs font-bold text-slate-600">
                   Imagen {index + 1}
                 </p>
               </div>
@@ -126,108 +134,225 @@ const BoardDetailPage = () => {
     </section>
   );
 
+  const renderPdfSection = (
+    title: string,
+    description: string,
+    pdfUrl?: string
+  ) => (
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#8ccf2f]/12 text-[#3aaa35]">
+          <FileImage size={22} />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-950 text-base tracking-tight">{title}</h2>
+          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+        </div>
+      </div>
+
+      {!pdfUrl ? (
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+          <FileImage size={32} className="text-slate-300" />
+          <p className="mt-2 text-xs font-bold text-slate-500">
+            Sin documento registrado
+          </p>
+        </div>
+      ) : (
+        <a
+          href={pdfUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20"
+        >
+          <FileImage size={15} />
+          Ver documento PDF
+        </a>
+      )}
+    </section>
+  );
+
+const renderNfpaSection = () => {
+  // Manejo de estado por si el tablero actual no tiene cálculo NFPA70E activo
+  if (!board?.nfpa) {
+    return (
+      <div className="rounded-3xl border border-slate-200 bg-slate-50/50 p-8 text-center text-xs font-semibold text-slate-400">
+        Este tablero no cuenta con parámetros de seguridad NFPA 70E registrados.
+      </div>
+    );
+  }
+
+  const { nfpa } = board;
+
+  return (
+    <section className="overflow-hidden rounded-3xl border border-red-200 bg-white shadow-sm transition-all duration-300 hover:border-red-300">
+      {/* Encabezado PELIGRO */}
+      <div className="bg-red-600 px-6 py-4 flex justify-center text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" />
+        <div className="flex items-center gap-4 relative z-10">
+          <img
+            src="/nfpa70e.png"
+            alt="Voltguard"
+            className="size-15 object-contain"
+          />
+          <p className="text-4xl font-black tracking-wide">PELIGRO</p>
+        </div>
+      </div>
+
+      <div className="p-6">
+        {/* Subencabezado técnico */}
+        <div className="mb-5 border-b pb-4 text-center">
+          <h2 className="text-lg font-black uppercase text-slate-900 tracking-tight">
+            Riesgo de arco eléctrico y electrocución presente
+          </h2>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">
+            Se requiere EPP de acuerdo a categoría calculada por IA
+          </p>
+        </div>
+
+        {/* Rejilla de Parámetros */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Riesgo de Arco Eléctrico */}
+          <div className="rounded-2xl border border-slate-200 p-5 bg-slate-50/30">
+            <h3 className="mb-4 text-sm font-black uppercase text-slate-800 tracking-wider">
+              Riesgo de arco eléctrico
+            </h3>
+            <div className="space-y-3 text-xs font-semibold text-slate-600">
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span>Distancia de arco</span>
+                <strong className="text-slate-900">{nfpa.distanciaArco}</strong>
+              </div>
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span>Energía incidente</span>
+                <strong className="text-slate-900">{nfpa.energiaIncidente}</strong>
+              </div>
+              
+              {/* Badge Dinámico de Categoría */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100">
+                <span className="font-bold text-red-900">Categoría de riesgo</span>
+                <span className="text-3xl font-black text-red-600">{nfpa.categoriaRiesgo}</span>
+              </div>
+              
+              <div className="flex justify-between pt-0.5">
+                <span>Distancia de trabajo</span>
+                <strong className="text-slate-900">{nfpa.distanciaTrabajo}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Riesgo de Electrocución */}
+          <div className="rounded-2xl border border-slate-200 p-5 bg-slate-50/30">
+            <h3 className="mb-4 text-sm font-black uppercase text-slate-800 tracking-wider">
+              Riesgo de electrocución
+            </h3>
+            <div className="space-y-3 text-xs font-semibold text-slate-600">
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span>Tensión</span>
+                <strong className="text-slate-900">{board.tensionNominal || 380} VCA</strong>
+              </div>
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span>Límite de aproximación</span>
+                <strong className="text-slate-900">{nfpa.limiteAproximacion}</strong>
+              </div>
+              <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                <span>Distancia restringida</span>
+                <strong className="text-slate-900">{nfpa.distanciaRestringida}</strong>
+              </div>
+              
+              {/* Detalle de Guantes Dinámico */}
+              <div className="rounded-xl bg-amber-50/70 border border-amber-200/60 p-3">
+                <p className="font-black uppercase text-amber-800 text-[10px] tracking-wider">Guantes</p>
+                <p className="mt-0.5 text-xs font-medium text-slate-700">
+                  {nfpa.guantesClase}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* EPP Requerido (Lista mapeada de cabeza a pies automáticamente) */}
+        <div className="mt-5 rounded-2xl border border-slate-200 p-5 bg-slate-50/20">
+          <h3 className="mb-3 text-sm font-black uppercase text-slate-800 tracking-wider">
+            EPP requerido
+          </h3>
+          <ul className="space-y-2 text-xs font-medium text-slate-600">
+            {nfpa.eppRequerido && nfpa.eppRequerido.map((item, index) => (
+              <li key={index} className="flex gap-2 items-start">
+                <span className="text-red-500 font-bold">•</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Footer Informativo de la etiqueta */}
+        <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between font-medium">
+          <p><strong>Tablero:</strong> {board?.name}</p>
+          <p>
+            <strong>Fecha de cálculo:</strong>{" "}
+            {board.createdAt ? new Date(board.createdAt).toLocaleDateString('es-ES') : "01/01/2026"}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+};
+
   const renderInsulationMeasurements = () => {
     const records = board?.insulationMeasurements ?? [];
     const record = records.length > 0 ? records[records.length - 1] : null;
     const row = record?.rows?.[0];
 
     return (
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="font-semibold">Mediciones de aislamiento</h2>
-            <p className="text-xs text-gray-500">
-              Medición fase-tierra expresada en MΩ
-            </p>
-          </div>
-
-          {/* {record && (
-            <span
-              className={`w-fit rounded px-2 py-1 text-xs ${getStatusClasses(
-                record.status
-              )}`}
-            >
-              {getStatusLabel(record.status)}
-            </span>
-          )} */}
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:border-slate-300">
+        <div className="mb-4">
+          <h2 className="font-bold text-slate-950 text-base">Mediciones de aislamiento</h2>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Medición fase-tierra expresada en MΩ
+          </p>
         </div>
 
         {!row ? (
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-slate-400 font-medium">
             Sin mediciones de aislamiento registradas
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-4 md:hidden">
-              <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm">
-                <p>
-                  <strong>Descripción:</strong>{" "}
-                  {value(row.description || "Barras generales")}
+            <div className="grid grid-cols-1 gap-3 md:hidden">
+              <div className="space-y-2.5 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-xs font-medium text-slate-600">
+                <p className="border-b border-slate-200/60 pb-1.5">
+                  <strong className="text-slate-800">Descripción:</strong> {value(row.description || "Barras generales")}
                 </p>
-
-                <p>
-                  <strong>Fase 1 - Tierra:</strong>{" "}
-                  {formatMeasurementWithUnit(
-                    row.measurement_l1_g,
-                    row.unit || record.unit || "MΩ"
-                  )}
+                <p className="border-b border-slate-200/60 pb-1.5 flex justify-between">
+                  <span>Fase 1 - Tierra:</span>
+                  <strong className="text-slate-900">{formatMeasurementWithUnit(row.measurement_l1_g, row.unit || record.unit || "MΩ")}</strong>
                 </p>
-
-                <p>
-                  <strong>Fase 2 - Tierra:</strong>{" "}
-                  {formatMeasurementWithUnit(
-                    row.measurement_l2_g,
-                    row.unit || record.unit || "MΩ"
-                  )}
+                <p className="border-b border-slate-200/60 pb-1.5 flex justify-between">
+                  <span>Fase 2 - Tierra:</span>
+                  <strong className="text-slate-900">{formatMeasurementWithUnit(row.measurement_l2_g, row.unit || record.unit || "MΩ")}</strong>
                 </p>
-
-                <p>
-                  <strong>Fase 3 - Tierra:</strong>{" "}
-                  {formatMeasurementWithUnit(
-                    row.measurement_l3_g,
-                    row.unit || record.unit || "MΩ"
-                  )}
+                <p className="flex justify-between">
+                  <span>Fase 3 - Tierra:</span>
+                  <strong className="text-slate-900">{formatMeasurementWithUnit(row.measurement_l3_g, row.unit || record.unit || "MΩ")}</strong>
                 </p>
               </div>
             </div>
 
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[720px] border text-sm">
-                <thead className="bg-gray-100">
+            <div className="hidden overflow-x-auto md:block rounded-2xl border border-slate-100">
+              <table className="w-full min-w-[720px] text-xs text-left border-collapse">
+                <thead className="bg-slate-50 font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">
                   <tr>
-                    <th className="border p-2 text-left">Descripción</th>
-                    <th className="border p-2 text-center">Fase 1 - Tierra</th>
-                    <th className="border p-2 text-center">Fase 2 - Tierra</th>
-                    <th className="border p-2 text-center">Fase 3 - Tierra</th>
+                    <th className="p-4 w-2/5">Descripción</th>
+                    <th className="p-4 text-center">Fase 1 - Tierra</th>
+                    <th className="p-4 text-center">Fase 2 - Tierra</th>
+                    <th className="p-4 text-center">Fase 3 - Tierra</th>
                   </tr>
                 </thead>
-
-                <tbody>
-                  <tr>
-                    <td className="border p-2">
-                      {value(row.description || "Barras generales")}
-                    </td>
-
-                    <td className="border p-2 text-center">
-                      {formatMeasurementWithUnit(
-                        row.measurement_l1_g,
-                        row.unit || record.unit || "MΩ"
-                      )}
-                    </td>
-
-                    <td className="border p-2 text-center">
-                      {formatMeasurementWithUnit(
-                        row.measurement_l2_g,
-                        row.unit || record.unit || "MΩ"
-                      )}
-                    </td>
-
-                    <td className="border p-2 text-center">
-                      {formatMeasurementWithUnit(
-                        row.measurement_l3_g,
-                        row.unit || record.unit || "MΩ"
-                      )}
-                    </td>
+                <tbody className="divide-y divide-slate-100 text-slate-700 font-semibold">
+                  <tr className="hover:bg-slate-50/50">
+                    <td className="p-4 text-slate-900 font-bold">{value(row.description || "Barras generales")}</td>
+                    <td className="p-4 text-center text-slate-900">{formatMeasurementWithUnit(row.measurement_l1_g, row.unit || record.unit || "MΩ")}</td>
+                    <td className="p-4 text-center text-slate-900">{formatMeasurementWithUnit(row.measurement_l2_g, row.unit || record.unit || "MΩ")}</td>
+                    <td className="p-4 text-center text-slate-900">{formatMeasurementWithUnit(row.measurement_l3_g, row.unit || record.unit || "MΩ")}</td>
                   </tr>
                 </tbody>
               </table>
@@ -237,6 +362,207 @@ const BoardDetailPage = () => {
       </div>
     );
   };
+
+  const renderGroundingSection = () => (
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#8ccf2f]/12 text-[#3aaa35]">
+          <Zap size={22} />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-950 text-base">Puesta a Tierra</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Sistema de trazabilidad y mediciones PAT</p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        {[
+          { label: "Sistema", val: "PAT Principal", cls: "text-slate-900" },
+          { label: "Última medición", val: "6.3 Ω", cls: "text-slate-900" },
+          { label: "Estado", val: "ÓPTIMO", cls: "text-green-600 font-black" },
+          { label: "Última inspección", val: "01/05/2025", cls: "text-slate-900" }
+        ].map((pat, i) => (
+          <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/60 transition-colors">
+            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{pat.label}</p>
+            <p className={`mt-1.5 text-sm font-bold ${pat.cls}`}>{pat.val}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-4">
+          <h3 className="font-bold text-sm text-slate-900">Gráfica de trazabilidad</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Evolución histórica de resistencia de puesta a tierra</p>
+        </div>
+
+        <div className="h-[280px] w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={groundingData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
+              <Line
+                type="monotone"
+                dataKey="ohms"
+                stroke="#0797d5"
+                strokeWidth={3}
+                dot={{ r: 4, strokeWidth: 2, fill: '#white' }}
+                activeDot={{ r: 6 }}
+                isAnimationActive={true}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-3">
+          <h3 className="font-bold text-sm text-slate-900">Historial de mediciones</h3>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-slate-100">
+          <table className="w-full min-w-[700px] text-xs text-left border-collapse">
+            <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
+              <tr>
+                <th className="p-3">Fecha</th>
+                <th className="p-3">Resistencia</th>
+                <th className="p-3">Técnico</th>
+                <th className="p-3">Estado</th>
+                <th className="p-3">Observación</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+              {[
+                { d: "01/01/2025", o: "4.2 Ω", t: "Juan Pérez", s: "OK", sCls: "text-green-600", obs: "Valores normales" },
+                { d: "01/03/2025", o: "5.1 Ω", t: "Carlos Ruiz", s: "OK", sCls: "text-green-600", obs: "Sin observaciones" },
+                { d: "01/05/2025", o: "6.3 Ω", t: "Miguel Torres", s: "OK", sCls: "text-green-600", obs: "Tendencia estable" }
+              ].map((row, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="p-3 text-slate-900 font-bold">{row.d}</td>
+                  <td className="p-3">{row.o}</td>
+                  <td className="p-3">{row.t}</td>
+                  <td className={`p-3 font-black ${row.sCls}`}>{row.s}</td>
+                  <td className="p-3 text-slate-500 font-medium">{row.obs}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-bold text-sm text-slate-900">Certificado de puesta a tierra</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Documento técnico de validación PAT</p>
+          </div>
+          <a
+            href="/pdfs/certificado-pat.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#0797d5] px-4 py-2.5 text-xs font-bold text-white transition hover:opacity-90"
+          >
+            <FileImage size={15} />
+            Ver certificado PDF
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+
+  const renderLoadPanelSection = () => (
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/12 text-[#0797d5]">
+          <Zap size={22} />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-950 text-base">Cuadro de Carga</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Distribución y análisis de circuitos eléctricos</p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        {[
+          { l: "Circuitos", v: "18", c: "text-slate-900 font-black text-2xl" },
+          { l: "Carga instalada", v: "12.5 kW", c: "text-slate-900 font-black text-2xl" },
+          { l: "Corriente total", v: "58 A", c: "text-slate-900 font-black text-2xl" },
+          { l: "Balance", v: "ÓPTIMO", c: "text-green-600 font-black text-base mt-1" }
+        ].map((box, i) => (
+          <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/60 transition-colors">
+            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{box.l}</p>
+            <p className={`mt-1 tracking-tight ${box.c}`}>{box.v}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-4">
+          <h3 className="font-bold text-sm text-slate-900">Balance de fases</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Distribución porcentual de carga eléctrica</p>
+        </div>
+
+        <div className="h-[280px] rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={loadChartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="fase" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
+              <Bar
+                dataKey="carga"
+                fill="#0797d5"
+                radius={[6, 6, 0, 0]}
+                isAnimationActive={true}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <div className="mb-3">
+          <h3 className="font-bold text-sm text-slate-900">Circuitos del tablero</h3>
+        </div>
+
+        <div className="overflow-x-auto rounded-2xl border border-slate-100">
+          <table className="w-full min-w-[1000px] text-xs text-left border-collapse">
+            <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
+              <tr>
+                <th className="p-3">Circuito</th>
+                <th className="p-3">Descripción</th>
+                <th className="p-3">Interruptor</th>
+                <th className="p-3">Fase</th>
+                <th className="p-3">Tensión</th>
+                <th className="p-3">Potencia</th>
+                <th className="p-3">Corriente</th>
+                <th className="p-3">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+              {[
+                { c: "C1", d: "Iluminación oficinas", i: "20A", f: "R", v: "220V", p: "1.2 kW", a: "5.2 A", e: "OPERATIVO" },
+                { c: "C2", d: "Tomacorrientes", i: "30A", f: "S", v: "220V", p: "2.5 kW", a: "11.4 A", e: "OPERATIVO" },
+                { c: "C3", d: "Aire acondicionado", i: "40A", f: "T", v: "380V", p: "3.8 kW", a: "15.2 A", e: "OPERATIVO" }
+              ].map((row, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="p-3 text-slate-900 font-bold">{row.c}</td>
+                  <td className="p-3 text-slate-900 font-medium">{row.d}</td>
+                  <td className="p-3">{row.i}</td>
+                  <td className="p-3 font-bold text-[#0797d5]">{row.f}</td>
+                  <td className="p-3">{row.v}</td>
+                  <td className="p-3">{row.p}</td>
+                  <td className="p-3">{row.a}</td>
+                  <td className="p-3 text-green-600 font-black">{row.e}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
 
   if (loading) {
     return (
@@ -254,7 +580,7 @@ const BoardDetailPage = () => {
   if (error) {
     return (
       <section className="mx-auto max-w-7xl">
-        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-red-700">
+        <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-red-700 font-bold text-sm">
           {error}
         </div>
       </section>
@@ -264,7 +590,7 @@ const BoardDetailPage = () => {
   if (!board) {
     return (
       <section className="mx-auto max-w-7xl">
-        <div className="rounded-3xl border border-slate-200 bg-white p-6 text-slate-500">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 text-slate-400 font-semibold text-sm">
           No encontrado
         </div>
       </section>
@@ -275,213 +601,173 @@ const BoardDetailPage = () => {
     typeof board.company === "object" ? board.company.name : "Sin empresa";
 
   return (
-    <section className="mx-auto max-w-7xl space-y-6">
-      <button
-        type="button"
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-      >
-        <ArrowLeft size={18} />
-        Volver
-      </button>
+    <>
+      <section className="mx-auto max-w-7xl space-y-6 opacity-0" style={{ animation: "fadeUp 0.5s ease forwards" }}>
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-6 text-white">
-          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-                <Zap size={14} />
-                Tablero eléctrico
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-50 cursor-pointer"
+        >
+          <ArrowLeft size={16} />
+          Volver
+        </button>
+
+        {/* ── SECCIÓN IDENTIFICACIÓN GENERAL ── */}
+        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+          <div className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-6 text-white relative">
+            <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent pointer-events-none" />
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center relative z-10">
+              <div>
+                <div className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
+                  <Zap size={12} />
+                  Tablero eléctrico
+                </div>
+                <h1 className="text-2xl font-black md:text-3xl tracking-tight">{board.name}</h1>
+                <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-white/95">
+                  <Building2 size={15} />
+                  {companyName}
+                </p>
               </div>
 
-              <h1 className="text-2xl font-bold md:text-3xl">{board.name}</h1>
-
-              <p className="mt-2 flex items-center gap-2 text-sm text-white/90">
-                <Building2 size={16} />
-                {companyName}
-              </p>
-            </div>
-
-            <div className="rounded-3xl bg-white/15 p-4 backdrop-blur">
-              <p className="text-xs font-semibold uppercase text-white/80">
-                Código
-              </p>
-
-              <p className="mt-1 text-xl font-bold">
-                {value(board.boardCode)}
-              </p>
+              <div className="rounded-2xl bg-white/15 px-5 py-3.5 backdrop-blur border border-white/10">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">Código</p>
+                <p className="mt-0.5 text-xl font-black tracking-tight">{value(board.boardCode)}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-3xl bg-slate-50 p-5">
-            <MapPin className="text-[#0797d5]" size={24} />
-            <p className="mt-3 text-xs font-semibold uppercase text-slate-400">
-              Ubicación
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
-              {value(board.location)}
-            </p>
-          </div>
-
-          <div className="rounded-3xl bg-slate-50 p-5">
-            <Info className="text-[#0797d5]" size={24} />
-            <p className="mt-3 text-xs font-semibold uppercase text-slate-400">
-              Tipo
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
-              {value(board.type)}
-            </p>
-          </div>
-
-          <div className="rounded-3xl bg-slate-50 p-5">
-            <Zap className="text-[#0797d5]" size={24} />
-            <p className="mt-3 text-xs font-semibold uppercase text-slate-400">
-              Sistema
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
-              {value(board.sistema)}
-            </p>
-          </div>
-
-          <div className="rounded-3xl bg-slate-50 p-5">
-            <CheckCircle2 className="text-[#3aaa35]" size={24} />
-            <p className="mt-3 text-xs font-semibold uppercase text-slate-400">
-              Estado
-            </p>
-            <p className="mt-1 text-sm font-semibold text-slate-800">
-              {value(board.estadoGeneral)}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="mb-4 font-semibold">Información general</h2>
-
-          <div className="space-y-2">
-            {renderField("Código real del tablero", board.boardCode)}
-            {renderField("Nombre", board.name)}
-            {renderField("Tipo", board.type)}
-            {renderField("Sistema", board.sistema)}
-            {renderField("Estado general", board.estadoGeneral)}
-            {renderField("Ubicación", board.location)}
-            {renderField("Descripción", board.description)}
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <h2 className="mb-4 font-semibold">Información eléctrica</h2>
-
-          <div className="space-y-2">
-            {renderField(
-              "Tensión nominal",
-              board.tensionNominal ? `${board.tensionNominal} V` : "-"
-            )}
-            {renderField("Número de fases", board.numeroFases)}
-
-            <div className="rounded-2xl bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Incluye neutro
-              </p>
-
-              <p className="mt-1 break-words text-sm font-semibold text-slate-800">
-                {bool(board.incluyeNeutro)}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-        <h2 className="mb-3 font-semibold">Leyenda</h2>
-
-        {!board.circuits?.length ? (
-          <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
-            Sin circuitos registrados
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 gap-4 md:hidden">
-              {board.circuits.map((c, i) => (
-                <div key={i} className="space-y-1 rounded border p-4 text-sm">
-                  <p>
-                    <strong>Circuito:</strong> {value(c.circuito)}
-                  </p>
-                  <p>
-                    <strong>Descripción:</strong> {value(c.descripcion)}
-                  </p>
+          <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4">
+            {[
+              { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+              { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+              { l: "Sistema", v: board.sistema, icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+              { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
+            ].map((item, i) => {
+              const CardIcon = item.icon;
+              return (
+                <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/50 transition-colors">
+                  <CardIcon className={item.iconCls} size={20} />
+                  <p className="mt-2.5 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{item.l}</p>
+                  <p className={`mt-0.5 text-xs sm:text-sm font-bold truncate ${item.textCls}`}>{value(item.v)}</p>
                 </div>
-              ))}
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Renderizado de bloques modulares */}
+        {renderNfpaSection()}
+        {renderGroundingSection()}
+        {renderLoadPanelSection()}
+
+        {/* ── ESPECIFICACIONES TÉCNICAS (CASCADA COMPACTA) ── */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 font-bold text-slate-950 text-base">Información general</h2>
+            <div className="space-y-2">
+              {renderField("Código real del tablero", board.boardCode, 1)}
+              {renderField("Nombre", board.name, 2)}
+              {renderField("Tipo", board.type, 3)}
+              {renderField("Sistema", board.sistema, 4)}
+              {renderField("Estado general", board.estadoGeneral, 5)}
+              {renderField("Ubicación", board.location, 6)}
+              {renderField("Descripción", board.description, 7)}
             </div>
+          </div>
 
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[720px] border text-sm">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="border p-2 text-left">Circuito</th>
-                    <th className="border p-2 text-left">Descripción</th>
-                  </tr>
-                </thead>
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-4 font-bold text-slate-950 text-base">Información eléctrica</h2>
+            <div className="space-y-2">
+              {renderField("Tensión nominal", board.tensionNominal ? `${board.tensionNominal} V` : "-", 1)}
+              {renderField("Número de fases", board.numeroFases, 2)}
+              <div
+                style={{ animation: "fadeUp 0.4s ease both", animationDelay: "90ms" }}
+                className="rounded-2xl bg-slate-50 p-4"
+              >
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Incluye neutro</p>
+                <p className="mt-1 break-words text-sm font-bold text-slate-800">{bool(board.incluyeNeutro)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-                <tbody>
-                  {board.circuits.map((c, i) => (
-                    <tr key={i}>
-                      <td className="border p-2">{value(c.circuito)}</td>
-                      <td className="border p-2">{value(c.descripcion)}</td>
+        {/* ── LEYENDA TÉCNICA ── */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 font-bold text-slate-950 text-base">Leyenda</h2>
+
+          {!board.circuits?.length ? (
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-xs font-bold text-slate-400 uppercase">
+              Sin circuitos registrados
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-3 md:hidden">
+                {board.circuits.map((c, i) => (
+                  <div key={i} className="space-y-1.5 rounded-2xl border border-slate-200 bg-slate-50/50 p-4 text-xs font-medium text-slate-600">
+                    <p><strong className="text-slate-800">Circuito:</strong> {value(c.circuito)}</p>
+                    <p><strong className="text-slate-800">Descripción:</strong> {value(c.descripcion)}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden overflow-x-auto md:block rounded-2xl border border-slate-100">
+                <table className="w-full min-w-[720px] text-xs text-left border-collapse">
+                  <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
+                    <tr>
+                      <th className="p-3 w-1/4">Circuito</th>
+                      <th className="p-3">Descripción</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                    {board.circuits.map((c, i) => (
+                      <tr key={i} className="hover:bg-slate-50/50">
+                        <td className="p-3 text-slate-900 font-bold">{value(c.circuito)}</td>
+                        <td className="p-3 font-medium">{value(c.descripcion)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
 
-      {renderInsulationMeasurements()}
+        {/* Secciones de imágenes fijas */}
+        {renderInsulationMeasurements()}
+        {renderImageSection("Imágenes del tablero", "Fotografías generales del tablero eléctrico", board.images?.tablero)}
+        {renderImageSection("Diagrama unifilar", "Imágenes del diagrama unifilar registrado", board.images?.unifilar)}
+        {renderImageSection("Termografía", "Imágenes termográficas asociadas al tablero", board.images?.termografia)}
 
-      {renderImageSection(
-        "Imágenes del tablero",
-        "Fotografías generales del tablero eléctrico",
-        board.images?.tablero
-      )}
+        {/* Secciones de descarga PDF de certificados */}
+        {renderPdfSection("Certificado de mantenimiento", "Documento PDF del certificado de mantenimiento", "/pdfs/certificado-mantenimiento.pdf")}
+        {renderPdfSection("Certificado de operatividad", "Documento PDF del certificado de operatividad", "/pdfs/certificado-operatividad.pdf")}
 
-      {renderImageSection(
-        "Diagrama unifilar",
-        "Imágenes del diagrama unifilar registrado",
-        board.images?.unifilar
-      )}
-
-      {renderImageSection(
-        "Termografía",
-        "Imágenes termográficas asociadas al tablero",
-        board.images?.termografia
-      )}
-
+      </section>
+      {/* Visor de imágenes modal integrado con animación limpia de fondo */}
       {selectedImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
-          onClick={() => setSelectedImage(null)}
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 transition-all duration-300 animate-fade-in">
           <button
             type="button"
             onClick={() => setSelectedImage(null)}
-            className="absolute right-5 top-5 flex size-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow"
+            className="absolute right-5 top-5 flex size-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow shadow-black/20 hover:bg-slate-50 cursor-pointer transition-colors z-50"
           >
-            <X size={22} />
+            <X size={20} />
           </button>
 
-          <img
-            src={selectedImage}
-            alt="Vista ampliada"
-            className="max-h-[90vh] max-w-[90vw] rounded-3xl object-contain shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          />
+          <TransformWrapper>
+            <TransformComponent>
+              <img
+                src={selectedImage}
+                alt="Vista ampliada"
+                className="max-h-[85vh] max-w-[85vw] rounded-2xl object-contain shadow-2xl transition-all relative z-40"
+                onClick={(event) => event.stopPropagation()}
+              />
+            </TransformComponent>
+          </TransformWrapper>
         </div>
       )}
-    </section>
+    </>
   );
 };
 

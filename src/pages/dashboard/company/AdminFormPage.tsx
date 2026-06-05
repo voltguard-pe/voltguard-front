@@ -1,14 +1,14 @@
 import {
-    ArrowLeft,
-    Loader2,
-    Mail,
-    Save,
-    ShieldCheck,
-    User,
-    UserPlus
+  ArrowLeft,
+  Loader2,
+  Mail,
+  Save,
+  ShieldCheck,
+  User,
+  UserPlus
 } from "lucide-react";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import Input from "../../../shared/components/Input";
 import Select from "../../../shared/components/Select";
@@ -52,22 +52,19 @@ const AdminFormPage = ({
 }: AdminFormProps) => {
   const isEdit = mode === "edit";
 
-  const [firstname, setFirstname] = useState("");
-  const [lastname, setLastname] = useState("");
-  const [email, setEmail] = useState("");
+  const [firstname, setFirstname] = useState(
+    initialValues?.firstname ?? ""
+  );
+  const [lastname, setLastname] = useState(
+    initialValues?.lastname ?? ""
+  );
+  const [email, setEmail] = useState(
+    initialValues?.email ?? ""
+  );
   const [password, setPassword] = useState("");
-  const [companyPublicCode, setCompanyPublicCode] = useState("");
-
-  useEffect(() => {
-    if (!initialValues) return;
-
-    setFirstname(initialValues.firstname ?? "");
-    setLastname(initialValues.lastname ?? "");
-    setEmail(initialValues.email ?? "");
-    setCompanyPublicCode(
-      initialValues.companyPublicCode ?? ""
-    );
-  }, [initialValues]);
+  const [companyPublicCode, setCompanyPublicCode] = useState(
+    initialValues?.companyPublicCode ?? ""
+  );
 
   const handleSubmit = async (
     event: React.FormEvent<HTMLFormElement>
@@ -164,10 +161,8 @@ const AdminFormPage = ({
             <Select
               label="Empresa"
               value={companyPublicCode}
-              onChange={(e) =>
-                setCompanyPublicCode(
-                  e.target.value
-                )
+              onChange={(value) =>
+                setCompanyPublicCode(value)
               }
               required
               options={companies.map((company) => ({
@@ -212,8 +207,8 @@ const AdminFormPage = ({
                 ? "Actualizando..."
                 : "Creando..."
               : isEdit
-              ? "Actualizar administrador"
-              : "Crear administrador"}
+                ? "Actualizar administrador"
+                : "Crear administrador"}
           </button>
         </div>
       </section>

@@ -16,10 +16,10 @@ const DashboardLayout = () => {
         onClose={() => setIsSidebarOpen(false)}
       />
 
-      <div className="flex min-h-dvh min-w-0 flex-1 flex-col overflow-x-hidden">
+      <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
         <NavbarComponent onOpenSidebar={() => setIsSidebarOpen(true)} />
 
-        <main className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-6 lg:p-8">
+        <main className="min-w-0 flex-1 p-4 md:p-6 lg:p-8">
           <ToastContainer
             position="top-right"
             autoClose={3000}

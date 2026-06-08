@@ -88,13 +88,18 @@ const AdminDashboardPage = () => {
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+      
+      {/* ── ENCABEZADO Y TÍTULO PRINCIPAL ── */}
+      <div 
+        style={{ animation: "fadeUp 0.4s ease both" }}
+        className="flex flex-col justify-between gap-4 md:flex-row md:items-center"
+      >
         <div>
-          <h1 className="text-2xl font-bold text-slate-950">
+          <h1 className="text-2xl font-black text-slate-950 tracking-tight">
             Gestionar usuarios
           </h1>
 
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-slate-500">
             Lista de todos los usuarios registrados en Voltguard.
           </p>
         </div>
@@ -104,85 +109,59 @@ const AdminDashboardPage = () => {
         </button> */}
       </div>
 
+      {/* ── TARJETAS MÉTRICAS (CASCADA FLUDA) ── */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Total usuarios</p>
-              <h3 className="mt-2 text-3xl font-bold text-slate-950">
-                {totalUsers}
-              </h3>
-            </div>
+        {[
+          { title: "Total usuarios", value: totalUsers, icon: Users, bg: "bg-[#8ccf2f]/15 text-[#3aaa35]", delay: "40ms" },
+          { title: "Administradores", value: totalAdmins, icon: UserRoundCog, bg: "bg-[#0797d5]/10 text-[#0797d5]", delay: "80ms" },
+          { title: "Superadmin", value: totalSuperAdmins, icon: ShieldUser, bg: "bg-purple-50 text-purple-700", delay: "120ms" },
+          { title: "Usuarios activos", value: activeUsers, icon: User2, bg: "bg-emerald-50 text-emerald-700", delay: "160ms" }
+        ].map((card, i) => {
+          const CardIcon = card.icon;
+          return (
+            <div
+              key={i}
+              style={{ animation: "fadeUp 0.4s ease both", animationDelay: card.delay }}
+              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">{card.title}</p>
+                  <h3 className="mt-1.5 text-2xl font-black text-slate-950 tracking-tight">
+                    {card.value}
+                  </h3>
+                </div>
 
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
-              <Users size={24} />
+                <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${card.bg}`}>
+                  <CardIcon size={20} />
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Administradores</p>
-              <h3 className="mt-2 text-3xl font-bold text-slate-950">
-                {totalAdmins}
-              </h3>
-            </div>
-
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
-              <UserRoundCog size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Superadmin</p>
-              <h3 className="mt-2 text-3xl font-bold text-slate-950">
-                {totalSuperAdmins}
-              </h3>
-            </div>
-
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-purple-100 text-purple-700">
-              <ShieldUser size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-slate-500">Usuarios activos</p>
-              <h3 className="mt-2 text-3xl font-bold text-slate-950">
-                {activeUsers}
-              </h3>
-            </div>
-
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
-              <User2 size={24} />
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      {/* ── BARRA DE BÚSQUEDA Y FILTRO DE ROL ── */}
+      <div 
+        style={{ animation: "fadeUp 0.4s ease 200ms both" }}
+        className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
+      >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 md:max-w-md">
+          <div className="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 md:max-w-md">
             <Search size={18} className="text-slate-400" />
 
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nombre o email..."
-              className="w-full bg-transparent text-sm outline-none"
+              className="w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
             />
           </div>
 
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 outline-none"
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-xs font-semibold text-slate-600 outline-none transition-all hover:border-slate-300 cursor-pointer"
           >
             <option value="ALL">Todos los roles</option>
             <option value="SUPERADMIN">Superadmin</option>
@@ -192,66 +171,72 @@ const AdminDashboardPage = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      {/* ── CONTENEDOR PRINCIPAL / TABLA ── */}
+      <div 
+        style={{ animation: "fadeUp 0.5s ease 240ms both" }}
+        className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+      >
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
-            <thead className="bg-slate-50 text-slate-500">
+          <table className="w-full min-w-[820px] text-left text-sm border-collapse">
+            <thead className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
               <tr>
-                <th className="px-5 py-4 font-semibold">Usuario</th>
-                <th className="px-5 py-4 font-semibold">Email</th>
-                <th className="px-5 py-4 font-semibold">Rol</th>
-                <th className="px-5 py-4 font-semibold">Estado</th>
-                <th className="px-5 py-4 text-right font-semibold">
-                  Acciones
-                </th>
+                <th className="px-6 py-4">Usuario</th>
+                <th className="px-6 py-4">Email</th>
+                <th className="px-6 py-4">Rol</th>
+                <th className="px-6 py-4">Estado</th>
+                <th className="px-6 py-4 text-right">Acciones</th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-100">
-              {filteredUsers.map((user) => (
+            <tbody className="divide-y divide-slate-100 text-sm">
+              {filteredUsers.map((user, index) => (
                 <tr
                   key={user._id}
-                  className="transition hover:bg-slate-50"
+                  style={{
+                    animation: "fadeUp 0.35s ease both",
+                    animationDelay: `${index * 30}ms` // Renderizado secuencial ultra veloz
+                  }}
+                  className="transition-colors duration-150 hover:bg-slate-50/60"
                 >
-                  <td className="px-5 py-4">
+                  <td className="px-6 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-10 items-center justify-center rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-sm font-bold text-white">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0797d5] to-[#8ccf2f] text-xs font-black text-white shadow-sm uppercase">
                         {user.firstname?.charAt(0)}
                         {user.lastname?.charAt(0)}
                       </div>
 
                       <div>
-                        <p className="font-semibold text-slate-950">
+                        <p className="font-bold text-slate-950">
                           {user.firstname} {user.lastname}
                         </p>
 
-                        <p className="text-xs text-slate-500">
+                        <p className="text-[11px] text-slate-400 mt-0.5">
                           ID: {user._id.slice(0, 8)}
                         </p>
                       </div>
                     </div>
                   </td>
 
-                  <td className="px-5 py-4 text-slate-600">
+                  <td className="px-6 py-3.5 text-slate-600 font-medium">
                     {user.email}
                   </td>
 
-                  <td className="px-5 py-4">
+                  <td className="px-6 py-3.5">
                     <span
-                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
+                      className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-[11px] font-bold ${
                         user.role === "SUPERADMIN"
-                          ? "bg-purple-100 text-purple-700"
+                          ? "bg-purple-50 text-purple-700"
                           : user.role === "ADMIN"
                           ? "bg-[#0797d5]/10 text-[#0797d5]"
                           : "bg-slate-100 text-slate-600"
                       }`}
                     >
                       {user.role === "SUPERADMIN" ? (
-                        <ShieldUser size={15} />
+                        <ShieldUser size={13} />
                       ) : user.role === "ADMIN" ? (
-                        <UserRoundCog size={15} />
+                        <UserRoundCog size={13} />
                       ) : (
-                        <User2 size={15} />
+                        <User2 size={13} />
                       )}
 
                       {user.role === "SUPERADMIN"
@@ -262,28 +247,29 @@ const AdminDashboardPage = () => {
                     </span>
                   </td>
 
-                  <td className="px-5 py-4">
+                  <td className="px-6 py-3.5">
                     <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      className={`inline-flex rounded-xl px-2.5 py-1 text-[11px] font-bold ${
                         user.isActive
                           ? "bg-[#8ccf2f]/15 text-[#3aaa35]"
-                          : "bg-red-100 text-red-700"
+                          : "bg-red-50 text-red-600"
                       }`}
                     >
                       {user.isActive ? "Activo" : "Inactivo"}
                     </span>
                   </td>
 
-                  <td className="px-5 py-4">
+                  <td className="px-6 py-3.5">
                     <div className="flex justify-end">
                       <button
+                        type="button"
                         onClick={() =>
                           navigate(`/dashboard/users/${user._id}`)
                         }
-                        className="flex size-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-[#0797d5]/10 hover:text-[#0797d5]"
+                        className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-[#0797d5]/10 hover:text-[#0797d5] cursor-pointer"
                         title="Ver usuario"
                       >
-                        <Eye size={18} />
+                        <Eye size={16} />
                       </button>
                     </div>
                   </td>
@@ -294,7 +280,7 @@ const AdminDashboardPage = () => {
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-5 py-12 text-center text-slate-500"
+                    className="px-6 py-16 text-center text-xs font-medium text-slate-500"
                   >
                     No se encontraron usuarios.
                   </td>

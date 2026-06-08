@@ -280,3 +280,49 @@ export const uploadFile = async (
 
   return res.data;
 };
+
+// =========================
+// 🔗 ASSIGN DOCUMENTS TO BOARD
+// =========================
+// export const assignDocumentsToBoard = async (
+//   publicCode: string,
+//   code: string,
+//   documentIds: string[]
+// ): Promise<{ message: string; assignedDocuments: DocumentResponseDTO[] }> => {
+//   const res = await clientAxios.put(
+//     `/board/${publicCode}/${code}/assign-documents`, 
+//     { documentIds }
+//   );
+//   return res.data;
+// };
+
+
+// =========================
+// 🚀 ASIGNACIÓN MASIVA DE UN DOCUMENTO A MÚLTIPLES TABLEROS
+// =========================
+export const assignSingleDocumentToMultipleBoards = async (
+  publicCode: string,
+  boardCodes: string[], // Array de UUIDs de los tableros seleccionados
+  documentId: string
+): Promise<void> => {
+  
+  // Mapeamos cada tablero para meterle el documento sin borrar los que ya tiene
+  const promises = boardCodes.map(async (code) => {
+    // 1. Primero obtenemos el tablero actual para no pisar/borrar sus otros documentos asignados
+    const resGet = await clientAxios.get(`/board/${publicCode}/${code}`);
+    const currentAssignedIds: string[] = resGet.data.assignedDocuments?.map((d: any) => d._id) || [];
+    
+    // 2. Si el documento no está en el array, lo agregamos
+    if (!currentAssignedIds.includes(documentId)) {
+      currentAssignedIds.push(documentId);
+    }
+    
+    // 3. Guardamos la nueva lista en el tablero
+    return clientAxios.put(`/board/${publicCode}/${code}/assign-documents`, {
+      documentIds: currentAssignedIds,
+    });
+  });
+
+  // Ejecuta todas las asignaciones en paralelo en el cliente
+  await Promise.all(promises);
+};

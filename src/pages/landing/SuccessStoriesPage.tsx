@@ -1,31 +1,26 @@
-import { useEffect, useRef, useState } from "react";
 import {
     ArrowRight,
     Award,
-    BarChart3,
     Building2,
     CheckCircle2,
     FileText,
     GraduationCap,
     HeartPulse,
-    Landmark,
     Quote,
-    ShieldCheck,
     Star,
     Truck,
-    TrendingUp,
-    Users,
-    Zap,
+    Zap
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
-import sikaLogo from "/companies_logo/sika.webp";
-import volvoLogo from "/companies_logo/volvo.webp";
 import inenLogo from "/companies_logo/inen.webp";
 import recoletaLogo from "/companies_logo/recoleta.webp";
 import safeplaceLogo from "/companies_logo/safeplace.webp";
+import sikaLogo from "/companies_logo/sika.webp";
+import volvoLogo from "/companies_logo/volvo.webp";
 interface Metric {
     label: string;
     value: string;

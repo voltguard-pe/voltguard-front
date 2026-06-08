@@ -151,7 +151,7 @@ const RegisterPage = () => {
           label="Código Público de Empresa (Opcional)"
           type="text"
           name="companyPublicCode"
-          value={formData.companyPublicCode}
+          value={formData.companyPublicCode || ""}
           onChange={handleChange}
           placeholder="EJ: VOLT-LURIN-2026"
           icon={Building2}

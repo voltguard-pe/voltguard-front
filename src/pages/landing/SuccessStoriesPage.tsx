@@ -21,6 +21,11 @@ import { useNavigate } from "react-router-dom";
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
 
+import sikaLogo from "/companies_logo/sika.webp";
+import volvoLogo from "/companies_logo/volvo.webp";
+import inenLogo from "/companies_logo/inen.webp";
+import recoletaLogo from "/companies_logo/recoleta.webp";
+import safeplaceLogo from "/companies_logo/safeplace.webp";
 interface Metric {
     label: string;
     value: string;
@@ -30,6 +35,7 @@ interface Metric {
 interface Story {
     id: string;
     company: string;
+    logo: string;
     sector: string;
     sectorIcon: React.ElementType;
     sectorColor: string;
@@ -70,179 +76,239 @@ function useInViewRepeatable(threshold = 0.12) {
 const stories: Story[] = [
     {
         id: "sika",
-        company: "SIKA",
+        company: "SIKA Perú",
+        logo: sikaLogo,
         sector: "Industria",
         sectorIcon: Building2,
         sectorColor: "text-orange-600",
-        tagline: "Control eléctrico industrial centralizado en una sola plataforma",
+
+        tagline:
+            "Inspección y evaluación técnica de tableros eléctricos industriales",
+
         challenge:
-            "SIKA operaba más de 80 tableros distribuidos en tres plantas de producción sin visibilidad unificada, con registros en papel y sin alertas de mantenimiento preventivo.",
+            "SIKA requería conocer el estado actual de sus tableros eléctricos en áreas de producción para identificar posibles riesgos y oportunidades de mejora.",
+
         solution:
-            "Implementaron Voltguard para centralizar la gestión de sus tableros, digitalizar certificaciones y programar mantenimientos automáticos con alertas por rol.",
+            "Se realizó la inspección técnica de los tableros, verificando componentes, protecciones, condiciones de operación y levantando observaciones para su posterior corrección.",
+
         quote:
-            "Voltguard nos dio visibilidad total sobre nuestros activos eléctricos. Lo que antes nos tomaba días de auditoría ahora lo vemos en segundos.",
-        quoteAuthor: "Carlos Mendoza",
-        quoteRole: "Gerente de Infraestructura — SIKA Perú",
-        year: "2023",
+            "El informe nos permitió identificar puntos críticos y priorizar las mejoras necesarias para nuestras instalaciones.",
+
+        quoteAuthor: "Equipo de Mantenimiento",
+
+        quoteRole: "SIKA Perú",
+
+        year: "2024",
+
         accentColor: "#f97316",
+
         bgAccent: "bg-orange-50",
+
         metrics: [
-            { label: "Tableros gestionados", value: "86", icon: Zap },
-            { label: "Reducción de incidencias", value: "64%", icon: TrendingUp },
-            { label: "Ahorro en auditorías", value: "70%", icon: BarChart3 },
-            { label: "Usuarios activos", value: "24", icon: Users },
+            { label: "Tableros inspeccionados", value: "73", icon: Zap },
+            { label: "Observaciones registradas", value: "18", icon: FileText },
+            { label: "Informe técnico", value: "1", icon: CheckCircle2 },
+            { label: "Servicio", value: "Completado", icon: Award },
         ],
     },
     {
         id: "recoleta",
-        company: "RECOLETA",
+        company: "Colegio SS.CC. Recoleta",
+        logo: recoletaLogo,
         sector: "Educación",
         sectorIcon: GraduationCap,
         sectorColor: "text-violet-600",
-        tagline: "Infraestructura eléctrica segura para miles de estudiantes",
+
+        tagline:
+            "Evaluación de tableros eléctricos en infraestructura educativa",
+
         challenge:
-            "El colegio Recoleta administraba su red eléctrica de múltiples edificios con planillas Excel dispersas y sin trazabilidad de intervenciones técnicas.",
+            "El colegio buscaba verificar las condiciones de seguridad y operación de los tableros eléctricos distribuidos en sus diferentes ambientes.",
+
         solution:
-            "Voltguard permitió unificar todos los tableros de los cinco edificios, digitalizar los planos unifilares y asignar responsables por área.",
+            "Se inspeccionaron los tableros eléctricos y se documentaron observaciones relacionadas con seguridad, identificación y mantenimiento.",
+
         quote:
-            "La seguridad de nuestros alumnos depende también de una infraestructura eléctrica bien gestionada. Voltguard nos da esa tranquilidad.",
-        quoteAuthor: "Lic. Patricia Soto",
-        quoteRole: "Directora Administrativa — Colegio Recoleta",
-        year: "2023",
+            "Contar con un diagnóstico técnico nos ayudó a planificar las mejoras necesarias de manera ordenada.",
+
+        quoteAuthor: "Administración",
+
+        quoteRole: "Colegio SS.CC. Recoleta",
+
+        year: "2024",
+
         accentColor: "#7c3aed",
+
         bgAccent: "bg-violet-50",
+
         metrics: [
-            { label: "Edificios conectados", value: "5", icon: Building2 },
-            { label: "Tableros digitalizados", value: "32", icon: Zap },
-            { label: "Tiempo de respuesta", value: "-80%", icon: TrendingUp },
-            { label: "Documentos migrados", value: "120+", icon: FileText },
+            { label: "Tableros inspeccionados", value: "109", icon: Zap },
+            { label: "Observaciones registradas", value: "17", icon: FileText },
+            { label: "Informe técnico", value: "1", icon: CheckCircle2 },
+            { label: "Servicio", value: "Completado", icon: Award },
         ],
     },
     {
         id: "inen",
         company: "INEN",
-        sector: "Gobierno",
-        sectorIcon: Landmark,
+        logo: inenLogo,
+        sector: "Salud",
+        sectorIcon: HeartPulse,
         sectorColor: "text-sky-600",
-        tagline: "Gestión eléctrica de una institución pública de alta criticidad",
+
+        tagline:
+            "Inspección eléctrica en instalaciones críticas de salud",
+
         challenge:
-            "El Instituto Nacional de Enfermedades Neoplásicas necesitaba cumplir normativas técnicas estrictas con documentación auditable y acceso diferenciado por dependencia.",
+            "Era necesario verificar las condiciones de operación de tableros eléctricos que alimentan áreas críticas y de soporte.",
+
         solution:
-            "Se desplegó Voltguard con perfiles de superadmin por dependencia, integración de termografías y generación automática de reportes para auditorías estatales.",
+            "Se desarrolló una inspección técnica documentada, registrando hallazgos y recomendaciones para mejorar la confiabilidad de las instalaciones.",
+
         quote:
-            "Cumplir los estándares del MINEM requería un sistema robusto. Voltguard nos permitió tener toda la documentación lista para cualquier fiscalización.",
-        quoteAuthor: "Ing. Roberto Quispe",
-        quoteRole: "Jefe de Mantenimiento — INEN",
+            "La evaluación nos permitió tener una visión más clara del estado de nuestros tableros eléctricos.",
+
+        quoteAuthor: "Área de Mantenimiento",
+
+        quoteRole: "INEN",
+
         year: "2024",
+
         accentColor: "#0284c7",
+
         bgAccent: "bg-sky-50",
+
         metrics: [
-            { label: "Tableros críticos", value: "54", icon: ShieldCheck },
-            { label: "Normativas cumplidas", value: "100%", icon: CheckCircle2 },
-            { label: "Reportes generados", value: "200+", icon: FileText },
-            { label: "Áreas gestionadas", value: "12", icon: Building2 },
+            { label: "Tableros inspeccionados", value: "12", icon: Zap },
+            { label: "Observaciones registradas", value: "14", icon: FileText },
+            { label: "Informe técnico", value: "1", icon: CheckCircle2 },
+            { label: "Servicio", value: "Completado", icon: Award },
         ],
     },
     {
-        id: "clinica",
-        company: "CLÍNICA SANTA ROSA",
-        sector: "Salud",
-        sectorIcon: HeartPulse,
+        id: "safeplace",
+        company: "Safeplace",
+        logo: safeplaceLogo,
+        sector: "Arquitectura",
+        sectorIcon: Building2,
         sectorColor: "text-rose-600",
-        tagline: "Cero tolerancia a fallos: gestión eléctrica hospitalaria",
+
+        tagline:
+            "Inspección y mantenimiento de tableros eléctricos para una clínica",
+
         challenge:
-            "En un entorno hospitalario, los cortes de energía representan riesgo de vida. La clínica necesitaba trazabilidad completa y alertas en tiempo real sobre sus tableros.",
+            "La instalación requería evaluar el estado de sus tableros eléctricos y ejecutar mantenimiento preventivo para garantizar su correcto funcionamiento.",
+
         solution:
-            "Voltguard fue desplegado con acceso 24/7, notificaciones inmediatas ante anomalías de temperatura y gestión documental de certificados obligatorios de habilitación.",
+            "Se realizó la inspección técnica, limpieza, ajuste de conexiones y documentación de observaciones para futuras acciones de mejora.",
+
         quote:
-            "En salud no hay margen de error. Voltguard nos garantiza que cada tablero está certificado y que cualquier anomalía es atendida antes de convertirse en un problema.",
-        quoteAuthor: "Ing. Mario Tapia",
-        quoteRole: "Jefe de Ingeniería Clínica — Clínica Santa Rosa",
+            "El servicio fue ejecutado de manera ordenada y con información clara para el seguimiento posterior.",
+
+        quoteAuthor: "Coordinación de Proyecto",
+
+        quoteRole: "Safeplace",
+
         year: "2024",
+
         accentColor: "#e11d48",
+
         bgAccent: "bg-rose-50",
+
         metrics: [
-            { label: "Tableros monitoreados", value: "41", icon: Zap },
-            { label: "Uptime del sistema", value: "99.9%", icon: TrendingUp },
-            { label: "Alertas procesadas", value: "1,200+", icon: ShieldCheck },
-            { label: "Certificaciones activas", value: "41", icon: Award },
+            { label: "Tableros atendidos", value: "5", icon: Zap },
+            { label: "Mantenimientos realizados", value: "12", icon: CheckCircle2 },
+            { label: "Observaciones registradas", value: "8", icon: FileText },
+            { label: "Servicio", value: "Completado", icon: Award },
         ],
     },
     {
         id: "volvo",
-        company: "VOLVO TRUCKS",
+        company: "Volvo Perú",
+        logo: volvoLogo,
         sector: "Transporte",
         sectorIcon: Truck,
         sectorColor: "text-blue-700",
-        tagline: "Operaciones de flota respaldadas por infraestructura eléctrica confiable",
+
+        tagline:
+            "Evaluación técnica de tableros eléctricos en instalaciones de servicio",
+
         challenge:
-            "Las instalaciones de servicio de Volvo en tres regiones del país operaban sin un sistema unificado para la gestión de sus tableros de fuerza y control.",
+            "Se requería conocer el estado de los tableros eléctricos que alimentan las áreas operativas y talleres.",
+
         solution:
-            "Voltguard unificó la gestión multi-sede, permitiendo al equipo corporativo supervisar el estado eléctrico de cada taller desde un único panel de control.",
+            "Se realizó una inspección completa de los tableros eléctricos, verificando componentes, protecciones y condiciones generales de operación.",
+
         quote:
-            "Tener visibilidad en tiempo real de las tres sedes cambió completamente nuestra forma de planificar el mantenimiento preventivo.",
-        quoteAuthor: "Ing. Andrés Flores",
-        quoteRole: "Superintendente de Operaciones — Volvo Trucks Perú",
+            "La inspección nos ayudó a identificar mejoras que ahora forman parte de nuestro plan de mantenimiento.",
+
+        quoteAuthor: "Área de Infraestructura",
+
+        quoteRole: "Volvo Perú",
+
         year: "2024",
+
         accentColor: "#1d4ed8",
+
         bgAccent: "bg-blue-50",
+
         metrics: [
-            { label: "Sedes conectadas", value: "3", icon: Building2 },
-            { label: "Tableros de fuerza", value: "68", icon: Zap },
-            { label: "Reducción de paradas", value: "55%", icon: TrendingUp },
-            { label: "Técnicos en plataforma", value: "18", icon: Users },
+            { label: "Tableros inspeccionados", value: "171", icon: Zap },
+            { label: "Observaciones registradas", value: "13", icon: FileText },
+            { label: "Informe técnico", value: "1", icon: CheckCircle2 },
+            { label: "Servicio", value: "Completado", icon: Award },
         ],
     },
-    {
-        id: "odebrecht",
-        company: "OSE CONSTRUCTORA",
-        sector: "Construcción",
-        sectorIcon: Building2,
-        sectorColor: "text-amber-600",
-        tagline: "Gestión eléctrica en proyectos de obra de gran escala",
-        challenge:
-            "En proyectos de infraestructura de largo plazo, la rotación de personal y la dispersión geográfica dificultaban mantener documentación eléctrica actualizada y accesible.",
-        solution:
-            "Voltguard fue adoptado como plataforma estándar de documentación eléctrica en obra, con acceso por proyecto y control de versiones de planos y certificados.",
-        quote:
-            "Voltguard se convirtió en el estándar para nuestra documentación eléctrica en obra. Ahora cada proyecto entrega su legajo técnico completo y trazable.",
-        quoteAuthor: "Ing. Luis Carrera",
-        quoteRole: "Gerente de Proyectos Eléctricos — OSE Constructora",
-        year: "2023",
-        accentColor: "#d97706",
-        bgAccent: "bg-amber-50",
-        metrics: [
-            { label: "Proyectos activos", value: "9", icon: Building2 },
-            { label: "Tableros por obra", value: "120+", icon: Zap },
-            { label: "Legajos digitalizados", value: "100%", icon: FileText },
-            { label: "Equipos en campo", value: "60+", icon: Users },
-        ],
-    },
-    {
-        id: "bbva",
-        company: "BBVA",
-        sector: "Banca",
-        sectorIcon: Landmark,
-        sectorColor: "text-[#0797d5]",
-        tagline: "Infraestructura eléctrica bancaria bajo estrictos estándares de continuidad",
-        challenge:
-            "BBVA requería garantizar continuidad operativa en sus sucursales con gestión centralizada de activos eléctricos y cumplimiento de normativas de la SBS.",
-        solution:
-            "Voltguard fue implementado para gestionar los tableros de todas las sucursales, con roles diferenciados por zona geográfica y reportes automáticos para auditorías regulatorias.",
-        quote:
-            "La continuidad operativa es innegociable en banca. Con Voltguard tenemos el control y la trazabilidad que exigen tanto los auditores internos como la SBS.",
-        quoteAuthor: "Ing. Claudia Vargas",
-        quoteRole: "Subgerenta de Infraestructura Tecnológica — BBVA Perú",
-        year: "2024",
-        accentColor: "#0797d5",
-        bgAccent: "bg-[#0797d5]/5",
-        metrics: [
-            { label: "Sucursales conectadas", value: "47", icon: Building2 },
-            { label: "Tableros gestionados", value: "188", icon: Zap },
-            { label: "Cumplimiento SBS", value: "100%", icon: ShieldCheck },
-            { label: "Tiempo de auditoría", value: "-75%", icon: TrendingUp },
-        ],
-    },
+    // {
+    //     id: "odebrecht",
+    //     company: "OSE CONSTRUCTORA",
+    //     sector: "Construcción",
+    //     sectorIcon: Building2,
+    //     sectorColor: "text-amber-600",
+    //     tagline: "Gestión eléctrica en proyectos de obra de gran escala",
+    //     challenge:
+    //         "En proyectos de infraestructura de largo plazo, la rotación de personal y la dispersión geográfica dificultaban mantener documentación eléctrica actualizada y accesible.",
+    //     solution:
+    //         "Voltguard fue adoptado como plataforma estándar de documentación eléctrica en obra, con acceso por proyecto y control de versiones de planos y certificados.",
+    //     quote:
+    //         "Voltguard se convirtió en el estándar para nuestra documentación eléctrica en obra. Ahora cada proyecto entrega su legajo técnico completo y trazable.",
+    //     quoteAuthor: "Ing. Luis Carrera",
+    //     quoteRole: "Gerente de Proyectos Eléctricos — OSE Constructora",
+    //     year: "2023",
+    //     accentColor: "#d97706",
+    //     bgAccent: "bg-amber-50",
+    //     metrics: [
+    //         { label: "Proyectos activos", value: "9", icon: Building2 },
+    //         { label: "Tableros por obra", value: "120+", icon: Zap },
+    //         { label: "Legajos digitalizados", value: "100%", icon: FileText },
+    //         { label: "Equipos en campo", value: "60+", icon: Users },
+    //     ],
+    // },
+    // {
+    //     id: "bbva",
+    //     company: "BBVA",
+    //     sector: "Banca",
+    //     sectorIcon: Landmark,
+    //     sectorColor: "text-[#0797d5]",
+    //     tagline: "Infraestructura eléctrica bancaria bajo estrictos estándares de continuidad",
+    //     challenge:
+    //         "BBVA requería garantizar continuidad operativa en sus sucursales con gestión centralizada de activos eléctricos y cumplimiento de normativas de la SBS.",
+    //     solution:
+    //         "Voltguard fue implementado para gestionar los tableros de todas las sucursales, con roles diferenciados por zona geográfica y reportes automáticos para auditorías regulatorias.",
+    //     quote:
+    //         "La continuidad operativa es innegociable en banca. Con Voltguard tenemos el control y la trazabilidad que exigen tanto los auditores internos como la SBS.",
+    //     quoteAuthor: "Ing. Claudia Vargas",
+    //     quoteRole: "Subgerenta de Infraestructura Tecnológica — BBVA Perú",
+    //     year: "2024",
+    //     accentColor: "#0797d5",
+    //     bgAccent: "bg-[#0797d5]/5",
+    //     metrics: [
+    //         { label: "Sucursales conectadas", value: "47", icon: Building2 },
+    //         { label: "Tableros gestionados", value: "188", icon: Zap },
+    //         { label: "Cumplimiento SBS", value: "100%", icon: ShieldCheck },
+    //         { label: "Tiempo de auditoría", value: "-75%", icon: TrendingUp },
+    //     ],
+    // },
 ];
 
 /* ─── Sub-components ─────────────────────────────────────────────────────── */
@@ -324,11 +390,12 @@ function StoryCard({ story, index }: { story: Story; index: number }) {
                                 {story.tagline}
                             </p>
                         </div>
-                        <div
-                            className="shrink-0 size-12 rounded-2xl flex items-center justify-center"
-                            style={{ backgroundColor: `${story.accentColor}12` }}
-                        >
-                            <SectorIcon size={22} style={{ color: story.accentColor }} />
+                        <div className="shrink-0 flex items-center justify-center">
+                            <img
+                                src={story.logo}
+                                alt={story.company}
+                                className="h-14 w-auto object-contain"
+                            />
                         </div>
                     </div>
 
@@ -383,7 +450,7 @@ function StoryCard({ story, index }: { story: Story; index: number }) {
                     <div>
                         <p className="text-xs font-bold uppercase tracking-widest mb-4"
                             style={{ color: story.accentColor }}>
-                            Resultados clave
+                            Resultados
                         </p>
                         <div className="grid grid-cols-2 gap-3">
                             {story.metrics.map((metric, i) => (

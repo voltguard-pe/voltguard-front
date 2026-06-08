@@ -5,6 +5,33 @@ export interface LoginData {
     password: string;
 }
 
+export interface RegisterData {
+    firstname: string;
+    lastname: string;
+    email: string;
+    password: string;
+    companyPublicCode?: string;
+}
+
+export const registerUser = async (data: RegisterData) => {
+    try {
+        const response = await clientAxios.post('/auth/register', data);
+        return response.data;
+    } catch (error: any) {
+        console.error("REGISTER ERROR:", error);
+        throw new Error(error.response?.data?.message || 'Error al registrar el usuario');
+    }
+};
+
+export const verifyEmailToken = async (token: string) => {
+    try {
+        const response = await clientAxios.get(`/auth/verify-email/${token}`);
+        return response.data;
+    } catch (error: any) {
+        console.error("VERIFY EMAIL ERROR:", error);
+        throw new Error(error.response?.data?.message || 'El enlace de verificación es inválido o ha expirado.');
+    }
+};
 export interface User {
     id: string;
     name: string;

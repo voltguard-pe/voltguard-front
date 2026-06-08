@@ -7,6 +7,9 @@ import ChangePasswordPage from './pages/auth/ChangePasswordPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
+// 1. IMPORTA LA NUEVA PÁGINA DE VERIFICACIÓN AQUÍ:
+import VerifyEmailPage from './pages/auth/VerifyEmailPage' 
+
 import AdminCreatePage from './pages/dashboard/admin/AdminCreatePage'
 import AdminDashboardPage from './pages/dashboard/admin/AdminDashboardPage'
 import AdminDetailPage from './pages/dashboard/admin/AdminDetailPage'
@@ -21,7 +24,6 @@ import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
 import ProfileDashboardPage from './pages/dashboard/profile/ProfileDashboardPage'
 import HomePage from './pages/landing/HomePage'
 import NotFoundPage from './pages/NotFoundPage'
-// import PublicBoardsPage from './pages/public/PublicBoardsPage'
 import CompaniesCreatePage from './pages/dashboard/companies/CompaniesCreatePage'
 import CompaniesDashboardPages from './pages/dashboard/companies/CompaniesDashboardPages'
 import CompaniesEditPage from './pages/dashboard/companies/CompaniesEditPage'
@@ -46,15 +48,21 @@ function App() {
             <Route path="plans" element={<PlansPage />} />
           </Route>
 
+          {/* RUTAS PÚBLICAS DE AUTENTICACIÓN */}
           <Route element={<PublicRoute />}>
             <Route path='/auth' element={<AuthLayout />}>
               <Route index element={<LoginPage />} />
               <Route path='register' element={<RegisterPage />} />
+              
+              {/* 2. AÑADE ESTA RUTA DINÁMICA CON EL PARÁMETRO :token */}
+              <Route path='verify-email/:token' element={<VerifyEmailPage />} />
+              
               <Route path='forgot-password' element={<ForgotPasswordPage />} />
               <Route path='reset-password' element={<ChangePasswordPage />} />
             </Route>
           </Route>
 
+          {/* RUTAS PROTEGIDAS */}
           <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN", "ADMIN", "USER"]} />}>
             <Route path='/dashboard' element={<DashboardLayout />}>
               <Route index element={<DashboardRouter />} />
@@ -84,8 +92,6 @@ function App() {
                 <Route path="companies/:publicCode/edit" element={<CompaniesEditPage />} />
 
                 <Route path="documents" element={<DocumentDashboardPage />} />
-                {/* <Route path="documents/create" element={<CompaniesCreatePage />} />
-                <Route path="documents/:publicCode/edit" element={<CompaniesEditPage />} /> */}
               </Route>
 
               <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
@@ -102,4 +108,4 @@ function App() {
   );
 }
 
-export default App
+export default App;

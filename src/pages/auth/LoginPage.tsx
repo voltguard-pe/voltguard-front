@@ -38,22 +38,18 @@ const LoginPage = () => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
     setErrorMessage(null);
     setLoading(true);
 
     try {
       await login(formData);
-
       const user = await getProfile();
-
       setAuth(user);
-      navigate(redirect, {
-        replace: true,
-      });
-    } catch (error) {
+      navigate(redirect, { replace: true });
+    } catch (error: any) {
       console.error(error);
-      setErrorMessage("Credenciales incorrectas o error al iniciar sesión.");
+      // Captura el mensaje descriptivo si el usuario no está verificado (error 403)
+      setErrorMessage(error.response?.data?.message || "Credenciales incorrectas o error al iniciar sesión.");
     } finally {
       setLoading(false);
     }
@@ -131,6 +127,21 @@ const LoginPage = () => {
           {loading ? "Ingresando..." : "Ingresar"}
         </button>
       </form>
+      <div className="w-full max-w-md">
+        {/* ... Encabezado e Input del Formulario ... */}
+
+        {/* <form> ... </form> */}
+
+        <div className="mt-6 text-center text-sm text-slate-500">
+          ¿No tienes una cuenta?{" "}
+          <NavLink
+            to="/auth/register"
+            className="font-semibold text-[#0797d5] transition hover:text-[#087fb3] hover:underline"
+          >
+            Regístrate aquí
+          </NavLink>
+        </div>
+      </div>
     </div>
   );
 };

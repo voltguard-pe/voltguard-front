@@ -189,9 +189,9 @@ const BoardDashboardPage = () => {
 
   return (
     <section className="space-y-6">
-      
+
       {/* ── ENCABEZADO Y ACCIONES GENERALES ── */}
-      <div 
+      <div
         style={{ animation: "fadeUp 0.4s ease both" }}
         className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center"
       >
@@ -244,11 +244,22 @@ const BoardDashboardPage = () => {
           </div>
         )}
 
-        {auth?.role === "ADMIN" && effectivePublicCode && (
+        {/* {auth?.role === "ADMIN" && effectivePublicCode && (
           <button
             type="button"
             onClick={() => setShowQR(true)}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-2.5 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer"
+          >
+            <QrCode size={16} />
+            Ver QR empresa
+          </button>
+        )} */}
+
+        {effectivePublicCode && (
+          <button
+            type="button"
+            onClick={() => setShowQR(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white transition-all duration-300 hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-slate-950/20 cursor-pointer"
           >
             <QrCode size={16} />
             Ver QR empresa
@@ -262,18 +273,18 @@ const BoardDashboardPage = () => {
           { title: "Total tableros", value: boards.length, icon: Zap, bg: "bg-[#0797d5]/10 text-[#0797d5]", delay: "40ms" },
           { title: "Con ubicación", value: boards.filter(b => b.location).length, icon: MapPin, bg: "bg-[#8ccf2f]/15 text-[#3aaa35]", delay: "80ms" },
           { title: "Resultados visibles", value: filteredBoards.length, icon: Search, bg: "bg-slate-100 text-slate-700", delay: "120ms" },
-          { 
-            title: "Empresa actual", 
-            value: selectedCompany?.name || (auth?.role === "ADMIN" ? "Mi empresa" : "No seleccionada"), 
-            icon: Building2, 
-            bg: "bg-slate-100 text-slate-700", 
+          {
+            title: "Empresa actual",
+            value: selectedCompany?.name || (auth?.role === "ADMIN" ? "Mi empresa" : "No seleccionada"),
+            icon: Building2,
+            bg: "bg-slate-100 text-slate-700",
             delay: "160ms",
-            isTruncate: true 
+            isTruncate: true
           }
         ].map((card, i) => {
           const CardIcon = card.icon;
           return (
-            <div 
+            <div
               key={i}
               style={{ animation: "fadeUp 0.4s ease both", animationDelay: card.delay }}
               className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
@@ -296,7 +307,7 @@ const BoardDashboardPage = () => {
 
       {/* ── FILTROS SUPERADMIN ── */}
       {auth?.role === "SUPERADMIN" && (
-        <div 
+        <div
           style={{ animation: "fadeUp 0.4s ease 200ms both" }}
           className="relative z-20 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between"
         >
@@ -327,7 +338,7 @@ const BoardDashboardPage = () => {
       )}
 
       {/* ── TABLA / CONTENEDOR PRINCIPAL ── */}
-      <div 
+      <div
         style={{ animation: "fadeUp 0.5s ease 240ms both" }}
         className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
       >
@@ -385,9 +396,9 @@ const BoardDashboardPage = () => {
 
               <tbody className="divide-y divide-slate-100 text-sm">
                 {filteredBoards.map((board, index) => (
-                  <tr 
-                    key={board.code} 
-                    style={{ 
+                  <tr
+                    key={board.code}
+                    style={{
                       animation: "fadeUp 0.35s ease both",
                       animationDelay: `${index * 30}ms` // Cascada ultra veloz para las filas
                     }}

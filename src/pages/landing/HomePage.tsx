@@ -1,19 +1,16 @@
-import { useEffect, useRef, useState, useCallback } from "react";
 import {
     ArrowRight,
     Building2,
-    CheckCircle2,
-    FileText,
-    ShieldCheck,
-    Zap,
-    Activity,
-    Thermometer,
-    Plug,
     Check,
-    Star,
+    CheckCircle2,
     ChevronDown,
+    FileText,
     HelpCircle,
+    ShieldCheck,
+    Star,
+    Zap
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 /* ─── Types ─────────────────────────────────────────────────────────────── */
@@ -31,13 +28,11 @@ interface Stat {
     label: string;
 }
 
-type PlanBilling = "monthly" | "yearly";
-
 interface Plan {
     name: string;
     badge?: string;
-    monthlyPrice: number;
-    yearlyPrice: number;
+    priceLabel: string;
+    subLabel: string;
     description: string;
     color: string;
     featured: boolean;
@@ -92,8 +87,8 @@ const bannerStats: Stat[] = [
 const plans: Plan[] = [
     {
         name: "Free",
-        monthlyPrice: 0,
-        yearlyPrice: 0,
+        priceLabel: "Gratis",
+        subLabel: "Plan de entrada",
         description: "Mapeo piloto inicial para explorar el ecosistema digital de Voltguard.",
         color: "slate",
         featured: false,
@@ -109,13 +104,12 @@ const plans: Plan[] = [
     },
     {
         name: "Básico",
-        badge: "Más popular",
-        monthlyPrice: 49,
-        yearlyPrice: 39,
+        priceLabel: "Consulte con Ventas",
+        subLabel: "Suscripción anual",
         description: "Optimizado para colegios, clínicas y pymes que requieren ingeniería esencial.",
         color: "blue",
-        featured: true,
-        cta: "Adquirir Plan",
+        featured: false,
+        cta: "Contactar ventas",
         features: [
             "Hasta 50 Tableros Eléctricos",
             "Levantamiento fotográfico detallado",
@@ -128,11 +122,12 @@ const plans: Plan[] = [
     },
     {
         name: "Pro",
-        monthlyPrice: 149,
-        yearlyPrice: 119,
+        badge: "Más popular",
+        priceLabel: "Consulte con Ventas",
+        subLabel: "Suscripción anual",
         description: "Diseñado para complejos industriales masivos y auditorías de alta exigencia.",
         color: "green",
-        featured: false,
+        featured: true, // <- Destaca visualmente en la interfaz
         cta: "Contactar ventas",
         features: [
             "Hasta 200 Tableros Eléctricos",
@@ -218,32 +213,6 @@ function BannerStat({ target, suffix, label, active, duration }: Stat & { active
     );
 }
 
-function PhaseBar({ phase, pct, color, active }: { phase: string; pct: number; color: string; active: boolean }) {
-    const [width, setWidth] = useState(0);
-
-    useEffect(() => {
-        if (active) {
-            const t = setTimeout(() => setWidth(pct), 120);
-            return () => clearTimeout(t);
-        } else {
-            setWidth(0);
-        }
-    }, [active, pct]);
-
-    return (
-        <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-slate-500 w-3">{phase}</span>
-            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div
-                    className={`h-full rounded-full ${color}`}
-                    style={{ width: `${width}%`, transition: active ? "width 1.2s cubic-bezier(0.4,0,0.2,1)" : "none" }}
-                />
-            </div>
-            <span className="text-xs font-bold text-slate-600 w-7 text-right">{pct}%</span>
-        </div>
-    );
-}
-
 function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
     const { ref, inView } = useInViewRepeatable(0.1);
     const Icon = feature.icon;
@@ -317,12 +286,12 @@ function HomeFAQRow({ q, a, index }: HomeFAQItem & { index: number }) {
                 className="w-full flex items-center justify-between p-5 text-left font-bold text-slate-950 hover:text-[#0797d5] transition-colors cursor-pointer"
             >
                 <span className="text-sm sm:text-base pr-4">{q}</span>
-                <ChevronDown 
-                    size={18} 
-                    className={`text-slate-400 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180 text-[#0797d5]" : ""}`} 
+                <ChevronDown
+                    size={18}
+                    className={`text-slate-400 shrink-0 transition-transform duration-300 ${isOpen ? "rotate-180 text-[#0797d5]" : ""}`}
                 />
             </button>
-            <div 
+            <div
                 className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "max-h-48 border-t border-slate-100" : "max-h-0"}`}
             >
                 <p className="p-5 text-sm text-slate-500 leading-relaxed bg-slate-50/50">
@@ -368,10 +337,9 @@ function PlanLimitBar({
     );
 }
 
-function PlanCard({ plan, billing, index, active }: { plan: Plan; billing: PlanBilling; index: number; active: boolean }) {
-    const price = billing === "monthly" ? plan.monthlyPrice : plan.yearlyPrice;
+function PlanCard({ plan, index, active }: { plan: Plan; index: number; active: boolean }) {
     const barColor = plan.color === "blue" ? "bg-[#0797d5]" : plan.color === "green" ? "bg-[#8ccf2f]" : "bg-slate-400";
-    
+
     // Ajustamos las escalas máximas relativas al Plan Pro industrial
     const maxLimits = { empresas: 5, tableros: 200, usuarios: 20, docs: 100 };
 
@@ -382,11 +350,10 @@ function PlanCard({ plan, billing, index, active }: { plan: Plan; billing: PlanB
                 transform: active ? "translateY(0) scale(1)" : "translateY(32px) scale(0.97)",
                 transition: `opacity 0.6s ease ${index * 120}ms, transform 0.6s ease ${index * 120}ms`,
             }}
-            className={`relative bg-white rounded-3xl p-7 flex flex-col gap-5 border transition-shadow duration-300 hover:-translate-y-1 hover:shadow-2xl ${
-                plan.featured
-                    ? "border-[#0797d5] shadow-xl shadow-[#0797d5]/15 ring-1 ring-[#0797d5]/20"
-                    : "border-slate-200 shadow-sm hover:shadow-[#0797d5]/10"
-            }`}
+            className={`relative bg-white rounded-3xl p-7 flex flex-col gap-5 border transition-shadow duration-300 hover:-translate-y-1 hover:shadow-2xl ${plan.featured
+                ? "border-[#0797d5] shadow-xl shadow-[#0797d5]/15 ring-1 ring-[#0797d5]/20"
+                : "border-slate-200 shadow-sm hover:shadow-[#0797d5]/10"
+                }`}
         >
             {plan.badge && (
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
@@ -400,19 +367,18 @@ function PlanCard({ plan, billing, index, active }: { plan: Plan; billing: PlanB
             {/* Header del Plan */}
             <div>
                 <div className="flex items-center justify-between mb-1">
-                    <span className={`text-sm font-bold uppercase tracking-widest ${
-                        plan.color === "blue" ? "text-[#0797d5]" : plan.color === "green" ? "text-[#5a8c1a]" : "text-slate-500"
-                    }`}>
+                    <span className={`text-sm font-bold uppercase tracking-widest ${plan.color === "blue" ? "text-[#0797d5]" : plan.color === "green" ? "text-[#5a8c1a]" : "text-slate-500"
+                        }`}>
                         {plan.name}
                     </span>
                 </div>
-                <div className="flex items-end gap-1 mt-2">
-                    <span className="text-4xl font-black text-slate-950 tracking-tight">
-                        {price === 0 ? "Gratis" : `$${price}`}
+                <div className="flex flex-col mt-2">
+                    <span className="text-2xl font-black text-slate-950 tracking-tight">
+                        {plan.priceLabel}
                     </span>
-                    {price > 0 && (
-                        <span className="text-slate-400 text-sm mb-1.5">
-                            /mes {billing === "yearly" && <span className="text-[#8ccf2f] font-bold ml-1">-20%</span>}
+                    {plan.subLabel && (
+                        <span className="text-slate-400 text-xs mt-0.5">
+                            {plan.subLabel}
                         </span>
                     )}
                 </div>
@@ -431,9 +397,8 @@ function PlanCard({ plan, billing, index, active }: { plan: Plan; billing: PlanB
             <ul className="space-y-2.5 flex-1">
                 {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-sm text-slate-600">
-                        <span className={`mt-0.5 shrink-0 size-4 rounded-full flex items-center justify-center ${
-                            plan.featured ? "bg-[#0797d5]/10 text-[#0797d5]" : plan.color === "green" ? "bg-[#8ccf2f]/15 text-[#4a7c10]" : "bg-slate-100 text-slate-500"
-                        }`}>
+                        <span className={`mt-0.5 shrink-0 size-4 rounded-full flex items-center justify-center ${plan.featured ? "bg-[#0797d5]/10 text-[#0797d5]" : plan.color === "green" ? "bg-[#8ccf2f]/15 text-[#4a7c10]" : "bg-slate-100 text-slate-500"
+                            }`}>
                             <Check size={10} strokeWidth={3} />
                         </span>
                         {f}
@@ -443,13 +408,12 @@ function PlanCard({ plan, billing, index, active }: { plan: Plan; billing: PlanB
 
             {/* Botón de Acción CTA */}
             <button
-                className={`w-full py-3 rounded-2xl font-bold text-sm transition-all duration-250 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer ${
-                    plan.featured
-                        ? "bg-[#0797d5] hover:bg-[#087fb3] text-white hover:shadow-[#0797d5]/30"
-                        : plan.color === "green"
-                            ? "bg-slate-900 hover:bg-slate-800 text-white hover:shadow-slate-900/20"
-                            : "bg-slate-100 hover:bg-slate-200 text-slate-800"
-                }`}
+                className={`w-full py-3 rounded-2xl font-bold text-sm transition-all duration-250 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer ${plan.featured
+                    ? "bg-[#0797d5] hover:bg-[#087fb3] text-white hover:shadow-[#0797d5]/30"
+                    : plan.color === "green"
+                        ? "bg-slate-900 hover:bg-slate-800 text-white hover:shadow-slate-900/20"
+                        : "bg-slate-100 hover:bg-slate-200 text-slate-800"
+                    }`}
             >
                 {plan.cta}
             </button>
@@ -461,7 +425,6 @@ function PlanCard({ plan, billing, index, active }: { plan: Plan; billing: PlanB
 
 export default function HomePage() {
     const navigate = useNavigate();
-    const [billing, setBilling] = useState<PlanBilling>("monthly");
 
     /* all sections use repeatable InView */
     const { ref: heroCardRef, inView: heroCardVisible } = useInViewRepeatable(0.2);
@@ -472,6 +435,7 @@ export default function HomePage() {
     const { ref: pricingRef, inView: pricingVisible } = useInViewRepeatable(0.1);
     const { ref: pricingHeadRef, inView: pricingHeadVisible } = useInViewRepeatable(0.15);
     const { ref: homeFaqHeadRef, inView: homeFaqHeadVisible } = useInViewRepeatable(0.15);
+    const { ref: normHeadRef, inView: normHeadVisible } = useInViewRepeatable(0.15);
 
     /* pulsing dot */
     const [dotScale, setDotScale] = useState(1);
@@ -489,7 +453,7 @@ export default function HomePage() {
 
 
             {/* ── HERO ────────────────────────────────────────────────────────── */}
-            <section className="relative overflow-hidden pt-30">
+            <section className="relative overflow-hidden pt-10">
                 <div className="absolute -top-32 -left-32 size-96 rounded-full bg-[#0797d5]/10 blur-3xl pointer-events-none" />
                 <div className="absolute top-10 -right-32 size-80 rounded-full bg-[#8ccf2f]/10 blur-3xl pointer-events-none" />
 
@@ -565,56 +529,134 @@ export default function HomePage() {
                         <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden
               shadow-2xl shadow-slate-200/80"
                             style={{ animation: "float 5s ease-in-out infinite" }}>
-                            <div className="bg-gradient-to-r from-[#0797d5] to-[#05c4f7] px-5 py-4 flex items-center justify-between">
-                                <div className="flex items-center gap-2 text-white font-bold text-sm">
-                                    <Zap size={16} />
-                                    Tablero Industrial #07
-                                </div>
-                                <div className="flex items-center gap-1.5 bg-white/20 px-3 py-1 rounded-full text-white text-xs font-bold">
-                                    <span className="size-1.5 rounded-full bg-white animate-pulse" />
-                                    En línea
-                                </div>
-                            </div>
-                            <div className="px-5 py-1 divide-y divide-slate-100">
-                                {[
-                                    { icon: Plug, label: "Tensión nominal", value: "380V / 220V", cls: "text-[#0797d5] font-bold text-sm" },
-                                    { icon: Activity, label: "Corriente máx.", badge: "ok", value: "142 A" },
-                                    { icon: Thermometer, label: "Temperatura", badge: "warn", value: "47°C" },
-                                    { icon: CheckCircle2, label: "Certificación", badge: "ok", value: "Vigente" },
-                                ].map(({ icon: Icon, label, value, cls, badge }) => (
-                                    <div key={label} className="flex items-center justify-between py-2.5">
-                                        <span className="flex items-center gap-2 text-xs text-slate-500">
-                                            <Icon size={14} /> {label}
-                                        </span>
-                                        {badge === "ok" && (
-                                            <span className="text-xs font-bold bg-[#8ccf2f]/12 text-[#4a7c10] px-2.5 py-0.5 rounded-full">
-                                                {value} ✓
-                                            </span>
-                                        )}
-                                        {badge === "warn" && (
-                                            <span className="text-xs font-bold bg-amber-500/10 text-amber-700 px-2.5 py-0.5 rounded-full">
-                                                {value} ⚠
-                                            </span>
-                                        )}
-                                        {!badge && <span className={cls ?? "text-sm font-bold text-slate-900"}>{value}</span>}
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="px-5 pb-5 pt-3 border-t border-slate-100 space-y-2.5">
-                                <PhaseBar phase="A" pct={88} color="bg-[#0797d5]" active={heroCardVisible} />
-                                <PhaseBar phase="B" pct={92} color="bg-[#8ccf2f]" active={heroCardVisible} />
-                                <PhaseBar phase="C" pct={74} color="bg-amber-400" active={heroCardVisible} />
+                            <img
+                                src="/hero-technician2.jpg"
+                                alt="Ingeniero realizando inspección eléctrica"
+                                className="rounded-3xl object-cover h-[520px] w-full"
+                            />
+                        </div>
+                        <div
+                            className="absolute -top-4 -right-3 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-lg"
+                            style={{ animation: "float 4s ease-in-out 0.5s infinite" }}
+                        >
+                            <div className="text-xl font-black text-[#0797d5]">NFPA</div>
+                            <div className="text-xs text-slate-500 mt-0.5">
+                                70E · 70B
                             </div>
                         </div>
-                        <div className="absolute -top-4 -right-3 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-lg"
-                            style={{ animation: "float 4s ease-in-out 0.5s infinite" }}>
-                            <div className="text-xl font-black text-[#0797d5]">14</div>
-                            <div className="text-xs text-slate-500 mt-0.5">Tableros activos</div>
+                        <div
+                            className="absolute -bottom-4 -left-3 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-lg"
+                            style={{ animation: "float 6s ease-in-out 1s infinite" }}
+                        >
+                            <div className="text-xs font-bold text-slate-800">
+                                Reportes Certificados
+                            </div>
+                            <div className="text-xs text-slate-400 mt-0.5">
+                                Trazabilidad digital
+                            </div>
                         </div>
-                        <div className="absolute -bottom-4 -left-3 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-lg"
-                            style={{ animation: "float 6s ease-in-out 1s infinite" }}>
-                            <div className="text-xs font-bold text-slate-800">Acero Perú S.A.</div>
-                            <div className="text-xs text-slate-400 mt-0.5">Empresa vinculada</div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ── SECCIÓN DE CUMPLIMIENTO NORMATIVO CON ANIMACIÓN ────────────────── */}
+            <section
+                id="standards"
+                className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24"
+            >
+                <div
+                    ref={normHeadRef}
+                    style={{
+                        opacity: normHeadVisible ? 1 : 0,
+                        transform: normHeadVisible ? "translateY(0)" : "translateY(24px)",
+                        transition: "opacity 0.65s ease, transform 0.65s ease",
+                    }}
+                    className="text-center mb-14"
+                >
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#0797d5] mb-3">
+                        Ingeniería Certificada
+                    </p>
+
+                    <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
+                        Cumplimiento de estándares internacionales
+                    </h2>
+
+                    <p className="mt-4 text-slate-500 max-w-2xl mx-auto leading-7">
+                        Nuestros estudios, inspecciones y reportes técnicos se desarrollan
+                        bajo estándares reconocidos internacionalmente para garantizar
+                        seguridad, confiabilidad y trazabilidad.
+                    </p>
+                </div>
+
+                <div className="grid gap-6 md:grid-cols-2">
+                    {/* NFPA 70E */}
+                    <div
+                        className="group bg-white border border-slate-200 rounded-3xl p-8 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                        style={{
+                            opacity: normHeadVisible ? 1 : 0,
+                            transform: normHeadVisible ? "translateY(0)" : "translateY(20px)",
+                            transition: "all 0.6s ease",
+                            transitionDelay: "150ms",
+                        }}
+                    >
+                        <div className="flex items-start gap-5">
+                            <img
+                                src="/nfpa70e.png"
+                                alt="NFPA 70E"
+                                className="w-16 h-16 object-contain shrink-0"
+                            />
+
+                            <div>
+                                <span className="inline-flex items-center rounded-full bg-blue-50 text-[#0797d5] text-xs font-semibold px-3 py-1">
+                                    NFPA 70E
+                                </span>
+
+                                <h3 className="mt-3 text-xl font-bold text-slate-950">
+                                    Seguridad Eléctrica en el Trabajo
+                                </h3>
+
+                                <p className="mt-3 text-slate-600 leading-relaxed">
+                                    Evaluación de riesgos por choque y arco eléctrico,
+                                    definición de límites de aproximación y etiquetado de
+                                    seguridad para la protección del personal.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* NFPA 70B */}
+                    <div
+                        className="group bg-white border border-slate-200 rounded-3xl p-8 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+                        style={{
+                            opacity: normHeadVisible ? 1 : 0,
+                            transform: normHeadVisible ? "translateY(0)" : "translateY(20px)",
+                            transition: "all 0.6s ease",
+                            transitionDelay: "250ms",
+                        }}
+                    >
+                        <div className="flex items-start gap-5">
+                            <img
+                                src="/nfpa70b.png"
+                                alt="NFPA 70B"
+                                className="w-16 h-16 object-contain shrink-0"
+                            />
+
+                            <div>
+                                <span className="inline-flex items-center rounded-full bg-green-50 text-green-700 text-xs font-semibold px-3 py-1">
+                                    NFPA 70B
+                                </span>
+
+                                <h3 className="mt-3 text-xl font-bold text-slate-950">
+                                    Mantenimiento Eléctrico
+                                </h3>
+
+                                <p className="mt-3 text-slate-600 leading-relaxed">
+                                    Programa de mantenimiento basado en inspecciones,
+                                    pruebas, termografía y análisis de condición para
+                                    mejorar la confiabilidad y disponibilidad de los
+                                    equipos eléctricos.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -660,64 +702,40 @@ export default function HomePage() {
 
             {/* ── PRICING ─────────────────────────────────────────────────────── */}
             <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-    <div
-        ref={pricingHeadRef}
-        style={{
-            opacity: pricingHeadVisible ? 1 : 0,
-            transform: pricingHeadVisible ? "translateY(0)" : "translateY(24px)",
-            transition: "opacity 0.65s ease, transform 0.65s ease",
-        }}
-        className="text-center mb-12"
-    >
-        <p className="text-xs font-bold uppercase tracking-widest text-[#0797d5] mb-3">Dimensionamiento del Servicio</p>
-        <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
-            Planes adaptados al volumen de tu empresa
-        </h2>
-        <p className="mt-4 text-slate-500 max-w-xl mx-auto leading-7 text-sm sm:text-base">
-            Todo el levantamiento de ingeniería y carga de planos es gestionado directamente por los especialistas de Voltguard. Selecciona tu plan según el inventario de tableros de tu planta.
-        </p>
-
-        {/* Toggle de Facturación Mensual / Anual */}
-        <div className="inline-flex items-center gap-1 mt-8 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-            {(["monthly", "yearly"] as PlanBilling[]).map((b) => (
-                <button
-                    key={b}
-                    onClick={() => setBilling(b)}
-                    className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-250 cursor-pointer ${
-                        billing === b
-                            ? "bg-white text-slate-900 shadow-sm border border-slate-200"
-                            : "text-slate-500 hover:text-slate-700"
-                    }`}
+                <div
+                    ref={pricingHeadRef}
+                    style={{
+                        opacity: pricingHeadVisible ? 1 : 0,
+                        transform: pricingHeadVisible ? "translateY(0)" : "translateY(24px)",
+                        transition: "opacity 0.65s ease, transform 0.65s ease",
+                    }}
+                    className="text-center mb-12"
                 >
-                    {b === "monthly" ? "Facturación Mensual" : (
-                        <span className="flex items-center gap-1.5">
-                            Facturación Anual
-                            <span className="bg-[#8ccf2f]/20 text-[#4a7c10] text-xs font-bold px-1.5 py-0.5 rounded-full">
-                                -20%
-                            </span>
-                        </span>
-                    )}
-                </button>
-            ))}
-        </div>
-    </div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#0797d5] mb-3">Dimensionamiento del Servicio</p>
+                    <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
+                        Planes corporativos anuales
+                    </h2>
+                    <p className="mt-4 text-slate-500 max-w-xl mx-auto leading-7 text-sm sm:text-base">
+                        Todo el levantamiento de ingeniería y carga de planos es gestionado directamente por los especialistas de Voltguard. Selecciona tu plan según el inventario de tableros de tu planta.
+                    </p>
+                </div>
 
-    {/* Grid de Tarjetas de Planes */}
-    <div ref={pricingRef} className="grid gap-6 md:grid-cols-3">
-        {plans.map((plan, i) => (
-            <PlanCard key={plan.name} plan={plan} billing={billing} index={i} active={pricingVisible} />
-        ))}
-    </div>
+                {/* Grid de Tarjetas de Planes */}
+                <div ref={pricingRef} className="grid gap-6 md:grid-cols-3">
+                    {plans.map((plan, i) => (
+                        <PlanCard key={plan.name} plan={plan} index={i} active={pricingVisible} />
+                    ))}
+                </div>
 
-    <p className="text-center text-xs text-slate-400 mt-8">
-        La descarga técnica (Etiquetas PDF o Archivos CAD originales) se habilita en tu consola interna basándose estrictamente en el plan corporativo contratado.
-    </p>
-</section>
+                <p className="text-center text-xs text-slate-400 mt-8">
+                    La descarga técnica (Etiquetas PDF o Archivos CAD originales) se habilita en tu consola interna basándose estrictamente en el plan corporativo contratado.
+                </p>
+            </section>
 
             {/* ── SYSTEM FAQS ────────────────────────────────────────────────── */}
             <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
                 {/* Cabecera animada */}
-                <div 
+                <div
                     ref={homeFaqHeadRef}
                     className="text-center mb-10"
                     style={{

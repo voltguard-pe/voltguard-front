@@ -23,9 +23,6 @@ import { useAuth } from "../../shared/hooks/useAuth";
 import { subscription } from "../../services/subscription.service";
 
 /* ─── Types & Data ───────────────────────────────────────────────────────── */
-
-type PlanBilling = "monthly" | "yearly";
-
 interface FAQItem {
     q: string;
     a: string;
@@ -54,8 +51,8 @@ interface Plan {
     id: "free" | "basic" | "pro";
     name: string;
     badge?: string;
-    monthlyPrice: number;
-    yearlyPrice: number;
+    priceLabel: string;
+    subLabel: string;
     description: string;
     color: string;
     featured: boolean;
@@ -72,8 +69,8 @@ const plansData: Plan[] = [
     {
         id: "free",
         name: "Free",
-        monthlyPrice: 0,
-        yearlyPrice: 0,
+        priceLabel: "Gratis",
+        subLabel: "Plan de entrada",
         description: "Mapeo piloto inicial para explorar el visor y el ecosistema digital de Voltguard.",
         color: "slate",
         featured: false,
@@ -90,13 +87,12 @@ const plansData: Plan[] = [
     {
         id: "basic",
         name: "Básico",
-        badge: "Más popular",
-        monthlyPrice: 49,
-        yearlyPrice: 39,
+        priceLabel: "Consulte con Ventas",
+        subLabel: "Suscripción anual",
         description: "Ideal para colegios, pymes y comercios que requieren ingeniería obligatoria esencial.",
         color: "blue",
-        featured: true,
-        cta: "Adquirir Plan Básico",
+        featured: false, // 👈 Cambiado a false
+        cta: "Contactar ventas", // 👈 Texto actualizado
         features: [
             "Hasta 50 Tableros Eléctricos",
             "Levantamiento fotográfico técnico",
@@ -110,11 +106,12 @@ const plansData: Plan[] = [
     {
         id: "pro",
         name: "Pro",
-        monthlyPrice: 149,
-        yearlyPrice: 119,
+        badge: "Más popular", // 👈 Movido aquí
+        priceLabel: "Consulte con Ventas",
+        subLabel: "Suscripción anual",
         description: "Para plantas industriales masivas, corporaciones y mantenimiento predictivo avanzado.",
         color: "green",
-        featured: false,
+        featured: true, // 👈 Cambiado a true para que resalte
         cta: "Contactar ventas",
         features: [
             "Hasta 200 Tableros Eléctricos",
@@ -189,7 +186,6 @@ function FAQRow({ q, a, index, active }: FAQItem & { index: number; active: bool
 export default function PlanesPage() {
     const { auth } = useAuth();
     const navigate = useNavigate();
-    const [billing, setBilling] = useState<PlanBilling>("monthly");
 
     // ESTADOS PARA LA SIMULACIÓN DE SUSCRIPCIÓN
     const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
@@ -204,9 +200,7 @@ export default function PlanesPage() {
     const { ref: faqListRef, inView: faqListVisible } = useInViewRepeatable(0.1);
     const { ref: trustRef, inView: trustVisible } = useInViewRepeatable(0.1);
 
-    const getPrice = (monthly: number, yearly: number) => billing === "monthly" ? monthly : yearly;
-
-        const handleConfirmSubscription = async () => {
+    const handleConfirmSubscription = async () => {
         if (!selectedPlan) return;
         if (!auth?._id) {
             setApiResponse("🔴 ERROR: Usuario no autenticado. ID de usuario faltante.");
@@ -220,7 +214,7 @@ export default function PlanesPage() {
             //     userId: "65f123456789abcdef012345", // ID de usuario ficticio para la simulación
             //     chosenPlan: selectedPlan.id
             // });
-            
+
             const response = await subscription(auth._id, selectedPlan.id)
 
             if (response.data.success) {
@@ -286,41 +280,16 @@ export default function PlanesPage() {
                     <p className="text-slate-500 text-base max-w-xl mx-auto leading-relaxed">
                         Todo el trabajo de campo es realizado por ingenieros de Voltguard. Selecciona la cobertura ideal según la cantidad de activos de tu infraestructura.
                     </p>
-
-                    {/* Selector de periodo */}
-                    <div className="inline-flex items-center gap-1 mt-8 p-1 bg-slate-100 rounded-2xl border border-slate-200">
-                        {(["monthly", "yearly"] as PlanBilling[]).map((b) => (
-                            <button
-                                key={b}
-                                onClick={() => setBilling(b)}
-                                className={`px-5 py-2 rounded-xl text-sm font-bold transition-all duration-250 cursor-pointer ${billing === b
-                                    ? "bg-white text-slate-900 shadow-sm border border-slate-200"
-                                    : "text-slate-500 hover:text-slate-700"
-                                    }`}
-                            >
-                                {b === "monthly" ? "Mensual" : (
-                                    <span className="flex items-center gap-1.5">
-                                        Anual
-                                        <span className="bg-[#8ccf2f]/20 text-[#4a7c10] text-xs font-bold px-1.5 py-0.5 rounded-full">
-                                            -20%
-                                        </span>
-                                    </span>
-                                )}
-                            </button>
-                        ))}
-                    </div>
                 </div>
 
                 {/* ── TARJETAS DE PLANES CORREGIDAS ── */}
                 <div ref={cardsRef} className="grid gap-6 md:grid-cols-3 mb-24">
                     {plansData.map((plan, i) => {
-                        const price = getPrice(plan.monthlyPrice, plan.yearlyPrice);
                         return (
                             <div
                                 key={plan.name}
-                                className={`bg-white rounded-3xl p-6 flex flex-col justify-between border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative ${
-                                    plan.featured ? "border-2 border-[#0797d5] shadow-xl shadow-[#0797d5]/5" : "border-slate-200 shadow-sm"
-                                }`}
+                                className={`bg-white rounded-3xl p-6 flex flex-col justify-between border transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative ${plan.featured ? "border-2 border-[#0797d5] shadow-xl shadow-[#0797d5]/5" : "border-slate-200 shadow-sm"
+                                    }`}
                                 style={{
                                     opacity: cardsVisible ? 1 : 0,
                                     transform: cardsVisible ? "translateY(0)" : "translateY(32px)",
@@ -333,18 +302,19 @@ export default function PlanesPage() {
                                     </span>
                                 )}
                                 <div>
-                                    <span className={`text-xs font-bold uppercase tracking-wider ${
-                                        plan.color === "blue" ? "text-[#0797d5]" : plan.color === "green" ? "text-[#5a8c1a]" : "text-slate-400"
-                                    }`}>{plan.name}</span>
-                                    
-                                    <div className="flex items-end gap-1 mt-2">
-                                        <span className="text-4xl font-black text-slate-950">
-                                            {price === 0 ? "Gratis" : `$${price}`}
+                                    <span className={`text-xs font-bold uppercase tracking-wider ${plan.color === "blue" ? "text-[#0797d5]" : plan.color === "green" ? "text-[#5a8c1a]" : "text-slate-400"
+                                        }`}>{plan.name}</span>
+
+                                    <div className="flex flex-col mt-2">
+                                        <span className="text-2xl font-black text-slate-950 tracking-tight">
+                                            {plan.priceLabel}
                                         </span>
-                                        {price > 0 && <span className="text-slate-400 text-sm mb-1">/mes</span>}
+                                        <span className="text-slate-400 text-xs mt-0.5">
+                                            {plan.subLabel}
+                                        </span>
                                     </div>
                                     <p className="text-sm text-slate-500 mt-2 leading-relaxed">{plan.description}</p>
-                                    
+
                                     {/* Lista de beneficios simplificada en la tarjeta */}
                                     <ul className="mt-6 space-y-2.5 border-t border-slate-100 pt-4">
                                         {plan.features.map((f, idx) => (
@@ -355,16 +325,15 @@ export default function PlanesPage() {
                                         ))}
                                     </ul>
                                 </div>
-                                <button 
+                                <button
                                     // onClick={() => navigate("/login")} 
                                     onClick={() => setSelectedPlan(plan)}
-                                    className={`w-full mt-8 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer ${
-                                        plan.featured 
-                                            ? "bg-[#0797d5] hover:bg-[#087fb3] text-white shadow-lg shadow-[#0797d5]/20" 
-                                            : plan.color === "green" 
-                                                ? "bg-slate-900 hover:bg-slate-800 text-white" 
-                                                : "bg-slate-100 hover:bg-slate-200 text-slate-800"
-                                    }`}
+                                    className={`w-full mt-8 py-3 rounded-xl font-bold text-sm transition-all cursor-pointer ${plan.featured
+                                        ? "bg-[#0797d5] hover:bg-[#087fb3] text-white shadow-lg shadow-[#0797d5]/20"
+                                        : plan.color === "green"
+                                            ? "bg-slate-900 hover:bg-slate-800 text-white"
+                                            : "bg-slate-100 hover:bg-slate-200 text-slate-800"
+                                        }`}
                                 >
                                     {plan.cta}
                                 </button>
@@ -386,8 +355,8 @@ export default function PlanesPage() {
                 {selectedPlan && (
                     <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all animate-fade-in">
                         <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
-                            <button 
-                                onClick={() => { setSelectedPlan(null); setApiResponse(""); }} 
+                            <button
+                                onClick={() => { setSelectedPlan(null); setApiResponse(""); }}
                                 className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
                             >
                                 <X size={20} />
@@ -415,9 +384,9 @@ export default function PlanesPage() {
                                     <span className="font-bold text-slate-900">{selectedPlan.limits.descarga}</span>
                                 </div>
                                 <div className="flex justify-between border-t border-slate-200 pt-2.5 font-bold text-sm">
-                                    <span className="text-slate-900">Total Simulado:</span>
+                                    <span className="text-slate-900">Modalidad:</span>
                                     <span className="text-[#0797d5]">
-                                        {selectedPlan.monthlyPrice === 0 ? "Gratis" : `$${getPrice(selectedPlan.monthlyPrice, selectedPlan.yearlyPrice)} / mes`}
+                                        {selectedPlan.priceLabel === "Gratis" ? "Acceso Gratuito" : "Contrato Anual"}
                                     </span>
                                 </div>
                             </div>

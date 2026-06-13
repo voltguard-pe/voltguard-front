@@ -251,7 +251,7 @@ const BoardDetailPage = () => {
                 Riesgo de arco eléctrico y electrocución presente
               </h2>
               <p className="mt-0.5 text-xs font-medium text-slate-500">
-                Se requiere EPP de acuerdo a categoría calculada por IA
+                Se requiere EPP de acuerdo a categoría
               </p>
             </div>
 
@@ -323,6 +323,7 @@ const BoardDetailPage = () => {
 
             <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between font-medium">
               <p><strong>Tablero:</strong> {board?.name}</p>
+              <p><strong>Voltguard | Norma NFPA 70E - 2012</strong></p>
               <p>
                 <strong>Fecha de cálculo:</strong>{" "}
                 {board.createdAt ? new Date(board.createdAt).toLocaleDateString('es-ES') : "01/01/2026"}

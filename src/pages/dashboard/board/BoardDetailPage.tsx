@@ -237,7 +237,7 @@ const BoardDetailPage = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" />
             <div className="flex items-center gap-4 relative z-10">
               <img
-                src="/nfpa70e.png"
+                src="/warningIcon.png"
                 alt="Voltguard"
                 className="size-15 object-contain"
               />
@@ -269,13 +269,13 @@ const BoardDetailPage = () => {
                     <span>Energía incidente</span>
                     <strong className="text-slate-900">{nfpa.energiaIncidente}</strong>
                   </div>
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                    <span>Distancia de trabajo</span>
+                    <strong className="text-slate-900">{nfpa.distanciaTrabajo}</strong>
+                  </div>
                   <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100">
                     <span className="font-bold text-red-900">Categoría de riesgo</span>
                     <span className="text-3xl font-black text-red-600">{nfpa.categoriaRiesgo}</span>
-                  </div>
-                  <div className="flex justify-between pt-0.5">
-                    <span>Distancia de trabajo</span>
-                    <strong className="text-slate-900">{nfpa.distanciaTrabajo}</strong>
                   </div>
                 </div>
               </div>

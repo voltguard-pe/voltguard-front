@@ -1,7 +1,8 @@
 import { jsPDF } from "jspdf";
 // Importa o define tu logo aquí (puede ser un Base64 o la ruta de tus assets que use tu bundler)
 // import nfpa70eLogo from "@/assets/nfpa70e.png"; 
-import nfpa70eLogo from "../../../public/nfpa70e.png"
+// import nfpa70eLogo from "../../../public/nfpa70e.png"
+import warningLogo from "../../../public/warningIcon.png"
 
 export const generateNfpaPDF = (boards: any | any[]) => {
   const items = Array.isArray(boards) ? boards : [boards];
@@ -61,8 +62,8 @@ export const generateNfpaPDF = (boards: any | any[]) => {
     const logoY = slotOffsetY + 3; 
 
     // Insertar el logo al costado izquierdo de "PELIGRO"
-    if (nfpa70eLogo) {
-      doc.addImage(nfpa70eLogo, "PNG", headerStartX, logoY, logoWidth, logoHeight);
+    if (warningLogo) {
+      doc.addImage(warningLogo, "PNG", headerStartX, logoY, logoWidth, logoHeight);
     }
 
     doc.setTextColor(255, 255, 255);
@@ -81,7 +82,8 @@ export const generateNfpaPDF = (boards: any | any[]) => {
     doc.setFontSize(9.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100, 116, 139); 
-    doc.text(`Tablero: ${board.name} (${board.boardCode || "-"})`, 105, slotOffsetY + 31, { align: "center" });
+    // doc.text(`Tablero: ${board.name} (${board.boardCode || "-"})`, 105, slotOffsetY + 31, { align: "center" });
+    doc.text("Se requiere EPP de acuerdo a categoría", 105, slotOffsetY + 31, { align: "center" });
 
     // Separador horizontal superior interno
     doc.setDrawColor(203, 213, 225); // Slate 300
@@ -231,7 +233,7 @@ export const generateNfpaPDF = (boards: any | any[]) => {
     doc.text(`Tablero: ${board.name}`, pageStartX, footerY);
     
     // Centro: Voltguard y NFPA70E
-    doc.text("Voltguard | NFPA 70E", 105, footerY, { align: "center" });
+    doc.text("Voltguard | Norma NFPA 70E - 2012", 105, footerY, { align: "center" });
     
     // Derecha: Fecha de cálculo original
     const fecha = board.createdAt ? new Date(board.createdAt).toLocaleDateString('es-ES') : '01/01/2026';

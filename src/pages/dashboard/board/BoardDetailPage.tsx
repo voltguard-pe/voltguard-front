@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   Building2,
   CheckCircle2,
+  FileDown,
   FileImage,
   ImageIcon,
   Info,
@@ -17,6 +18,7 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { getBoardByCode } from "../../../services/board.service";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 
 const groundingData = [
   { date: "Ene", ohms: 4.2 },
@@ -219,104 +221,116 @@ const BoardDetailPage = () => {
     const { nfpa } = board;
 
     return (
-      <section className="overflow-hidden rounded-3xl border border-red-200 bg-white shadow-sm transition-all duration-300 hover:border-red-300">
-        <div className="bg-red-600 px-6 py-4 flex justify-center text-white relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" />
-          <div className="flex items-center gap-4 relative z-10">
-            <img
-              src="/nfpa70e.png"
-              alt="Voltguard"
-              className="size-15 object-contain"
-            />
-            <p className="text-4xl font-black tracking-wide">PELIGRO</p>
-          </div>
-        </div>
+      <>
+        {/* Botón añadido para exportar el registro actual */}
+        <button
+          type="button"
+          onClick={() => generateNfpaPDF(board)}
+          className="relative z-10 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 border border-white shadow-md transition-all duration-200 hover:bg-amber-400 hover:border-amber-400 hover:text-slate-950 active:scale-95 cursor-pointer"
+        >
+          <FileDown size={15} />
+          Exportar Etiqueta
+        </button>
 
-        <div className="p-6">
-          <div className="mb-5 border-b pb-4 text-center">
-            <h2 className="text-lg font-black uppercase text-slate-900 tracking-tight">
-              Riesgo de arco eléctrico y electrocución presente
-            </h2>
-            <p className="mt-0.5 text-xs font-medium text-slate-500">
-              Se requiere EPP de acuerdo a categoría calculada por IA
-            </p>
+        <section className="overflow-hidden rounded-3xl border border-red-200 bg-white shadow-sm transition-all duration-300 hover:border-red-300">
+          <div className="bg-red-600 px-6 py-4 flex justify-center text-white relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" />
+            <div className="flex items-center gap-4 relative z-10">
+              <img
+                src="/nfpa70e.png"
+                alt="Voltguard"
+                className="size-15 object-contain"
+              />
+              <p className="text-4xl font-black tracking-wide">PELIGRO</p>
+            </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-slate-200 p-5 bg-slate-50/30">
-              <h3 className="mb-4 text-sm font-black uppercase text-slate-800 tracking-wider">
-                Riesgo de arco eléctrico
-              </h3>
-              <div className="space-y-3 text-xs font-semibold text-slate-600">
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span>Distancia de arco</span>
-                  <strong className="text-slate-900">{nfpa.distanciaArco}</strong>
+          <div className="p-6">
+            <div className="mb-5 border-b pb-4 text-center">
+              <h2 className="text-lg font-black uppercase text-slate-900 tracking-tight">
+                Riesgo de arco eléctrico y electrocución presente
+              </h2>
+              <p className="mt-0.5 text-xs font-medium text-slate-500">
+                Se requiere EPP de acuerdo a categoría calculada por IA
+              </p>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 p-5 bg-slate-50/30">
+                <h3 className="mb-4 text-sm font-black uppercase text-slate-800 tracking-wider">
+                  Riesgo de arco eléctrico
+                </h3>
+                <div className="space-y-3 text-xs font-semibold text-slate-600">
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                    <span>Distancia de arco</span>
+                    <strong className="text-slate-900">{nfpa.distanciaArco}</strong>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                    <span>Energía incidente</span>
+                    <strong className="text-slate-900">{nfpa.energiaIncidente}</strong>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100">
+                    <span className="font-bold text-red-900">Categoría de riesgo</span>
+                    <span className="text-3xl font-black text-red-600">{nfpa.categoriaRiesgo}</span>
+                  </div>
+                  <div className="flex justify-between pt-0.5">
+                    <span>Distancia de trabajo</span>
+                    <strong className="text-slate-900">{nfpa.distanciaTrabajo}</strong>
+                  </div>
                 </div>
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span>Energía incidente</span>
-                  <strong className="text-slate-900">{nfpa.energiaIncidente}</strong>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100">
-                  <span className="font-bold text-red-900">Categoría de riesgo</span>
-                  <span className="text-3xl font-black text-red-600">{nfpa.categoriaRiesgo}</span>
-                </div>
-                <div className="flex justify-between pt-0.5">
-                  <span>Distancia de trabajo</span>
-                  <strong className="text-slate-900">{nfpa.distanciaTrabajo}</strong>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 p-5 bg-slate-50/30">
+                <h3 className="mb-4 text-sm font-black uppercase text-slate-800 tracking-wider">
+                  Riesgo de electrocución
+                </h3>
+                <div className="space-y-3 text-xs font-semibold text-slate-600">
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                    <span>Tensión</span>
+                    <strong className="text-slate-900">{board.tensionNominal || 380} VCA</strong>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                    <span>Límite de aproximación</span>
+                    <strong className="text-slate-900">{nfpa.limiteAproximacion}</strong>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-100 pb-1.5">
+                    <span>Distancia restringida</span>
+                    <strong className="text-slate-900">{nfpa.distanciaRestringida}</strong>
+                  </div>
+                  <div className="rounded-xl bg-amber-50/70 border border-amber-200/60 p-3">
+                    <p className="font-black uppercase text-amber-800 text-[10px] tracking-wider">Guantes</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-700">
+                      {nfpa.guantesClase}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 p-5 bg-slate-50/30">
-              <h3 className="mb-4 text-sm font-black uppercase text-slate-800 tracking-wider">
-                Riesgo de electrocución
+            <div className="mt-5 rounded-2xl border border-slate-200 p-5 bg-slate-50/20">
+              <h3 className="mb-3 text-sm font-black uppercase text-slate-800 tracking-wider">
+                EPP requerido
               </h3>
-              <div className="space-y-3 text-xs font-semibold text-slate-600">
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span>Tensión</span>
-                  <strong className="text-slate-900">{board.tensionNominal || 380} VCA</strong>
-                </div>
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span>Límite de aproximación</span>
-                  <strong className="text-slate-900">{nfpa.limiteAproximacion}</strong>
-                </div>
-                <div className="flex justify-between border-b border-slate-100 pb-1.5">
-                  <span>Distancia restringida</span>
-                  <strong className="text-slate-900">{nfpa.distanciaRestringida}</strong>
-                </div>
-                <div className="rounded-xl bg-amber-50/70 border border-amber-200/60 p-3">
-                  <p className="font-black uppercase text-amber-800 text-[10px] tracking-wider">Guantes</p>
-                  <p className="mt-0.5 text-xs font-medium text-slate-700">
-                    {nfpa.guantesClase}
-                  </p>
-                </div>
-              </div>
+              <ul className="space-y-2 text-xs font-medium text-slate-600">
+                {nfpa.eppRequerido && nfpa.eppRequerido.map((item, index) => (
+                  <li key={index} className="flex gap-2 items-start">
+                    <span className="text-red-500 font-bold">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between font-medium">
+              <p><strong>Tablero:</strong> {board?.name}</p>
+              <p>
+                <strong>Fecha de cálculo:</strong>{" "}
+                {board.createdAt ? new Date(board.createdAt).toLocaleDateString('es-ES') : "01/01/2026"}
+              </p>
             </div>
           </div>
-
-          <div className="mt-5 rounded-2xl border border-slate-200 p-5 bg-slate-50/20">
-            <h3 className="mb-3 text-sm font-black uppercase text-slate-800 tracking-wider">
-              EPP requerido
-            </h3>
-            <ul className="space-y-2 text-xs font-medium text-slate-600">
-              {nfpa.eppRequerido && nfpa.eppRequerido.map((item, index) => (
-                <li key={index} className="flex gap-2 items-start">
-                  <span className="text-red-500 font-bold">•</span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between font-medium">
-            <p><strong>Tablero:</strong> {board?.name}</p>
-            <p>
-              <strong>Fecha de cálculo:</strong>{" "}
-              {board.createdAt ? new Date(board.createdAt).toLocaleDateString('es-ES') : "01/01/2026"}
-            </p>
-          </div>
-        </div>
-      </section>
+        </section>
+      </>
     );
   };
 

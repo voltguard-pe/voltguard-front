@@ -1,5 +1,6 @@
 import {
   Building2,
+  Download,
   Eye,
   FileDown,
   Import,
@@ -34,6 +35,7 @@ import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
 import ImportUnifilarBoardModal from "../../../components/dashboard/modals/ImportUnifilarBoardModal";
 import Select from "../../../shared/components/Select";
+import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
@@ -55,6 +57,8 @@ const BoardDashboardPage = () => {
   const [showImportInsulationsModal, setShowImportInsulationsModal] =
     useState(false);
   const [showImportUnifilarModal, setShowImportUnifilarModal] = useState(false);
+
+  const [selectedBoardCodes, setSelectedBoardCodes] = useState<string[]>([]);
 
   const effectivePublicCode =
     auth?.role === "ADMIN"
@@ -128,7 +132,38 @@ const BoardDashboardPage = () => {
     });
   }, [boards, search]);
 
+
+  // Seleccionar/Deseleccionar una fila individual
+  const handleSelectRow = (code: string) => {
+    setSelectedBoardCodes((prev) =>
+      prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+    );
+  };
+
+  // Seleccionar/Deseleccionar todas las filas filtradas actuales
+  const handleSelectAllRows = () => {
+    const allFilteredCodes = filteredBoards.map((b) => b.code);
+    const isAllSelected = allFilteredCodes.every((code) =>
+      selectedBoardCodes.includes(code)
+    );
+
+    if (isAllSelected) {
+      // Si todos ya están seleccionados, los removemos de la selección general
+      setSelectedBoardCodes((prev) =>
+        prev.filter((code) => !allFilteredCodes.includes(code))
+      );
+    } else {
+      // Si falta alguno, agregamos todos los que no estén ya contenidos
+      setSelectedBoardCodes((prev) => [
+        ...prev,
+        ...allFilteredCodes.filter((code) => !prev.includes(code)),
+      ]);
+    }
+  };
+
+
   const handleSelectCompany = (selectedPublicCode: string) => {
+    setSelectedBoardCodes([]);
     if (!selectedPublicCode) {
       setSelectedCompany(null);
       navigate("/dashboard/boards");
@@ -255,7 +290,7 @@ const BoardDashboardPage = () => {
           </button>
         )} */}
 
-        {effectivePublicCode && (
+        {auth?.role === "ADMIN" && effectivePublicCode && (
           <button
             type="button"
             onClick={() => setShowQR(true)}
@@ -337,6 +372,62 @@ const BoardDashboardPage = () => {
         </div>
       )}
 
+      {/* ── BOTONES DE ACCIÓN COMPAÑÍA (VER QR / EXTRAER NFPA70E) ── */}
+      {auth?.role === "SUPERADMIN" && !showEmptyCompanyState && (
+        <div
+          style={{ animation: "fadeUp 0.4s ease 220ms both" }}
+          className="flex flex-wrap items-center gap-2.5"
+        >
+          <button
+            type="button"
+            onClick={() => setShowQR(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
+          >
+            <QrCode size={15} />
+            Ver QR
+          </button>
+
+          {/* ── BOTÓN CORREGIDO: EXTRAER NFPA70E CON DATOS COMPLETOS ── */}
+          <button
+            type="button"
+            disabled={selectedBoardCodes.length === 0}
+            onClick={async () => {
+              if (!effectivePublicCode) return;
+              try {
+                // 1. Buscamos los códigos únicos de las filas seleccionadas
+                const selectedBoardsData = boards.filter(b => selectedBoardCodes.includes(b.code));
+                
+                // 2. Traemos en paralelo la información full (incluyendo .nfpa) de cada uno
+                const fullBoardsData = await Promise.all(
+                  selectedBoardsData.map((board) =>
+                    publicGetCompanyBoardByCode(effectivePublicCode, board.code)
+                  )
+                );
+
+                // 3. Enviamos los tableros con sus esquemas NFPA completos al generador de PDF
+                generateNfpaPDF(fullBoardsData);
+              } catch (error) {
+                console.error("Error al recopilar datos NFPA de tableros:", error);
+                alert("Hubo un error al descargar las etiquetas NFPA 70E.");
+              }
+            }}
+            className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer ${
+              selectedBoardCodes.length > 0
+                ? "bg-slate-900 border-slate-900 text-white hover:bg-slate-800"
+                : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
+            }`}
+          >
+            <Download size={15} />
+            Extraer NFPA70E
+            {selectedBoardCodes.length > 0 && (
+              <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#0797d5] px-1 text-[10px] font-black text-white">
+                {selectedBoardCodes.length > 99 ? "+99" : selectedBoardCodes.length}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* ── TABLA / CONTENEDOR PRINCIPAL ── */}
       <div
         style={{ animation: "fadeUp 0.5s ease 240ms both" }}
@@ -387,6 +478,18 @@ const BoardDashboardPage = () => {
             <table className="w-full min-w-[760px] text-left text-sm border-collapse">
               <thead className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
                 <tr>
+                  {/* ── NUEVA CABECERA DE SELECCIÓN ── */}
+                  <th className="w-12 px-6 py-4 text-center">
+                    <input
+                      type="checkbox"
+                      className="size-4 rounded border-slate-300 text-[#0797d5] focus:ring-[#0797d5] cursor-pointer"
+                      checked={
+                        filteredBoards.length > 0 &&
+                        filteredBoards.every((b) => selectedBoardCodes.includes(b.code))
+                      }
+                      onChange={handleSelectAllRows}
+                    />
+                  </th>
                   <th className="px-6 py-4">Tablero</th>
                   <th className="px-6 py-4">Código</th>
                   <th className="px-6 py-4">Ubicación</th>
@@ -400,10 +503,22 @@ const BoardDashboardPage = () => {
                     key={board.code}
                     style={{
                       animation: "fadeUp 0.35s ease both",
-                      animationDelay: `${index * 30}ms` // Cascada ultra veloz para las filas
+                      animationDelay: `${index * 30}ms`
                     }}
-                    className="transition-colors duration-150 hover:bg-slate-50/60"
+                    className={`transition-colors duration-150 ${selectedBoardCodes.includes(board.code)
+                        ? "bg-[#0797d5]/5 hover:bg-[#0797d5]/10"
+                        : "hover:bg-slate-50/60"
+                      }`}
                   >
+                    {/* ── NUEVO CHECKBOX POR FILA ── */}
+                    <td className="px-6 py-3.5 text-center">
+                      <input
+                        type="checkbox"
+                        className="size-4 rounded border-slate-300 text-[#0797d5] focus:ring-[#0797d5] cursor-pointer"
+                        checked={selectedBoardCodes.includes(board.code)}
+                        onChange={() => handleSelectRow(board.code)}
+                      />
+                    </td>
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0797d5] to-[#8ccf2f] text-white shadow-sm">

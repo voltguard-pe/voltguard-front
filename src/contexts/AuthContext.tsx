@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   isLoggingOut: boolean;
   handleLogout: () => Promise<void>;
+  handleLoginSuccess: (user: UserProps) => void; // Nueva función para unificar estados
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -36,6 +37,12 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     authentication();
   }, []);
 
+  // Función crítica para evitar que ProtectedRoute se confunda al iniciar sesión
+  const handleLoginSuccess = (user: UserProps) => {
+    setAuth(user);
+    setLoading(false); // Asegura que las rutas protegidas no vean un estado de carga falso
+  };
+
   const handleLogout = async () => {
     setIsLoggingOut(true);
 
@@ -50,13 +57,12 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       setAuth(null);
       setIsLoggingOut(false);
-
     }
   };
 
   return (
     <AuthContext.Provider
-      value={{ auth, setAuth, loading, isLoggingOut, handleLogout }}
+      value={{ auth, setAuth, loading, isLoggingOut, handleLogout, handleLoginSuccess }}
     >
       {children}
     </AuthContext.Provider>

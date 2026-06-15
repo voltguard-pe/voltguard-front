@@ -11,7 +11,7 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const { auth, loading, isLoggingOut } = useAuth();
   const location = useLocation();
 
-if (loading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <VoltGuardLoader />

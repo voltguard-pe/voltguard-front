@@ -1,5 +1,5 @@
 import { AlertCircle, KeyRound, Loader2, Mail } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState, useMemo } from "react";
 import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
 
 import { getProfile, login, type LoginData } from "../../services/auth.service";
@@ -7,19 +7,17 @@ import Input from "../../shared/components/Input";
 import { useAuth } from "../../shared/hooks/useAuth";
 
 const LoginPage = () => {
-  const { setAuth } = useAuth();
+  const { handleLoginSuccess } = useAuth();
   const navigate = useNavigate();
-
   const [searchParams] = useSearchParams();
 
+  // Decodificamos de forma segura la URL completa del código QR si viene como parámetro
   const redirectParam = searchParams.get("redirect");
 
   const redirect = useMemo(() => {
     if (!redirectParam) return "/dashboard";
-
     try {
       const decoded = decodeURIComponent(redirectParam);
-      // Validamos que sea una ruta relativa interna segura para evitar open-redirects
       return decoded.startsWith("/") ? decoded : "/dashboard";
     } catch (error) {
       console.error("Error decodificando parámetro de redirección", error);
@@ -50,14 +48,25 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
+      // 1. Ejecutar el login en el backend
       await login(formData);
+      
+      // 2. Obtener los datos del perfil cargado
       const user = await getProfile();
-      setAuth(user);
-      navigate(redirect, { replace: true });
+      
+      // 3. Impactar el contexto global de manera limpia y apagar loaders
+      handleLoginSuccess(user);
+      
+      // 4. Pequeña holgura de 60ms para que las rutas asimilen el cambio de "auth" antes de navegar
+      setTimeout(() => {
+        navigate(redirect, { replace: true });
+      }, 60);
+
     } catch (error: any) {
       console.error(error);
-      // Captura el mensaje descriptivo si el usuario no está verificado (error 403)
-      setErrorMessage(error.response?.data?.message || "Credenciales incorrectas o error al iniciar sesión.");
+      setErrorMessage(
+        error.response?.data?.message || "Credenciales incorrectas o error al iniciar sesión."
+      );
     } finally {
       setLoading(false);
     }
@@ -66,10 +75,6 @@ const LoginPage = () => {
   return (
     <div className="w-full max-w-md">
       <div className="mb-8 text-center">
-        {/* <div className="mx-auto flex size-16 items-center justify-center rounded-3xl bg-[#0797d5]/10 text-[#0797d5]">
-          <Zap size={30} />
-        </div> */}
-
         <div className="mx-auto flex size-16 items-center justify-center">
           <img
             src="/voltguard.png"
@@ -135,20 +140,15 @@ const LoginPage = () => {
           {loading ? "Ingresando..." : "Ingresar"}
         </button>
       </form>
-      <div className="w-full max-w-md">
-        {/* ... Encabezado e Input del Formulario ... */}
 
-        {/* <form> ... </form> */}
-
-        <div className="mt-6 text-center text-sm text-slate-500">
-          ¿No tienes una cuenta?{" "}
-          <NavLink
-            to="/auth/register"
-            className="font-semibold text-[#0797d5] transition hover:text-[#087fb3] hover:underline"
-          >
-            Regístrate aquí
-          </NavLink>
-        </div>
+      <div className="mt-6 text-center text-sm text-slate-500">
+        ¿No tienes una cuenta?{" "}
+        <NavLink
+          to="/auth/register"
+          className="font-semibold text-[#0797d5] transition hover:text-[#087fb3] hover:underline"
+        >
+          Regístrate aquí
+        </NavLink>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { AlertCircle, KeyRound, Loader2, Mail } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
 
 import { getProfile, login, type LoginData } from "../../services/auth.service";
@@ -14,10 +14,18 @@ const LoginPage = () => {
 
   const redirectParam = searchParams.get("redirect");
 
-  const redirect =
-    redirectParam && redirectParam.startsWith("/")
-      ? redirectParam
-      : "/dashboard";
+  const redirect = useMemo(() => {
+    if (!redirectParam) return "/dashboard";
+
+    try {
+      const decoded = decodeURIComponent(redirectParam);
+      // Validamos que sea una ruta relativa interna segura para evitar open-redirects
+      return decoded.startsWith("/") ? decoded : "/dashboard";
+    } catch (error) {
+      console.error("Error decodificando parámetro de redirección", error);
+      return "/dashboard";
+    }
+  }, [redirectParam]);
 
   const [formData, setFormData] = useState<LoginData>({
     email: "",

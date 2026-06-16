@@ -209,7 +209,134 @@ const BoardDetailPage = () => {
     </section>
   );
 
-  const renderNfpaSection = () => {
+  // const renderNfpaSection = () => {
+  //   if (!board?.nfpa) {
+  //     return (
+  //       <div className="rounded-3xl border border-slate-200 bg-slate-50/50 p-8 text-center text-xs font-semibold text-slate-400">
+  //         Este tablero no cuenta con parámetros de seguridad NFPA 70E registrados.
+  //       </div>
+  //     );
+  //   }
+
+  //   const { nfpa } = board;
+
+  //   return (
+  //     <>
+  //       {/* Botón añadido para exportar el registro actual */}
+  //       <button
+  //         type="button"
+  //         onClick={() => generateNfpaPDF(board)}
+  //         className="relative z-10 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 border border-white shadow-md transition-all duration-200 hover:bg-amber-400 hover:border-amber-400 hover:text-slate-950 active:scale-95 cursor-pointer"
+  //       >
+  //         <FileDown size={15} />
+  //         Exportar Etiqueta
+  //       </button>
+
+  //       <section className="overflow-hidden rounded-3xl border border-red-200 bg-white shadow-sm transition-all duration-300 hover:border-red-300">
+  //         <div className="bg-red-600 px-6 py-4 flex justify-center text-white relative overflow-hidden">
+  //           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent animate-pulse" />
+  //           <div className="flex items-center gap-4 relative z-10">
+  //             <img
+  //               src="/warningIcon.png"
+  //               alt="Voltguard"
+  //               className="size-15 object-contain"
+  //             />
+  //             <p className="text-4xl font-black tracking-wide">PELIGRO</p>
+  //           </div>
+  //         </div>
+
+  //         <div className="p-6">
+  //           <div className="mb-5 border-b pb-4 text-center">
+  //             <h2 className="text-lg font-black uppercase text-slate-900 tracking-tight">
+  //               Riesgo de arco eléctrico y electrocución presente
+  //             </h2>
+  //             <p className="mt-0.5 text-xs font-medium text-slate-500">
+  //               Se requiere EPP de acuerdo a categoría
+  //             </p>
+  //           </div>
+
+  //           <div className="grid gap-6 lg:grid-cols-2">
+  //             <div className="rounded-2xl border border-slate-200 p-5 bg-slate-50/30">
+  //               <h3 className="mb-4 text-sm font-black uppercase text-slate-800 tracking-wider">
+  //                 Riesgo de arco eléctrico
+  //               </h3>
+  //               <div className="space-y-3 text-xs font-semibold text-slate-600">
+  //                 <div className="flex justify-between border-b border-slate-100 pb-1.5">
+  //                   <span>Distancia de arco</span>
+  //                   <strong className="text-slate-900">{nfpa.distanciaArco}</strong>
+  //                 </div>
+  //                 <div className="flex justify-between border-b border-slate-100 pb-1.5">
+  //                   <span>Energía incidente</span>
+  //                   <strong className="text-slate-900">{nfpa.energiaIncidente}</strong>
+  //                 </div>
+  //                 <div className="flex justify-between border-b border-slate-100 pb-1.5">
+  //                   <span>Distancia de trabajo</span>
+  //                   <strong className="text-slate-900">{nfpa.distanciaTrabajo}</strong>
+  //                 </div>
+  //                 <div className="flex items-center justify-between p-3 rounded-xl bg-red-50 border border-red-100">
+  //                   <span className="font-bold text-red-900">Categoría de riesgo</span>
+  //                   <span className="text-3xl font-black text-red-600">{nfpa.categoriaRiesgo}</span>
+  //                 </div>
+  //               </div>
+  //             </div>
+
+  //             <div className="rounded-2xl border border-slate-200 p-5 bg-slate-50/30">
+  //               <h3 className="mb-4 text-sm font-black uppercase text-slate-800 tracking-wider">
+  //                 Riesgo de electrocución
+  //               </h3>
+  //               <div className="space-y-3 text-xs font-semibold text-slate-600">
+  //                 <div className="flex justify-between border-b border-slate-100 pb-1.5">
+  //                   <span>Tensión</span>
+  //                   <strong className="text-slate-900">{board.tensionNominal || 380} VCA</strong>
+  //                 </div>
+  //                 <div className="flex justify-between border-b border-slate-100 pb-1.5">
+  //                   <span>Límite de aproximación</span>
+  //                   <strong className="text-slate-900">{nfpa.limiteAproximacion}</strong>
+  //                 </div>
+  //                 <div className="flex justify-between border-b border-slate-100 pb-1.5">
+  //                   <span>Distancia restringida</span>
+  //                   <strong className="text-slate-900">{nfpa.distanciaRestringida}</strong>
+  //                 </div>
+  //                 <div className="rounded-xl bg-amber-50/70 border border-amber-200/60 p-3">
+  //                   <p className="font-black uppercase text-amber-800 text-[10px] tracking-wider">Guantes</p>
+  //                   <p className="mt-0.5 text-xs font-medium text-slate-700">
+  //                     {nfpa.guantesClase}
+  //                   </p>
+  //                 </div>
+  //               </div>
+  //             </div>
+  //           </div>
+
+  //           <div className="mt-5 rounded-2xl border border-slate-200 p-5 bg-slate-50/20">
+  //             <h3 className="mb-3 text-sm font-black uppercase text-slate-800 tracking-wider">
+  //               EPP requerido
+  //             </h3>
+  //             <ul className="space-y-2 text-xs font-medium text-slate-600">
+  //               {nfpa.eppRequerido && nfpa.eppRequerido.map((item, index) => (
+  //                 <li key={index} className="flex gap-2 items-start">
+  //                   <span className="text-red-500 font-bold">•</span>
+  //                   <span>{item}</span>
+  //                 </li>
+  //               ))}
+  //             </ul>
+  //           </div>
+
+  //           <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between font-medium">
+  //             <p><strong>Tablero:</strong> {board?.name}</p>
+  //             <p><strong>Voltguard | Norma NFPA 70E - 2024</strong></p>
+  //             <p>
+  //               <strong>Fecha de cálculo:</strong>{" "}
+  //               {board.createdAt ? new Date(board.createdAt).toLocaleDateString('es-ES') : "01/01/2026"}
+  //             </p>
+  //           </div>
+  //         </div>
+  //       </section>
+  //     </>
+  //   );
+  // };
+
+
+const renderNfpaSection = () => {
     if (!board?.nfpa) {
       return (
         <div className="rounded-3xl border border-slate-200 bg-slate-50/50 p-8 text-center text-xs font-semibold text-slate-400">
@@ -222,7 +349,7 @@ const BoardDetailPage = () => {
 
     return (
       <>
-        {/* Botón añadido para exportar el registro actual */}
+        {/* Botón para exportar el registro actual */}
         <button
           type="button"
           onClick={() => generateNfpaPDF(board)}
@@ -250,9 +377,15 @@ const BoardDetailPage = () => {
               <h2 className="text-lg font-black uppercase text-slate-900 tracking-tight">
                 Riesgo de arco eléctrico y electrocución presente
               </h2>
-              <p className="mt-0.5 text-xs font-medium text-slate-500">
-                Se requiere EPP de acuerdo a categoría
-              </p>
+              
+              {/* NUEVA UBICACIÓN DE LA NORMA: En la cabecera técnica */}
+              <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold">
+                <p className="text-slate-500">Se requiere EPP de acuerdo a categoría</p>
+                <span className="text-slate-300 hidden sm:inline">•</span>
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 font-bold border border-slate-200/60">
+                  Norma NFPA 70E - 2024
+                </span>
+              </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
@@ -321,19 +454,48 @@ const BoardDetailPage = () => {
               </ul>
             </div>
 
-            <div className="mt-5 flex flex-col gap-2 border-t border-slate-100 pt-4 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between font-medium">
-              <p><strong>Tablero:</strong> {board?.name}</p>
-              <p><strong>Voltguard | Norma NFPA 70E - 2012</strong></p>
-              <p>
-                <strong>Fecha de cálculo:</strong>{" "}
-                {board.createdAt ? new Date(board.createdAt).toLocaleDateString('es-ES') : "01/01/2026"}
-              </p>
+            {/* ── NUEVA DISTRIBUCIÓN REORGANIZADA DEL PIE DE PÁGINA (3 COLUMNAS) ── */}
+            <div className="mt-5 border-t border-slate-100 pt-4 grid gap-4 grid-cols-1 sm:grid-cols-3 items-center text-xs text-slate-400 font-medium">
+              
+              {/* COLUMNA IZQUIERDA: Nombre del Tablero */}
+              <div className="text-left">
+                <p className="text-slate-700 font-bold">
+                  Tablero: <span className="font-semibold text-slate-500">{board?.name}</span>
+                </p>
+              </div>
+
+              {/* COLUMNA CENTRAL: Bloque "Creado por: Voltguard" */}
+              <div className="flex items-center justify-start sm:justify-center gap-2">
+                <span className="text-[11px] font-semibold text-slate-400">Creado por:</span>
+                <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 border border-slate-200/60 px-2.5 py-1 shadow-sm">
+                  <img 
+                    src="/voltguard.png" 
+                    alt="Voltguard Logo" 
+                    className="size-4.5 object-contain"
+                  />
+                  <span className="font-black text-slate-800 tracking-tight text-[12px]">
+                    Voltguard
+                  </span>
+                </div>
+              </div>
+
+              {/* COLUMNA DERECHA: Fecha de cálculo */}
+              <div className="text-start sm:text-right">
+                <p className="font-semibold text-slate-500">
+                  Fecha de cálculo:{" "}
+                  <span className="font-normal text-slate-400">
+                    {board.createdAt ? new Date(board.createdAt).toLocaleDateString('es-ES') : "01/01/2026"}
+                  </span>
+                </p>
+              </div>
+
             </div>
           </div>
         </section>
       </>
     );
   };
+  
 
   const renderInsulationMeasurements = () => {
     const records = board?.insulationMeasurements ?? [];

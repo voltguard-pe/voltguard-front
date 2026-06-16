@@ -112,6 +112,25 @@ const ImportUnifilarBoardModal = ({
             clearInterval(interval);
             setProgress(100);
             setResult(response);
+
+            // 🚨 VALIDACIÓN CRÍTICA DE ERRORES INTERNOS (Ej: Imágenes > 10MB rechazadas por Cloudinary)
+            const tablerosFallidos = response?.results?.filter((r: any) => r.status === "failed") || [];
+
+            if (tablerosFallidos.length > 0) {
+                // Si hubo fallas por peso o Cloudinary, cambiamos el estado a error
+                setStatus("error");
+
+                // Construimos un mensaje detallando qué tableros fallaron
+                const erroresDetallados = tablerosFallidos
+                    .map((t: any) => `Tablero ${t.boardCode}: ${t.error}`)
+                    .join(" | ");
+
+                toast.error(`Importación incompleta. Errores detectados: ${erroresDetallados}`, {
+                    autoClose: 8000 // Dejamos el toast abierto más tiempo para que el usuario lea qué falló
+                });
+                return; // Frenamos la ejecución aquí para que no cierre el modal ni mande el toast verde
+            }
+
             setStatus("success");
 
             toast.success("Tableros importados correctamente desde el ZIP");
@@ -182,7 +201,7 @@ const ImportUnifilarBoardModal = ({
                             </h2>
 
                             <p className="text-sm text-slate-500">
-                                Sube un archivo ZIP con las imágenes de los diagramas unifilares.
+                                Sube un archivo ZIP con las imágenes. <span className="font-semibold text-amber-600">Nota: Cada imagen interna debe pesar menos de 10MB</span> para garantizar el correcto análisis de la IA.
                             </p>
                         </div>
                     </div>

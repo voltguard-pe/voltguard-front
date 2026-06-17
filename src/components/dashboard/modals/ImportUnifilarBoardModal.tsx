@@ -94,6 +94,62 @@ const ImportUnifilarBoardModal = ({
         return interval;
     };
 
+    // const handleCreateBoard = async () => {
+    //     if (!file || !selectedCompany) return;
+
+    //     setStatus("processing");
+    //     setProgress(0);
+
+    //     const interval = simulateProgress();
+
+    //     try {
+    //         const response = await createBoardFromUnifilar(
+    //             file,
+    //             token,
+    //             selectedCompany
+    //         );
+
+    //         clearInterval(interval);
+    //         setProgress(100);
+    //         setResult(response);
+
+    //         // 🚨 VALIDACIÓN CRÍTICA DE ERRORES INTERNOS (Ej: Imágenes > 10MB rechazadas por Cloudinary)
+    //         const tablerosFallidos = response?.results?.filter((r: any) => r.status === "failed") || [];
+
+    //         if (tablerosFallidos.length > 0) {
+    //             // Si hubo fallas por peso o Cloudinary, cambiamos el estado a error
+    //             setStatus("error");
+
+    //             // Construimos un mensaje detallando qué tableros fallaron
+    //             const erroresDetallados = tablerosFallidos
+    //                 .map((t: any) => `Tablero ${t.boardCode}: ${t.error}`)
+    //                 .join(" | ");
+
+    //             toast.error(`Importación incompleta. Errores detectados: ${erroresDetallados}`, {
+    //                 autoClose: 8000 // Dejamos el toast abierto más tiempo para que el usuario lea qué falló
+    //             });
+    //             return; // Frenamos la ejecución aquí para que no cierre el modal ni mande el toast verde
+    //         }
+
+    //         setStatus("success");
+
+    //         toast.success("Tableros importados correctamente desde el ZIP");
+
+    //         setTimeout(() => {
+    //             handleClose();
+    //             onSuccess();
+    //         }, 800);
+    //     } catch (error: any) {
+    //         clearInterval(interval);
+    //         setStatus("error");
+
+    //         toast.error(
+    //             error?.response?.data?.error ||
+    //             "Error al crear el tablero desde el unifilar"
+    //         );
+    //     }
+    // };
+
     const handleCreateBoard = async () => {
         if (!file || !selectedCompany) return;
 
@@ -113,26 +169,22 @@ const ImportUnifilarBoardModal = ({
             setProgress(100);
             setResult(response);
 
-            // 🚨 VALIDACIÓN CRÍTICA DE ERRORES INTERNOS (Ej: Imágenes > 10MB rechazadas por Cloudinary)
+            // Validar errores individuales del lote procesado por el backend
             const tablerosFallidos = response?.results?.filter((r: any) => r.status === "failed") || [];
 
             if (tablerosFallidos.length > 0) {
-                // Si hubo fallas por peso o Cloudinary, cambiamos el estado a error
                 setStatus("error");
-
-                // Construimos un mensaje detallando qué tableros fallaron
                 const erroresDetallados = tablerosFallidos
                     .map((t: any) => `Tablero ${t.boardCode}: ${t.error}`)
                     .join(" | ");
 
                 toast.error(`Importación incompleta. Errores detectados: ${erroresDetallados}`, {
-                    autoClose: 8000 // Dejamos el toast abierto más tiempo para que el usuario lea qué falló
+                    autoClose: 8000
                 });
-                return; // Frenamos la ejecución aquí para que no cierre el modal ni mande el toast verde
+                return;
             }
 
             setStatus("success");
-
             toast.success("Tableros importados correctamente desde el ZIP");
 
             setTimeout(() => {
@@ -143,10 +195,32 @@ const ImportUnifilarBoardModal = ({
             clearInterval(interval);
             setStatus("error");
 
-            toast.error(
-                error?.response?.data?.error ||
-                "Error al crear el tablero desde el unifilar"
-            );
+            // 🔍 DIAGNÓSTICO AVANZADO PARA PRODUCCIÓN:
+            console.error("Error completo capturado:", error);
+
+            let mensajeError = "Error al crear el tablero desde el unifilar";
+
+            if (error?.response) {
+                // El servidor respondió con un estatus fuera del rango 2xx
+                const statusHttp = error.response.status;
+                const dataError = error.response.data?.error;
+
+                if (statusHttp === 413) {
+                    mensajeError = `Error 413: El archivo ZIP es demasiado grande para el servidor de producción (${(file.size / 1024 / 1024).toFixed(2)} MB).`;
+                } else if (statusHttp === 504 || statusHttp === 502) {
+                    mensajeError = `Error ${statusHttp}: Tiempo de espera agotado (Timeout) en producción. El procesamiento tomó demasiado tiempo.`;
+                } else {
+                    mensajeError = dataError || `Error del servidor (Código: ${statusHttp})`;
+                }
+            } else if (error?.request) {
+                // La petición se realizó pero no se recibió respuesta (caída de red o caída de servidor)
+                mensajeError = "No se recibió respuesta del servidor. Posible problema de red o el archivo superó los límites permitidos.";
+            } else {
+                // Algo ocurrió al configurar la petición
+                mensajeError = error.message || mensajeError;
+            }
+
+            toast.error(mensajeError, { autoClose: 10000 });
         }
     };
 

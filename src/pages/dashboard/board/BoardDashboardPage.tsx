@@ -185,6 +185,37 @@ const BoardDashboardPage = () => {
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (!effectivePublicCode || selectedBoardCodes.length === 0) return;
+
+    const confirmDelete = confirm(`¿Estás seguro de que deseas eliminar los ${selectedBoardCodes.length} tableros seleccionados?`);
+    if (!confirmDelete) return;
+
+    // Guardamos una copia de respaldo del estado actual por si la API falla
+    const previousBoards = [...boards];
+    const codesToRemove = [...selectedBoardCodes];
+
+    try {
+      // 1. Eliminación visual instantánea (Optimistic Update)
+      // Removemos los tableros del estado de inmediato para que el usuario vea el cambio sin parpadeos
+      setBoards((prev) => prev.filter((board) => !codesToRemove.includes(board.code)));
+      setSelectedBoardCodes([]);
+
+      // 2. Ejecutar las peticiones de borrado en segundo plano (sin bloquear la interfaz)
+      await Promise.all(
+        codesToRemove.map((code) => deleteBoard(effectivePublicCode, code))
+      );
+
+    } catch (error) {
+      console.error("Error al eliminar tableros en lote", error);
+      alert("Hubo un error al intentar eliminar algunos tableros en el servidor.");
+
+      // Si la API falla, revertimos el cambio y regresamos los tableros a la tabla
+      setBoards(previousBoards);
+      setSelectedBoardCodes(codesToRemove);
+    }
+  };
+
   const handleGeneratePDF = async (boardCode: string) => {
     if (!effectivePublicCode) return;
     try {
@@ -276,7 +307,8 @@ const BoardDashboardPage = () => {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { title: "Total tableros", value: boards.length, icon: Zap, bg: "bg-[#0797d5]/10 text-[#0797d5]", delay: "40ms" },
-          { title: "Con ubicación", value: boards.filter(b => b.location).length, icon: MapPin, bg: "bg-[#8ccf2f]/15 text-[#3aaa35]", delay: "80ms" },
+          // { title: "Con ubicación", value: boards.filter(b => b.location).length, icon: MapPin, bg: "bg-[#8ccf2f]/15 text-[#3aaa35]", delay: "80ms" },
+          { title: "Con NFPA 70E", value: boards.filter(b => b.nfpa).length, icon: Zap, bg: "bg-[#8ccf2f]/15 text-[#3aaa35]", delay: "80ms" },
           { title: "Resultados visibles", value: filteredBoards.length, icon: Search, bg: "bg-slate-100 text-slate-700", delay: "120ms" },
           {
             title: "Empresa actual",
@@ -346,40 +378,11 @@ const BoardDashboardPage = () => {
       {!showEmptyCompanyState && (
         <div
           style={{ animation: "fadeUp 0.4s ease 220ms both" }}
-          className="flex flex-wrap items-center gap-2.5"
+          className="flex flex-wrap items-center justify-between gap-4 w-full"
         >
-          {/* NUEVO BOTÓN MULTI-QR MÁSIVO (COMO EL BOTÓN DE NFPA) */}
-          <button
-            type="button"
-            disabled={selectedBoardCodes.length === 0}
-            onClick={async () => {
-              if (!effectivePublicCode) return;
-              try {
-                const selectedBoardsData = boards.filter(b => selectedBoardCodes.includes(b.code));
-                const companyName = selectedCompany?.name || (auth?.role === "ADMIN" ? "Mi Empresa" : "Voltguard");
-                
-                await generateQrPdf(selectedBoardsData, companyName, effectivePublicCode);
-              } catch (error) {
-                console.error("Error al extraer códigos QR en PDF:", error);
-                alert("Hubo un error al generar el PDF de códigos QR.");
-              }
-            }}
-            className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer ${
-              selectedBoardCodes.length > 0
-                ? "bg-[#0797d5] border-[#0797d5] text-white hover:bg-[#0684ba]"
-                : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
-            }`}
-          >
-            <QrCode size={15} />
-            Extraer Códigos QR
-            {selectedBoardCodes.length > 0 && (
-              <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-black text-white">
-                {selectedBoardCodes.length}
-              </span>
-            )}
-          </button>
-
-          {auth?.role === "SUPERADMIN" && (
+          {/* GRUPO IZQUIERDO: Botones de Extracción y Futuros Botones */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* NUEVO BOTÓN MULTI-QR MÁSIVO */}
             <button
               type="button"
               disabled={selectedBoardCodes.length === 0}
@@ -387,28 +390,84 @@ const BoardDashboardPage = () => {
                 if (!effectivePublicCode) return;
                 try {
                   const selectedBoardsData = boards.filter(b => selectedBoardCodes.includes(b.code));
-                  const fullBoardsData = await Promise.all(
-                    selectedBoardsData.map((board) =>
-                      publicGetCompanyBoardByCode(effectivePublicCode, board.code)
-                    )
-                  );
-                  generateNfpaPDF(fullBoardsData);
+                  const companyName = selectedCompany?.name || (auth?.role === "ADMIN" ? "Mi Empresa" : "Voltguard");
+
+                  await generateQrPdf(selectedBoardsData, companyName, effectivePublicCode);
                 } catch (error) {
-                  console.error("Error al recopilar datos NFPA de tableros:", error);
-                  alert("Hubo un error al descargar las etiquetas NFPA 70E.");
+                  console.error("Error al extraer códigos QR en PDF:", error);
+                  alert("Hubo un error al generar el PDF de códigos QR.");
                 }
               }}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer ${
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${
                 selectedBoardCodes.length > 0
-                  ? "bg-slate-900 border-slate-900 text-white hover:bg-slate-800"
+                  ? "bg-[#0797d5] border-[#0797d5] text-white hover:bg-[#0684ba]"
                   : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
               }`}
             >
-              <Download size={15} />
-              Extraer NFPA70E
+              <QrCode size={15} />
+              Extraer Códigos QR
               {selectedBoardCodes.length > 0 && (
-                <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#0797d5] px-1 text-[10px] font-black text-white">
-                  {selectedBoardCodes.length > 99 ? "+99" : selectedBoardCodes.length}
+                <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-black text-white">
+                  {selectedBoardCodes.length}
+                </span>
+              )}
+            </button>
+
+            {auth?.role === "SUPERADMIN" && (
+              <button
+                type="button"
+                disabled={selectedBoardCodes.length === 0}
+                onClick={async () => {
+                  if (!effectivePublicCode) return;
+                  try {
+                    const selectedBoardsData = boards.filter(b => selectedBoardCodes.includes(b.code));
+                    const fullBoardsData = await Promise.all(
+                      selectedBoardsData.map((board) =>
+                        publicGetCompanyBoardByCode(effectivePublicCode, board.code)
+                      )
+                    );
+                    generateNfpaPDF(fullBoardsData);
+                  } catch (error) {
+                    console.error("Error al recopilar datos NFPA de tableros:", error);
+                    alert("Hubo un error al descargar las etiquetas NFPA 70E.");
+                  }
+                }}
+                className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${
+                  selectedBoardCodes.length > 0
+                    ? "bg-slate-900 border-slate-900 text-white hover:bg-slate-800"
+                    : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
+                }`}
+              >
+                <Download size={15} />
+                Extraer NFPA70E
+                {selectedBoardCodes.length > 0 && (
+                  <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#0797d5] px-1 text-[10px] font-black text-white">
+                    {selectedBoardCodes.length > 99 ? "+99" : selectedBoardCodes.length}
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* 💡 AQUÍ PUEDES AGREGAR EL NUEVO BOTÓN EN EL FUTURO, QUEDARÁ AL LADITO A LA IZQUIERDA */}
+          </div>
+
+          {/* GRUPO DERECHO: Botón único de eliminación */}
+          {auth?.role === "SUPERADMIN" && (
+            <button
+              type="button"
+              disabled={selectedBoardCodes.length === 0}
+              onClick={handleBulkDelete}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${
+                selectedBoardCodes.length > 0
+                  ? "bg-red-600 border-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:shadow-red-600/20"
+                  : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
+              }`}
+            >
+              <Trash2 size={15} />
+              Eliminar Seleccionados
+              {selectedBoardCodes.length > 0 && (
+                <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-black text-white">
+                  {selectedBoardCodes.length}
                 </span>
               )}
             </button>
@@ -457,6 +516,7 @@ const BoardDashboardPage = () => {
                   <th className="px-6 py-4">Tablero</th>
                   <th className="px-6 py-4">Código</th>
                   <th className="px-6 py-4">Ubicación</th>
+                  <th className="px-6 py-4">NFPA 70E</th>
                   <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
@@ -499,6 +559,18 @@ const BoardDashboardPage = () => {
                         <MapPin size={14} className="text-slate-400 shrink-0" />
                         <span className="truncate max-w-[200px]">{board.location || "Sin ubicación"}</span>
                       </div>
+                    </td>
+
+                    <td className="px-6 py-3.5">
+                      {board.nfpa ? (
+                        <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                          Certificado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                          No Certificado
+                        </span>
+                      )}
                     </td>
 
                     <td className="px-6 py-3.5">

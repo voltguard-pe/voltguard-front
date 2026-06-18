@@ -236,6 +236,8 @@ export interface PublicCompanyBoardsItemDTO {
 
   images: BoardImages;
 
+  nfpa?: BoardNfpaData;
+
   estadoGeneral?: "OPERATIVO" | "OBSERVACIÓN" | "CRÍTICO";
 
   createdAt: string;

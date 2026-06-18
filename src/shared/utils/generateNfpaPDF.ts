@@ -19,7 +19,7 @@ const loadBase64Img = (src: string): Promise<string> => {
   });
 };
 
-export const generateNfpaPDF = async (boards: any | any[]) => {
+export const generateNfpaPDF = async (boards: any | any[], _companyName: string) => {
   const items = Array.isArray(boards) ? boards : [boards];
   const validBoards = items.filter((b) => b.nfpa);
 
@@ -277,5 +277,8 @@ export const generateNfpaPDF = async (boards: any | any[]) => {
     doc.text(`Fecha de cálculo: ${fecha}`, pageStartX + pageWidth, footerY, { align: "right" });
   }
 
-  doc.save(`NFPA70E_Dual_A4_${new Date().getTime()}.pdf`);
+  // doc.save(`NFPA70E_Dual_A4_${new Date().getTime()}.pdf`);
+
+  const safeCompanyName = _companyName ? _companyName.trim().replace(/\s+/g, '_') : 'Empresa';
+  doc.save(`NFPA70E_${safeCompanyName}_Voltguard.pdf`);
 };

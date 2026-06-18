@@ -426,7 +426,8 @@ const BoardDashboardPage = () => {
                         publicGetCompanyBoardByCode(effectivePublicCode, board.code)
                       )
                     );
-                    generateNfpaPDF(fullBoardsData);
+                    const companyName = selectedCompany?.name || (auth?.role === "ADMIN" ? "Mi Empresa" : "Voltguard");
+                    generateNfpaPDF(fullBoardsData, companyName);
                   } catch (error) {
                     console.error("Error al recopilar datos NFPA de tableros:", error);
                     alert("Hubo un error al descargar las etiquetas NFPA 70E.");

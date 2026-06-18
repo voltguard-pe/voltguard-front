@@ -63,7 +63,7 @@
 //   const cardHeight = 62;    // Alto del bloque de cada etiqueta
 //   const gapX = 10;          // Espacio entre las 2 columnas
 //   const gapY = 8;           // Espacio entre las 4 filas
-  
+
 //   const maxCols = 2;
 //   const maxRows = 4;
 //   const itemsPerPage = maxCols * maxRows;
@@ -86,7 +86,7 @@
 //     const centerX = x + (cardWidth / 2);
 
 //     // ── TEXTOS SUPERIORES (TODOS CENTRADOS HORIZONTALMENTE) ──
-    
+
 //     // 1. Nombre de la Empresa
 //     doc.setFont("helvetica", "normal");
 //     doc.setFontSize(8);
@@ -107,7 +107,7 @@
 
 //     // ── CÓDIGO QR ABAJO (CENTRADO RESPECTO A LA ETIQUETA) ──
 //     const boardUrl = `${window.location.origin}/dashboard/boards/${effectivePublicCode}/${board.code}`;
-    
+
 //     try {
 //       const qrSize = 38; 
 //       const qrX = x + (cardWidth - qrSize) / 2; // Centrado exacto del QR
@@ -193,7 +193,7 @@ export const generateQrPdf = async (boards: any[], _companyName: string, effecti
   const cardHeight = 62;    // Alto del bloque de cada etiqueta
   const gapX = 10;          // Espacio entre las 2 columnas
   const gapY = 8;           // Espacio entre las 4 filas
-  
+
   const maxCols = 2;
   const maxRows = 4;
   const itemsPerPage = maxCols * maxRows;
@@ -215,8 +215,17 @@ export const generateQrPdf = async (boards: any[], _companyName: string, effecti
     const x = marginX + col * (cardWidth + gapX);
     const y = marginY + row * (cardHeight + gapY);
 
+    // ── TEXTO DE IDENTIFICACIÓN PARA RECORTE ──
+    // Se dibuja 3mm por encima de la etiqueta con un texto pequeño y discreto
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150); // Gris claro
+    // Asume que el objeto 'board' tiene una propiedad 'name'. Si es otra, cámbiala aquí (ej. board.title)
+    const boardLabel = board.name || `Tablero ${board.code || index + 1}`;
+    doc.text(`${_companyName} - ${boardLabel}`, x, y - 2);
+
     // Dimensiones idénticas para ambos lados (Simetría total)
-    const elementSize = 42; 
+    const elementSize = 42;
     const verticalPadding = (cardHeight - elementSize) / 2; // Centrado vertical exacto para ambos
 
     // ── LADO IZQUIERDO: LOGO GRANDE Y NOMBRE CENTRADO ──
@@ -240,9 +249,9 @@ export const generateQrPdf = async (boards: any[], _companyName: string, effecti
 
     // ── LADO DERECHO: CÓDIGO QR IDÉNTICO EN TAMAÑO ──
     const boardUrl = `${window.location.origin}/dashboard/boards/${effectivePublicCode}/${board.code}`;
-    
+
     try {
-      const qrX = x + cardWidth - elementSize - 2; 
+      const qrX = x + cardWidth - elementSize - 2;
       const qrY = y + verticalPadding;
 
       const qrBase64 = await generateQrBase64(boardUrl);
@@ -254,5 +263,9 @@ export const generateQrPdf = async (boards: any[], _companyName: string, effecti
     }
   }
 
-  doc.save(`QRs_Simetricos_Voltguard_${new Date().getTime()}.pdf`);
+  // doc.save(`QRs_Simetricos_Voltguard_${new Date().getTime()}.pdf`);
+
+  const safeCompanyName = _companyName.trim().replace(/\s+/g, '_');
+
+  doc.save(`QR_${safeCompanyName}_Voltguard.pdf`);
 };

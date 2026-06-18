@@ -347,12 +347,15 @@ const renderNfpaSection = () => {
 
     const { nfpa } = board;
 
+    // Obtener el nombre de la empresa para pasárselo a la función del PDF
+    const currentCompanyName = typeof board.company === "object" ? board.company.name : "Sin empresa";
+
     return (
       <>
         {/* Botón para exportar el registro actual */}
         <button
           type="button"
-          onClick={() => generateNfpaPDF(board)}
+          onClick={() => generateNfpaPDF(board, currentCompanyName)}
           className="relative z-10 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-xs font-black text-slate-900 border border-white shadow-md transition-all duration-200 hover:bg-amber-400 hover:border-amber-400 hover:text-slate-950 active:scale-95 cursor-pointer"
         >
           <FileDown size={15} />

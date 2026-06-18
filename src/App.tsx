@@ -35,6 +35,7 @@ import DocumentDashboardPage from './pages/dashboard/document/DocumentDashboardP
 import SuccessStoriesPage from './pages/landing/SuccessStoriesPage'
 import PlansPage from './pages/landing/PlansPage'
 import ScrollToTop from './shared/components/ScrollToTop'
+import QrRedirectHandler from './routes/QrRedirectHandler'
 
 function App() {
   return (
@@ -77,6 +78,8 @@ function App() {
               <Route path="boards" element={<BoardDashboardPage />} />
               <Route path="boards/:publicCode" element={<BoardDashboardPage />} />
               <Route path="boards/:publicCode/:code" element={<BoardDetailPage />} />
+
+              <Route path="scan/:boardCode" element={<QrRedirectHandler />} />
 
               <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                 <Route path="users" element={<AdminDashboardPage />} />

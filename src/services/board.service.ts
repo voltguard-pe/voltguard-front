@@ -326,18 +326,3 @@ export const assignSingleDocumentToMultipleBoards = async (
   // Ejecuta todas las asignaciones en paralelo en el cliente
   await Promise.all(promises);
 };
-
-
-// =========================
-// 🎯 QR SCAN INTERMEDIARY (NUEVO)
-// =========================
-/**
- * Obtiene la información de redirección de un tablero usando únicamente su código.
- * Requerido para resolver URLs planas de códigos QR sin romper compatibilidad futura.
- */
-export const getBoardRouteInfoOnlyWithCode = async (
-  boardCode: string
-): Promise<{ companyPublicCode: string; campusId?: string }> => {
-  const res = await clientAxios.get(`/board/scan-info/${boardCode}`);
-  return res.data;
-};

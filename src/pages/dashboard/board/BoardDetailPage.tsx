@@ -14,25 +14,25 @@ import {
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-// import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getBoardByCode } from "../../../services/board.service";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 
-// const groundingData = [
-//   { date: "Ene", ohms: 4.2 },
-//   { date: "Feb", ohms: 4.5 },
-//   { date: "Mar", ohms: 5.1 },
-//   { date: "Abr", ohms: 4.8 },
-//   { date: "May", ohms: 6.3 },
-// ];
+const groundingData = [
+  { date: "Ene", ohms: 4.2 },
+  { date: "Feb", ohms: 4.5 },
+  { date: "Mar", ohms: 5.1 },
+  { date: "Abr", ohms: 4.8 },
+  { date: "May", ohms: 6.3 },
+];
 
-// const loadChartData = [
-//   { fase: "R", carga: 32 },
-//   { fase: "S", carga: 34 },
-//   { fase: "T", carga: 34 },
-// ];
+const loadChartData = [
+  { fase: "R", carga: 32 },
+  { fase: "S", carga: 34 },
+  { fase: "T", carga: 34 },
+];
 
 const value = (data: unknown) =>
   data === null || data === undefined || data === "" ? "-" : String(data);
@@ -563,206 +563,206 @@ const renderNfpaSection = () => {
     );
   };
 
-  // const renderGroundingSection = () => (
-  //   <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
-  //     <div className="mb-6 flex items-center gap-3">
-  //       <div className="flex size-11 items-center justify-center rounded-2xl bg-[#8ccf2f]/12 text-[#3aaa35]">
-  //         <Zap size={22} />
-  //       </div>
-  //       <div>
-  //         <h2 className="font-bold text-slate-950 text-base">Puesta a Tierra</h2>
-  //         <p className="text-xs text-slate-500 mt-0.5">Sistema de trazabilidad y mediciones PAT</p>
-  //       </div>
-  //     </div>
+  const renderGroundingSection = () => (
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#8ccf2f]/12 text-[#3aaa35]">
+          <Zap size={22} />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-950 text-base">Puesta a Tierra</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Sistema de trazabilidad y mediciones PAT</p>
+        </div>
+      </div>
 
-  //     <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-  //       {[
-  //         { label: "Sistema", val: "PAT Principal", cls: "text-slate-900" },
-  //         { label: "Última medición", val: "6.3 Ω", cls: "text-slate-900" },
-  //         { label: "Estado", val: "ÓPTIMO", cls: "text-green-600 font-black" },
-  //         { label: "Última inspección", val: "01/05/2025", cls: "text-slate-900" }
-  //       ].map((pat, i) => (
-  //         <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/60 transition-colors">
-  //           <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{pat.label}</p>
-  //           <p className={`mt-1.5 text-sm font-bold ${pat.cls}`}>{pat.val}</p>
-  //         </div>
-  //       ))}
-  //     </div>
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        {[
+          { label: "Sistema", val: "PAT Principal", cls: "text-slate-900" },
+          { label: "Última medición", val: "6.3 Ω", cls: "text-slate-900" },
+          { label: "Estado", val: "ÓPTIMO", cls: "text-green-600 font-black" },
+          { label: "Última inspección", val: "01/05/2025", cls: "text-slate-900" }
+        ].map((pat, i) => (
+          <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/60 transition-colors">
+            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{pat.label}</p>
+            <p className={`mt-1.5 text-sm font-bold ${pat.cls}`}>{pat.val}</p>
+          </div>
+        ))}
+      </div>
 
-  //     <div className="mt-8">
-  //       <div className="mb-4">
-  //         <h3 className="font-bold text-sm text-slate-900">Gráfica de trazabilidad</h3>
-  //         <p className="text-xs text-slate-400 mt-0.5">Evolución histórica de resistencia de puesta a tierra</p>
-  //       </div>
+      <div className="mt-8">
+        <div className="mb-4">
+          <h3 className="font-bold text-sm text-slate-900">Gráfica de trazabilidad</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Evolución histórica de resistencia de puesta a tierra</p>
+        </div>
 
-  //       <div className="h-[280px] w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-  //         <ResponsiveContainer width="100%" height="100%">
-  //           <LineChart data={groundingData}>
-  //             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-  //             <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-  //             <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-  //             <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
-  //             <Line
-  //               type="monotone"
-  //               dataKey="ohms"
-  //               stroke="#0797d5"
-  //               strokeWidth={3}
-  //               dot={{ r: 4, strokeWidth: 2, fill: 'white' }}
-  //               activeDot={{ r: 6 }}
-  //               isAnimationActive={true}
-  //             />
-  //           </LineChart>
-  //         </ResponsiveContainer>
-  //       </div>
-  //     </div>
+        <div className="h-[280px] w-full rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={groundingData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
+              <Line
+                type="monotone"
+                dataKey="ohms"
+                stroke="#0797d5"
+                strokeWidth={3}
+                dot={{ r: 4, strokeWidth: 2, fill: 'white' }}
+                activeDot={{ r: 6 }}
+                isAnimationActive={true}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
-  //     <div className="mt-8">
-  //       <div className="mb-3">
-  //         <h3 className="font-bold text-sm text-slate-900">Historial de mediciones</h3>
-  //       </div>
+      <div className="mt-8">
+        <div className="mb-3">
+          <h3 className="font-bold text-sm text-slate-900">Historial de mediciones</h3>
+        </div>
 
-  //       <div className="overflow-x-auto rounded-2xl border border-slate-100">
-  //         <table className="w-full min-w-[700px] text-xs text-left border-collapse">
-  //           <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
-  //             <tr>
-  //               <th className="p-3">Fecha</th>
-  //               <th className="p-3">Resistencia</th>
-  //               <th className="p-3">Técnico</th>
-  //               <th className="p-3">Estado</th>
-  //               <th className="p-3">Observación</th>
-  //             </tr>
-  //           </thead>
-  //           <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-  //             {[
-  //               { d: "01/01/2025", o: "4.2 Ω", t: "Juan Pérez", s: "OK", sCls: "text-green-600", obs: "Valores normales" },
-  //               { d: "01/03/2025", o: "5.1 Ω", t: "Carlos Ruiz", s: "OK", sCls: "text-green-600", obs: "Sin observaciones" },
-  //               { d: "01/05/2025", o: "6.3 Ω", t: "Miguel Torres", s: "OK", sCls: "text-green-600", obs: "Tendencia estable" }
-  //             ].map((row, idx) => (
-  //               <tr key={idx} className="hover:bg-slate-50/50">
-  //                 <td className="p-3 text-slate-900 font-bold">{row.d}</td>
-  //                 <td className="p-3">{row.o}</td>
-  //                 <td className="p-3">{row.t}</td>
-  //                 <td className={`p-3 font-black ${row.sCls}`}>{row.s}</td>
-  //                 <td className="p-3 text-slate-500 font-medium">{row.obs}</td>
-  //               </tr>
-  //             ))}
-  //           </tbody>
-  //         </table>
-  //       </div>
-  //     </div>
+        <div className="overflow-x-auto rounded-2xl border border-slate-100">
+          <table className="w-full min-w-[700px] text-xs text-left border-collapse">
+            <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
+              <tr>
+                <th className="p-3">Fecha</th>
+                <th className="p-3">Resistencia</th>
+                <th className="p-3">Técnico</th>
+                <th className="p-3">Estado</th>
+                <th className="p-3">Observación</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+              {[
+                { d: "01/01/2025", o: "4.2 Ω", t: "Juan Pérez", s: "OK", sCls: "text-green-600", obs: "Valores normales" },
+                { d: "01/03/2025", o: "5.1 Ω", t: "Carlos Ruiz", s: "OK", sCls: "text-green-600", obs: "Sin observaciones" },
+                { d: "01/05/2025", o: "6.3 Ω", t: "Miguel Torres", s: "OK", sCls: "text-green-600", obs: "Tendencia estable" }
+              ].map((row, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="p-3 text-slate-900 font-bold">{row.d}</td>
+                  <td className="p-3">{row.o}</td>
+                  <td className="p-3">{row.t}</td>
+                  <td className={`p-3 font-black ${row.sCls}`}>{row.s}</td>
+                  <td className="p-3 text-slate-500 font-medium">{row.obs}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-  //     <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-  //       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-  //         <div>
-  //           <h3 className="font-bold text-sm text-slate-900">Certificado de puesta a tierra</h3>
-  //           <p className="text-xs text-slate-400 mt-0.5">Documento técnico de validación PAT</p>
-  //         </div>
-  //         <a
-  //           href="/pdfs/certificado-pat.pdf"
-  //           target="_blank"
-  //           rel="noopener noreferrer"
-  //           className="inline-flex items-center gap-2 rounded-xl bg-[#0797d5] px-4 py-2.5 text-xs font-bold text-white transition hover:opacity-90 cursor-pointer"
-  //         >
-  //           <FileImage size={15} />
-  //           Ver certificado PDF
-  //         </a>
-  //       </div>
-  //     </div>
-  //   </section>
-  // );
+      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-bold text-sm text-slate-900">Certificado de puesta a tierra</h3>
+            <p className="text-xs text-slate-400 mt-0.5">Documento técnico de validación PAT</p>
+          </div>
+          <a
+            href="/pdfs/certificado-pat.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#0797d5] px-4 py-2.5 text-xs font-bold text-white transition hover:opacity-90 cursor-pointer"
+          >
+            <FileImage size={15} />
+            Ver certificado PDF
+          </a>
+        </div>
+      </div>
+    </section>
+  );
 
-  // const renderLoadPanelSection = () => (
-  //   <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
-  //     <div className="mb-6 flex items-center gap-3">
-  //       <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/12 text-[#0797d5]">
-  //         <Zap size={22} />
-  //       </div>
-  //       <div>
-  //         <h2 className="font-bold text-slate-950 text-base">Cuadro de Carga</h2>
-  //         <p className="text-xs text-slate-500 mt-0.5">Distribución y análisis de circuitos eléctricos</p>
-  //       </div>
-  //     </div>
+  const renderLoadPanelSection = () => (
+    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/12 text-[#0797d5]">
+          <Zap size={22} />
+        </div>
+        <div>
+          <h2 className="font-bold text-slate-950 text-base">Cuadro de Carga</h2>
+          <p className="text-xs text-slate-500 mt-0.5">Distribución y análisis de circuitos eléctricos</p>
+        </div>
+      </div>
 
-  //     <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-  //       {[
-  //         { l: "Circuitos", v: "18", c: "text-slate-900 font-black text-2xl" },
-  //         { l: "Carga instalada", v: "12.5 kW", c: "text-slate-900 font-black text-2xl" },
-  //         { l: "Corriente total", v: "58 A", c: "text-slate-900 font-black text-2xl" },
-  //         { l: "Balance", v: "ÓPTIMO", c: "text-green-600 font-black text-base mt-1" }
-  //       ].map((box, i) => (
-  //         <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/60 transition-colors">
-  //           <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{box.l}</p>
-  //           <p className={`mt-1 tracking-tight ${box.c}`}>{box.v}</p>
-  //         </div>
-  //       ))}
-  //     </div>
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        {[
+          { l: "Circuitos", v: "18", c: "text-slate-900 font-black text-2xl" },
+          { l: "Carga instalada", v: "12.5 kW", c: "text-slate-900 font-black text-2xl" },
+          { l: "Corriente total", v: "58 A", c: "text-slate-900 font-black text-2xl" },
+          { l: "Balance", v: "ÓPTIMO", c: "text-green-600 font-black text-base mt-1" }
+        ].map((box, i) => (
+          <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/60 transition-colors">
+            <p className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">{box.l}</p>
+            <p className={`mt-1 tracking-tight ${box.c}`}>{box.v}</p>
+          </div>
+        ))}
+      </div>
 
-  //     <div className="mt-8">
-  //       <div className="mb-4">
-  //         <h3 className="font-bold text-sm text-slate-900">Balance de fases</h3>
-  //         <p className="text-xs text-slate-400 mt-0.5">Distribución porcentual de carga eléctrica</p>
-  //       </div>
+      <div className="mt-8">
+        <div className="mb-4">
+          <h3 className="font-bold text-sm text-slate-900">Balance de fases</h3>
+          <p className="text-xs text-slate-400 mt-0.5">Distribución porcentual de carga eléctrica</p>
+        </div>
 
-  //       <div className="h-[280px] rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
-  //         <ResponsiveContainer width="100%" height="100%">
-  //           <BarChart data={loadChartData}>
-  //             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-  //             <XAxis dataKey="fase" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-  //             <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-  //             <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
-  //             <Bar
-  //               dataKey="carga"
-  //               fill="#0797d5"
-  //               radius={[6, 6, 0, 0]}
-  //               isAnimationActive={true}
-  //             />
-  //           </BarChart>
-  //         </ResponsiveContainer>
-  //       </div>
-  //     </div>
+        <div className="h-[280px] rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={loadChartData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="fase" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #e2e8f0', fontSize: '12px' }} />
+              <Bar
+                dataKey="carga"
+                fill="#0797d5"
+                radius={[6, 6, 0, 0]}
+                isAnimationActive={true}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
 
-  //     <div className="mt-8">
-  //       <div className="mb-3">
-  //         <h3 className="font-bold text-sm text-slate-900">Circuitos del tablero</h3>
-  //       </div>
+      <div className="mt-8">
+        <div className="mb-3">
+          <h3 className="font-bold text-sm text-slate-900">Circuitos del tablero</h3>
+        </div>
 
-  //       <div className="overflow-x-auto rounded-2xl border border-slate-100">
-  //         <table className="w-full min-w-[1000px] text-xs text-left border-collapse">
-  //           <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
-  //             <tr>
-  //               <th className="p-3">Circuito</th>
-  //               <th className="p-3">Descripción</th>
-  //               <th className="p-3">Interruptor</th>
-  //               <th className="p-3">Fase</th>
-  //               <th className="p-3">Tensión</th>
-  //               <th className="p-3">Potencia</th>
-  //               <th className="p-3">Corriente</th>
-  //               <th className="p-3">Estado</th>
-  //             </tr>
-  //           </thead>
-  //           <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-  //             {[
-  //               { c: "C1", d: "Iluminación oficinas", i: "20A", f: "R", v: "220V", p: "1.2 kW", a: "5.2 A", e: "OPERATIVO" },
-  //               { c: "C2", d: "Tomacorrientes", i: "30A", f: "S", v: "220V", p: "2.5 kW", a: "11.4 A", e: "OPERATIVO" },
-  //               { c: "C3", d: "Aire acondicionado", i: "40A", f: "T", v: "380V", p: "3.8 kW", a: "15.2 A", e: "OPERATIVO" }
-  //             ].map((row, idx) => (
-  //               <tr key={idx} className="hover:bg-slate-50/50">
-  //                 <td className="p-3 text-slate-900 font-bold">{row.c}</td>
-  //                 <td className="p-3 text-slate-900 font-medium">{row.d}</td>
-  //                 <td className="p-3">{row.i}</td>
-  //                 <td className="p-3 font-bold text-[#0797d5]">{row.f}</td>
-  //                 <td className="p-3">{row.v}</td>
-  //                 <td className="p-3">{row.p}</td>
-  //                 <td className="p-3">{row.a}</td>
-  //                 <td className="p-3 text-green-600 font-black">{row.e}</td>
-  //               </tr>
-  //             ))}
-  //           </tbody>
-  //         </table>
-  //       </div>
-  //     </div>
-  //   </section>
-  // );
+        <div className="overflow-x-auto rounded-2xl border border-slate-100">
+          <table className="w-full min-w-[1000px] text-xs text-left border-collapse">
+            <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
+              <tr>
+                <th className="p-3">Circuito</th>
+                <th className="p-3">Descripción</th>
+                <th className="p-3">Interruptor</th>
+                <th className="p-3">Fase</th>
+                <th className="p-3">Tensión</th>
+                <th className="p-3">Potencia</th>
+                <th className="p-3">Corriente</th>
+                <th className="p-3">Estado</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+              {[
+                { c: "C1", d: "Iluminación oficinas", i: "20A", f: "R", v: "220V", p: "1.2 kW", a: "5.2 A", e: "OPERATIVO" },
+                { c: "C2", d: "Tomacorrientes", i: "30A", f: "S", v: "220V", p: "2.5 kW", a: "11.4 A", e: "OPERATIVO" },
+                { c: "C3", d: "Aire acondicionado", i: "40A", f: "T", v: "380V", p: "3.8 kW", a: "15.2 A", e: "OPERATIVO" }
+              ].map((row, idx) => (
+                <tr key={idx} className="hover:bg-slate-50/50">
+                  <td className="p-3 text-slate-900 font-bold">{row.c}</td>
+                  <td className="p-3 text-slate-900 font-medium">{row.d}</td>
+                  <td className="p-3">{row.i}</td>
+                  <td className="p-3 font-bold text-[#0797d5]">{row.f}</td>
+                  <td className="p-3">{row.v}</td>
+                  <td className="p-3">{row.p}</td>
+                  <td className="p-3">{row.a}</td>
+                  <td className="p-3 text-green-600 font-black">{row.e}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  );
 
   if (loading) {
     return (
@@ -858,8 +858,8 @@ const renderNfpaSection = () => {
 
         {/* Renderizado de bloques modulares */}
         {renderNfpaSection()}
-        {/* {renderGroundingSection()}
-        {renderLoadPanelSection()} */}
+        {renderGroundingSection()}
+        {renderLoadPanelSection()}
 
         {/* ── ESPECIFICACIONES TÉCNICAS (CASCADA COMPACTA) ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

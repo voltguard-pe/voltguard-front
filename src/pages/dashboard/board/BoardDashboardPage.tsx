@@ -242,9 +242,13 @@ const BoardDashboardPage = () => {
     !loadingBoards && Boolean(effectivePublicCode) && filteredBoards.length === 0;
 
   // Renderiza la URL individual para el código QR de un tablero específico
+  // const getIndividualQrUrl = (boardCode: string) => {
+  //   return `${window.location.origin}/dashboard/boards/${effectivePublicCode}/${boardCode}`;
+  // };
+
   const getIndividualQrUrl = (boardCode: string) => {
-    return `${window.location.origin}/dashboard/boards/${effectivePublicCode}/${boardCode}`;
-  };
+  return `${window.location.origin}/dashboard/scan/${boardCode}`;
+};
 
   return (
     <section className="space-y-6">

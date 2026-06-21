@@ -30,7 +30,7 @@ export const createBoard = async (data: BoardCreateDTO) => {
 
   formData.append("boardCode", data.boardCode);
   formData.append("name", data.name);
-  formData.append("type", data.type);
+  formData.append("type", data.type || "");
   formData.append("tensionNominal", String(data.tensionNominal));
   formData.append("numeroFases", String(data.numeroFases));
   formData.append("incluyeNeutro", String(data.incluyeNeutro));

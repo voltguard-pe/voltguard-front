@@ -12,8 +12,8 @@ export interface UserSummaryDTO {
 
 // 🔥 NUEVO: CIRCUITS
 export interface BoardCircuit {
-  circuito: string;
-  descripcion: string;
+  circuito?: string;
+  descripcion?: string;
 
   // Campo interno para lógica de mediciones de aislamiento.
   // No es necesario mostrarlo en la tabla de leyenda.
@@ -147,10 +147,10 @@ export interface BoardResponseDTO {
 export interface BoardCreateDTO {
   boardCode: string;
   name: string;
-  type: string;
+  type?: string;
 
-  tensionNominal: number;
-  numeroFases: number;
+  tensionNominal?: number;
+  numeroFases?: number;
   incluyeNeutro: boolean;
 
   sistema?: "MONOFÁSICO" | "TRIFÁSICO";
@@ -161,7 +161,7 @@ export interface BoardCreateDTO {
 
   publicCode?: string;
 
-  circuits: BoardCircuit[];
+  circuits?: BoardCircuit[];
 
   // Imágenes multipart
   tablero?: File[];

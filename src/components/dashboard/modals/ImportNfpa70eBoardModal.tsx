@@ -12,7 +12,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
-import { createBoardFromUnifilar } from "../../../services/board-ai.service";
+import { generateNfpaLabelsFromZip } from "../../../services/nfpa70e-ai.service";
 
 type Props = {
     isOpen: boolean;
@@ -23,7 +23,7 @@ type Props = {
 
 type Status = "idle" | "processing" | "success" | "error";
 
-const ImportUnifilarBoardModal = ({
+const ImportNfpaItmZipModal = ({
     isOpen,
     onClose,
     companies,
@@ -94,7 +94,7 @@ const ImportUnifilarBoardModal = ({
         return interval;
     };
 
-    const handleCreateBoard = async () => {
+    const handleCreateNfpaLabels = async () => {
         if (!file || !selectedCompany) return;
 
         setStatus("processing");
@@ -103,7 +103,7 @@ const ImportUnifilarBoardModal = ({
         const interval = simulateProgress();
 
         try {
-            const response = await createBoardFromUnifilar(
+            const response = await generateNfpaLabelsFromZip(
                 file,
                 token,
                 selectedCompany
@@ -113,7 +113,7 @@ const ImportUnifilarBoardModal = ({
             setProgress(100);
             setResult(response);
 
-            // Validar errores individuales del lote procesado por el backend
+            // Validar errores individuales del lote procesado (ej: tableros no registrados)
             const tablerosFallidos = response?.results?.filter((r: any) => r.status === "failed") || [];
 
             if (tablerosFallidos.length > 0) {
@@ -122,16 +122,16 @@ const ImportUnifilarBoardModal = ({
                 // 🚀 CAMBIO CLAVE: Refrescamos la tabla principal para que muestre los que SÍ pasaron, 
                 // pero dejamos el modal abierto para que vea la caja roja de los que fallaron.
                 onSuccess();
-
-                // 📝 MODIFICACIÓN: Mensaje corto en el toast para no saturar la UI con texto repetitivo
-                toast.error("Importación incompleta. Se detectaron inconsistencias en algunos tableros del lote.", {
+                
+                // 📝 CORRECCIÓN: Notificación corta y concisa para evitar sobrecargar la interfaz
+                toast.error("Certificación incompleta. Se detectaron inconsistencias en algunos tableros del lote.", {
                     autoClose: 6000
                 });
                 return;
             }
 
             setStatus("success");
-            toast.success("Tableros importados correctamente desde el ZIP");
+            toast.success("Etiquetas NFPA 70E generadas correctamente desde el ZIP");
 
             setTimeout(() => {
                 handleClose();
@@ -141,10 +141,9 @@ const ImportUnifilarBoardModal = ({
             clearInterval(interval);
             setStatus("error");
 
-            // 🔍 DIAGNÓSTICO AVANZADO PARA PRODUCCIÓN:
             console.error("Error completo capturado:", error);
 
-            let mensajeError = "Error al crear el tablero desde el unifilar";
+            let mensajeError = "Error al generar etiquetas NFPA desde el ZIP";
 
             if (error?.response) {
                 const statusHttp = error.response.status;
@@ -172,28 +171,28 @@ const ImportUnifilarBoardModal = ({
             case "processing":
                 return {
                     icon: <Loader2 size={18} className="animate-spin" />,
-                    text: `Analizando diagrama con IA... ${progress}%`,
+                    text: `Analizando fotos de ITM con IA... ${progress}%`,
                     className: "bg-[#0797d5]/10 text-[#0797d5]",
                 };
 
             case "success":
                 return {
                     icon: <CheckCircle2 size={18} />,
-                    text: "Tablero creado correctamente",
+                    text: "Etiquetas NFPA 70E creadas correctamente",
                     className: "bg-[#8ccf2f]/15 text-[#3aaa35]",
                 };
 
             case "error":
                 return {
                     icon: <AlertCircle size={18} />,
-                    text: "No se pudo procesar el diagrama",
+                    text: "No se pudieron procesar las fotografías",
                     className: "bg-red-100 text-red-700",
                 };
 
             default:
                 return {
                     icon: <UploadCloud size={18} />,
-                    text: "Selecciona un ZIP con imágenes de diagramas unifilares",
+                    text: "Selecciona un ZIP con imágenes de interruptores (ITM)",
                     className: "bg-slate-100 text-slate-600",
                 };
         }
@@ -214,11 +213,11 @@ const ImportUnifilarBoardModal = ({
 
                         <div>
                             <h2 className="text-lg font-bold text-slate-950">
-                                Crear tableros desde ZIP de unifilares
+                                Certificar NFPA 70E desde ZIP de ITM
                             </h2>
 
                             <p className="text-sm text-slate-500">
-                                Sube un archivo ZIP con las imágenes. <span className="font-semibold text-amber-600">Nota: Cada imagen interna debe pesar menos de 10MB</span> para garantizar el correcto análisis de la IA.
+                                Sube un archivo ZIP con las fotos del interruptor físico. <span className="font-semibold text-amber-600">Nota: Deben estar nombradas con el código del tablero registrado</span> para sincronizarlas correctamente.
                             </p>
                         </div>
                     </div>
@@ -255,7 +254,7 @@ const ImportUnifilarBoardModal = ({
                     </div>
 
                     <label
-                        htmlFor="unifilarFileInput"
+                        htmlFor="nfpaFileInput"
                         onDrop={handleDrop}
                         onDragOver={(event) => event.preventDefault()}
                         className={`flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed p-8 text-center transition ${status === "processing"
@@ -288,7 +287,7 @@ const ImportUnifilarBoardModal = ({
                             type="file"
                             accept=".zip,application/zip,application/x-zip-compressed"
                             className="hidden"
-                            id="unifilarFileInput"
+                            id="nfpaFileInput"
                             disabled={status === "processing"}
                             onChange={(event) =>
                                 event.target.files?.[0] && handleFile(event.target.files[0])
@@ -319,11 +318,11 @@ const ImportUnifilarBoardModal = ({
                         </div>
                     )}
 
-                    {/* El mapeo de la lista de errores interna permanece intacto y visible bajo el modal */}
+                    {/* Contenedor de observaciones / errores por tableros omitidos de tu backend */}
                     {result?.results?.some((r: any) => r.status === "failed") && (
                         <div className="rounded-3xl border border-red-200 bg-red-50 p-5">
                             <h3 className="font-bold text-red-800">
-                                Tableros omitidos (Inconsistencias en el lote)
+                                Tableros omitidos (No coinciden en el sistema)
                             </h3>
 
                             <div className="mt-3 max-h-40 space-y-2 overflow-y-auto">
@@ -334,7 +333,7 @@ const ImportUnifilarBoardModal = ({
                                             key={index}
                                             className="rounded-2xl bg-white px-4 py-3 text-xs text-red-700 font-medium"
                                         >
-                                            ❌ Tablero: <strong>{failed.boardCode}</strong> - {failed.error}
+                                            ❌ Código del archivo: <strong>{failed.boardCode}</strong> - {failed.error}
                                         </div>
                                     ))}
                             </div>
@@ -352,7 +351,7 @@ const ImportUnifilarBoardModal = ({
                     </button>
 
                     <button
-                        onClick={handleCreateBoard}
+                        onClick={handleCreateNfpaLabels}
                         disabled={!canCreate}
                         className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#087fb3] disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -361,8 +360,8 @@ const ImportUnifilarBoardModal = ({
                         )}
 
                         {status === "processing"
-                            ? "Importando..."
-                            : "Importar tableros"}
+                            ? "Procesando..."
+                            : "Certificar Lote Masivo"}
                     </button>
                 </div>
             </div>
@@ -370,4 +369,4 @@ const ImportUnifilarBoardModal = ({
     );
 };
 
-export default ImportUnifilarBoardModal;
+export default ImportNfpaItmZipModal;

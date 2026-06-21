@@ -114,48 +114,48 @@ const CreateBoardPage = () => {
       newErrors.name = "El nombre es obligatorio";
     }
 
-    if (!values.type.trim()) {
-      newErrors.type = "El tipo es obligatorio";
-    }
+    // if (!values.type.trim()) {
+    //   newErrors.type = "El tipo es obligatorio";
+    // }
 
-    if (!values.tensionNominal || values.tensionNominal <= 0) {
-      newErrors.tensionNominal = "Debe ser mayor a 0";
-    }
+    // if (!values.tensionNominal || values.tensionNominal <= 0) {
+    //   newErrors.tensionNominal = "Debe ser mayor a 0";
+    // }
 
-    if (!values.numeroFases || values.numeroFases <= 0) {
-      newErrors.numeroFases = "Debe ser mayor a 0";
-    }
+    // if (!values.numeroFases || values.numeroFases <= 0) {
+    //   newErrors.numeroFases = "Debe ser mayor a 0";
+    // }
 
     if (!values.company) {
       newErrors.company = "Selecciona una empresa";
     }
 
-    if (!values.circuits.length) {
-      newErrors.circuits = "Debe agregar al menos un circuito";
-    } else {
-      const circuitsDetail: BoardFormErrors["circuitsDetail"] = [];
-      let hasCircuitErrors = false;
+    // if (!values.circuits.length) {
+    //   newErrors.circuits = "Debe agregar al menos un circuito";
+    // } else {
+    //   const circuitsDetail: BoardFormErrors["circuitsDetail"] = [];
+    //   let hasCircuitErrors = false;
 
-      values.circuits.forEach((circuit, index) => {
-        const error: { circuito?: string; descripcion?: string } = {};
+    //   values.circuits.forEach((circuit, index) => {
+    //     const error: { circuito?: string; descripcion?: string } = {};
 
-        if (!circuit.circuito?.trim()) {
-          error.circuito = "Código requerido";
-          hasCircuitErrors = true;
-        }
+    //     if (!circuit.circuito?.trim()) {
+    //       error.circuito = "Código requerido";
+    //       hasCircuitErrors = true;
+    //     }
 
-        if (!circuit.descripcion?.trim()) {
-          error.descripcion = "Descripción requerida";
-          hasCircuitErrors = true;
-        }
+    //     if (!circuit.descripcion?.trim()) {
+    //       error.descripcion = "Descripción requerida";
+    //       hasCircuitErrors = true;
+    //     }
 
-        circuitsDetail[index] = error;
-      });
+    //     circuitsDetail[index] = error;
+    //   });
 
-      if (hasCircuitErrors) {
-        newErrors.circuitsDetail = circuitsDetail;
-      }
-    }
+    //   if (hasCircuitErrors) {
+    //     newErrors.circuitsDetail = circuitsDetail;
+    //   }
+    // }
 
     setErrors(newErrors);
 
@@ -165,9 +165,12 @@ const CreateBoardPage = () => {
   const cleanData = () => ({
     boardCode: values.boardCode.trim(),
     name: values.name.trim(),
-    type: values.type.trim(),
-    tensionNominal: values.tensionNominal!,
-    numeroFases: values.numeroFases!,
+    // type: values.type.trim(),
+    // tensionNominal: values.tensionNominal!,
+    // numeroFases: values.numeroFases!,
+    type: values.type.trim() || undefined, // Evita enviar strings vacíos si no se llena
+    tensionNominal: values.tensionNominal ?? undefined, // Quitado el '!'
+    numeroFases: values.numeroFases ?? undefined,       // Quitado el '!'
     incluyeNeutro: values.incluyeNeutro,
     sistema: values.sistema || undefined,
     estadoGeneral: values.estadoGeneral || undefined,
@@ -176,8 +179,8 @@ const CreateBoardPage = () => {
     circuits: values.circuits
       .filter((circuit) => circuit.circuito || circuit.descripcion)
       .map((circuit) => ({
-        circuito: circuit.circuito,
-        descripcion: circuit.descripcion,
+        circuito: circuit.circuito?.trim() || "",
+        descripcion: circuit.descripcion?.trim() || "",
       })),
   });
 

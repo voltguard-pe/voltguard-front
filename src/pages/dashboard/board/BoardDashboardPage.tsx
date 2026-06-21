@@ -38,6 +38,7 @@ import Select from "../../../shared/components/Select";
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 // IMPORTAMOS LA NUEVA UTILIDAD DE QR MASIVO
 import { generateQrPdf } from "../../../shared/utils/generateQrPdf";
+import ImportNfpa70eBoardModal from "../../../components/dashboard/modals/ImportNfpa70eBoardModal";
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
@@ -61,6 +62,7 @@ const BoardDashboardPage = () => {
   const [showImportInsulationsModal, setShowImportInsulationsModal] =
     useState(false);
   const [showImportUnifilarModal, setShowImportUnifilarModal] = useState(false);
+  const [showNfpa70eModal, setShowNfpa70eModal] = useState(false);
 
   const [selectedBoardCodes, setSelectedBoardCodes] = useState<string[]>([]);
 
@@ -285,6 +287,15 @@ const BoardDashboardPage = () => {
             </button>
 
             <button
+              type="button"
+              onClick={() => setShowNfpa70eModal(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-700 transition-all duration-200 hover:bg-amber-100/70 cursor-pointer"
+            >
+              <Zap size={15} className="text-amber-600" />
+              Certificar NFPA 70E (Foto ITM)
+            </button>
+
+            <button
               onClick={() => setShowImportModal(true)}
               className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
             >
@@ -398,11 +409,10 @@ const BoardDashboardPage = () => {
                   alert("Hubo un error al generar el PDF de códigos QR.");
                 }
               }}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${
-                selectedBoardCodes.length > 0
-                  ? "bg-[#0797d5] border-[#0797d5] text-white hover:bg-[#0684ba]"
-                  : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
-              }`}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${selectedBoardCodes.length > 0
+                ? "bg-[#0797d5] border-[#0797d5] text-white hover:bg-[#0684ba]"
+                : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
+                }`}
             >
               <QrCode size={15} />
               Extraer Códigos QR
@@ -433,11 +443,10 @@ const BoardDashboardPage = () => {
                     alert("Hubo un error al descargar las etiquetas NFPA 70E.");
                   }
                 }}
-                className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${
-                  selectedBoardCodes.length > 0
-                    ? "bg-slate-900 border-slate-900 text-white hover:bg-slate-800"
-                    : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
-                }`}
+                className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${selectedBoardCodes.length > 0
+                  ? "bg-slate-900 border-slate-900 text-white hover:bg-slate-800"
+                  : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
+                  }`}
               >
                 <Download size={15} />
                 Extraer NFPA70E
@@ -458,11 +467,10 @@ const BoardDashboardPage = () => {
               type="button"
               disabled={selectedBoardCodes.length === 0}
               onClick={handleBulkDelete}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${
-                selectedBoardCodes.length > 0
-                  ? "bg-red-600 border-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:shadow-red-600/20"
-                  : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
-              }`}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${selectedBoardCodes.length > 0
+                ? "bg-red-600 border-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:shadow-red-600/20"
+                : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
+                }`}
             >
               <Trash2 size={15} />
               Eliminar Seleccionados
@@ -639,6 +647,7 @@ const BoardDashboardPage = () => {
       <ImportBoardsModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} companies={companies} onSuccess={refreshBoards} />
       <ImportInsulationsModal isOpen={showImportInsulationsModal} onClose={() => setShowImportInsulationsModal(false)} companies={companies} onSuccess={refreshBoards} />
       <ImportUnifilarBoardModal isOpen={showImportUnifilarModal} onClose={() => setShowImportUnifilarModal(false)} companies={companies} onSuccess={refreshBoards} />
+      <ImportNfpa70eBoardModal isOpen={showNfpa70eModal} onClose={() => setShowNfpa70eModal(false)} companies={companies} onSuccess={refreshBoards} />
 
       {/* MODAL QR INDIVIDUAL */}
       <QRModal

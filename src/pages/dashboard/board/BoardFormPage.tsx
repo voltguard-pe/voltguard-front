@@ -463,7 +463,7 @@ const BoardForm = ({
           <Input
             label="Tipo de tablero"
             value={values.type}
-            required
+            // required
             error={errors.type}
             onChange={(e) => onChange("type", e.target.value)}
           />
@@ -472,7 +472,7 @@ const BoardForm = ({
             type="number"
             label="Tensión nominal (V)"
             value={values.tensionNominal ?? ""}
-            required
+            // required
             error={errors.tensionNominal}
             onChange={(e) =>
               onChange(
@@ -486,7 +486,7 @@ const BoardForm = ({
             type="number"
             label="Número de fases"
             value={values.numeroFases ?? ""}
-            required
+            // required
             error={errors.numeroFases}
             onChange={(e) =>
               onChange(
@@ -624,8 +624,8 @@ const BoardForm = ({
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label="Código circuito"
-                  value={circuit.circuito}
-                  required
+                  value={circuit.circuito || ""}
+                  // required
                   error={errors.circuitsDetail?.[index]?.circuito}
                   onChange={(e) =>
                     onCircuitChange(index, "circuito", e.target.value)
@@ -634,8 +634,8 @@ const BoardForm = ({
 
                 <Input
                   label="Descripción"
-                  value={circuit.descripcion}
-                  required
+                  value={circuit.descripcion || ""}
+                  // required
                   error={errors.circuitsDetail?.[index]?.descripcion}
                   onChange={(e) =>
                     onCircuitChange(index, "descripcion", e.target.value)

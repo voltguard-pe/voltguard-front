@@ -1,4 +1,7 @@
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Building2,
   Download,
   Eye,
@@ -40,6 +43,11 @@ import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 import { generateQrPdf } from "../../../shared/utils/generateQrPdf";
 import ImportNfpa70eBoardModal from "../../../components/dashboard/modals/ImportNfpa70eBoardModal";
 
+type SortConfig = {
+  key: "name" | "boardCode" | "location" | "nfpa";
+  direction: "asc" | "desc" | "default";
+} | null;
+
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
   const navigate = useNavigate();
@@ -65,6 +73,8 @@ const BoardDashboardPage = () => {
   const [showNfpa70eModal, setShowNfpa70eModal] = useState(false);
 
   const [selectedBoardCodes, setSelectedBoardCodes] = useState<string[]>([]);
+
+  const [sortConfig, setSortConfig] = useState<SortConfig>(null);
 
   const effectivePublicCode =
     auth?.role === "ADMIN"
@@ -122,7 +132,8 @@ const BoardDashboardPage = () => {
   }, [effectivePublicCode]);
 
   const filteredBoards = useMemo(() => {
-    return boards.filter((board) => {
+    // 1. Filtrado por búsqueda estándar
+    let result = boards.filter((board) => {
       const searchValue = search.toLowerCase();
       return (
         board.name?.toLowerCase().includes(searchValue) ||
@@ -130,7 +141,33 @@ const BoardDashboardPage = () => {
         board.location?.toLowerCase().includes(searchValue)
       );
     });
-  }, [boards, search]);
+
+    // 2. Aplicar ordenamiento cíclico (asc -> desc -> default)
+    if (sortConfig && sortConfig.direction !== "default") {
+      result = [...result].sort((a, b) => {
+        const aValue = (a[sortConfig.key] ?? "").toString().toLowerCase();
+        const bValue = (b[sortConfig.key] ?? "").toString().toLowerCase();
+
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return result;
+  }, [boards, search, sortConfig]);
+
+  // Función auxiliar para manejar el ciclo del click (colócala justo abajo del useMemo)
+  const handleSort = (key: "name" | "boardCode" | "location" | "nfpa") => {
+    let direction: "asc" | "desc" | "default" = "asc";
+
+    if (sortConfig && sortConfig.key === key) {
+      if (sortConfig.direction === "asc") direction = "desc";
+      else if (sortConfig.direction === "desc") direction = "default";
+    }
+
+    setSortConfig({ key, direction });
+  };
 
   const handleSelectRow = (code: string) => {
     setSelectedBoardCodes((prev) =>
@@ -246,6 +283,17 @@ const BoardDashboardPage = () => {
   // Renderiza la URL individual para el código QR de un tablero específico
   const getIndividualQrUrl = (boardCode: string) => {
     return `${window.location.origin}/dashboard/boards/${effectivePublicCode}/${boardCode}`;
+  };
+
+  const renderSortIcon = (key: "name" | "boardCode" | "location" | "nfpa") => {
+    if (!sortConfig || sortConfig.key !== key || sortConfig.direction === "default") {
+      return <ArrowUpDown size={14} className="opacity-40" />;
+    }
+    return sortConfig.direction === "asc" ? (
+      <ArrowUp size={14} className="text-[#0797d5]" />
+    ) : (
+      <ArrowDown size={14} className="text-[#0797d5]" />
+    );
   };
 
   return (
@@ -522,10 +570,38 @@ const BoardDashboardPage = () => {
                       onChange={handleSelectAllRows}
                     />
                   </th>
-                  <th className="px-6 py-4">Tablero</th>
-                  <th className="px-6 py-4">Código</th>
-                  <th className="px-6 py-4">Ubicación</th>
-                  <th className="px-6 py-4">NFPA 70E</th>
+                  <th
+                    className="px-6 py-4 cursor-pointer select-none hover:bg-slate-100/50 transition-colors"
+                    onClick={() => handleSort("name")}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      Tablero {renderSortIcon("name")}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 cursor-pointer select-none hover:bg-slate-100/50 transition-colors"
+                    onClick={() => handleSort("boardCode")}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      Código {renderSortIcon("boardCode")}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 cursor-pointer select-none hover:bg-slate-100/50 transition-colors"
+                    onClick={() => handleSort("location")}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      Ubicación {renderSortIcon("location")}
+                    </div>
+                  </th>
+                  <th
+                    className="px-6 py-4 cursor-pointer select-none hover:bg-slate-100/50 transition-colors"
+                    onClick={() => handleSort("nfpa")}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      NFPA 70E {renderSortIcon("nfpa")}
+                    </div>
+                  </th>
                   <th className="px-6 py-4 text-right">Acciones</th>
                 </tr>
               </thead>

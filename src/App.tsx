@@ -35,6 +35,9 @@ import DocumentDashboardPage from './pages/dashboard/document/DocumentDashboardP
 import SuccessStoriesPage from './pages/landing/SuccessStoriesPage'
 import PlansPage from './pages/landing/PlansPage'
 import ScrollToTop from './shared/components/ScrollToTop'
+import OnboardingPage from './pages/landing/OnboardingPage'
+import ContactSalesPage from './pages/contact-sales/ContactSalesPage'
+import ContactSalesLayout from './layouts/ContactSalesLayout'
 
 function App() {
   return (
@@ -46,6 +49,12 @@ function App() {
             <Route index element={<HomePage />} />
             <Route path="success-stories" element={<SuccessStoriesPage />} />
             <Route path="plans" element={<PlansPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="/contact-sales" element={<ContactSalesPage />} />
+          </Route>
+
+          <Route path='/contact-sales' element={<ContactSalesLayout />}>
+          <Route index element={<ContactSalesPage />} />
           </Route>
 
           {/* RUTAS PÚBLICAS DE AUTENTICACIÓN */}

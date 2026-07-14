@@ -1,17 +1,22 @@
 import {
   ArrowLeft,
+  BarChart3,
   Building2,
+  ChartNoAxesCombined,
   CheckCircle2,
+  Clock,
   FileDown,
   FileImage,
   ImageIcon,
   Info,
   MapPin,
+  RefreshCw,
+  UploadCloud,
   X,
   Zap
 } from "lucide-react";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 // import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -19,6 +24,8 @@ import { getBoardByCode } from "../../../services/board.service";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { getDemandChartData, uploadMetrelCsv } from "../../../services/measurement.service";
 
 // const groundingData = [
 //   { date: "Ene", ohms: 4.2 },
@@ -56,11 +63,133 @@ const BoardDetailPage = () => {
   const [error, setError] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
+  // ── ESTADOS AGREGADOS PARA EL CONTROL DEL GRÁFICO INTERACTIVO (RECHARTS) ──
+  const [rawChartData, setRawChartData] = useState<any[]>([]);
+  const [seriesKeys, setSeriesKeys] = useState<string[]>([]);
+  const [visibleSeries, setVisibleSeries] = useState<{ [key: string]: boolean }>({});
+  const [importing, setImporting] = useState(false);
+
+  // Límites estrictos del analizador devueltos por el Backend
+  const [limitesPatron, setLimitesPatron] = useState({ min: "2026-06-20", max: "2026-06-30" });
+  const [startDate, setStartDate] = useState<string>("2026-06-22");
+  const [endDate, setEndDate] = useState<string>("2026-06-28");
+
+  // ── 🔄 NUEVOS ESTADOS PARA EL ZOOM CON SCROLL Y DESPLAZAMIENTO (PAN) ──
+  const [zoomRange, setZoomRange] = useState<{ startIdx: number; endIdx: number }>({ startIdx: 0, endIdx: 287 });
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<number>(0);
+  const chartContainerRef = useRef<HTMLDivElement | null>(null); // Referencia del contenedor del gráfico
+
+  const fetchChartData = async (boardId: string, start?: string, end?: string) => {
+    try {
+      const res: any = await getDemandChartData(boardId, start, end);
+      const { agrupado, minFecha, maxFecha } = res;
+
+      if (minFecha && maxFecha) {
+        setLimitesPatron({ min: minFecha, max: maxFecha });
+        if (!start) {
+          setStartDate(minFecha);
+          setEndDate(maxFecha);
+        }
+      }
+
+      if (!agrupado || Object.keys(agrupado).length === 0) {
+        setRawChartData([]);
+        setSeriesKeys([]);
+        return;
+      }
+
+      const rawKeys = Object.keys(agrupado);
+      const labelsX = Array.from({ length: 288 }, (_, i) => {
+        const h = String(Math.floor((i * 5) / 60)).padStart(2, '0');
+        const m = String((i * 5) % 60).padStart(2, '0');
+        return `${h}:${m}`;
+      });
+
+      const formattedData = labelsX.map((hora) => {
+        const row: any = { horaMinuto: hora };
+        let suma = 0;
+        let count = 0;
+
+        rawKeys.forEach((diaKey) => {
+          const partes = diaKey.split(' ');
+          const fechaYMD = partes[0];
+          const diaNombre = partes[1] ? partes[1].replace(/[\(\)]/g, '').substring(0, 3) : '';
+          const [_, mes, dia] = fechaYMD.split('-');
+          const labelCorto = `${dia}/${mes} (${diaNombre})`;
+
+          const val = agrupado[diaKey]?.[hora];
+          if (val !== undefined && val !== null) {
+            row[labelCorto] = val;
+            suma += val;
+            count++;
+          }
+        });
+
+        row["Promedio_General"] = count > 0 ? Math.round((suma / count) * 100) / 100 : null;
+        return row;
+      });
+
+      // Ordenar las llaves de los botones cronológicamente de forma correcta
+      const sortedCleanKeys = rawKeys.sort().map(key => {
+        const partes = key.split(' ');
+        const fechaYMD = partes[0];
+        const diaNombre = partes[1] ? partes[1].replace(/[\(\)]/g, '').substring(0, 3) : '';
+        const [_, mes, dia] = fechaYMD.split('-');
+        return `${dia}/${mes} (${diaNombre})`;
+      });
+
+      setRawChartData(formattedData);
+      setSeriesKeys(sortedCleanKeys);
+
+      const visibility: any = { "Promedio_General": true };
+      sortedCleanKeys.forEach((k) => { visibility[k] = true; });
+      setVisibleSeries(visibility);
+
+    } catch (err) {
+      console.error("Error cargando curvas de demanda en Recharts:", err);
+    }
+  };
+
+  // ── 🔥 SOLUCIÓN AL SCROLL DE LA PÁGINA: Enlazar el listener no-pasivo de manera manual ──
+  useEffect(() => {
+    const contenedor = chartContainerRef.current;
+    if (!contenedor) return;
+
+    const handleNativeWheel = (e: WheelEvent) => {
+      // Bloquea por completo que la ventana suba o baje si el mouse está dentro
+      e.preventDefault();
+
+      const zoomFactor = e.deltaY < 0 ? 4 : -4;
+
+      setZoomRange((prev) => {
+        let newStart = prev.startIdx + zoomFactor;
+        let newEnd = prev.endIdx - zoomFactor;
+
+        if (newEnd - newStart < 12) return prev; // Límite de zoom-in (1 hora de registros)
+        if (newStart < 0) newStart = 0;
+        if (newEnd > 287) newEnd = 287;
+
+        return { startIdx: newStart, endIdx: newEnd };
+      });
+    };
+
+    // Añadir el evento pasándole explícitamente passive: false
+    contenedor.addEventListener("wheel", handleNativeWheel, { passive: false });
+
+    return () => {
+      contenedor.removeEventListener("wheel", handleNativeWheel);
+    };
+  }, [rawChartData]); // Se re-vincula de forma segura cuando la data esté lista
+
   useEffect(() => {
     const fetchBoard = async () => {
       try {
         const data = await getBoardByCode(publicCode!, code!);
         setBoard(data);
+        if (data?._id) {
+          await fetchChartData(data._id);
+        }
       } catch {
         setError("Error cargando tablero");
       } finally {
@@ -70,6 +199,259 @@ const BoardDetailPage = () => {
 
     fetchBoard();
   }, [code, publicCode]);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !board?._id) return;
+
+    if (!file.name.includes('.Mediciones.csv')) {
+      alert("Por favor, sube exclusivamente el archivo original de Metrel que termina en '.Mediciones.csv'");
+      return;
+    }
+
+    setImporting(true);
+
+    try {
+      await uploadMetrelCsv(board._id, file);
+      alert("¡Archivo cargado y procesado por completo en VoltGuard!");
+      // Al terminar de importar, refrescamos la vista respetando las fechas actuales
+      await fetchChartData(board._id, startDate, endDate);
+    } catch (err: any) {
+      alert("Error procesando archivo: " + (err.response?.data?.error || err.message));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const handleMouseDown = (e: any) => {
+    if (e && e.chartX) {
+      setIsDragging(true);
+      setDragStart(e.chartX);
+    }
+  };
+
+  const handleMouseMove = (e: any) => {
+    if (!isDragging || !e || !e.chartX) return;
+    const distance = e.chartX - dragStart;
+    if (Math.abs(distance) < 10) return;
+
+    const shift = distance > 0 ? -2 : 2;
+
+    setZoomRange((prev) => {
+      let newStart = prev.startIdx + shift;
+      let newEnd = prev.endIdx + shift;
+      if (newStart < 0 || newEnd > 287) return prev;
+      setDragStart(e.chartX);
+      return { startIdx: newStart, endIdx: newEnd };
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleResetZoom = () => {
+    setZoomRange({ startIdx: 0, endIdx: 287 });
+  };
+
+  const toggleSerieVisibility = (key: string) => {
+    setVisibleSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleApplyDateFilter = () => {
+    if (board?._id) {
+      handleResetZoom();
+      fetchChartData(board._id, startDate, endDate);
+    }
+  };
+
+  const dataFiltradaZoom = rawChartData.slice(zoomRange.startIdx, zoomRange.endIdx + 1);
+
+  // ── COMPONENTE DE TOOLTIP PERSONALIZADO (AÑADIDO PARA MEJOR LECTURA) ──
+  const CustomTooltip = ({ active, label, payload }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xl max-w-xs font-sans text-xs">
+          {/* Cabecera del Tooltip con la Hora Precisa */}
+          <div className="mb-2 border-b border-slate-100 pb-1.5 flex justify-between items-center">
+            <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Intervalo Diario</span>
+            <span className="flex items-center gap-x-1 font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 text-[11px]">
+              <Clock size={14} /> {label} hrs
+            </span>
+          </div>
+
+          {/* Listado dinámico de las series/días activos ordenados de mayor a menor valor */}
+          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+            {[...payload]
+              .sort((a, b) => (b.value || 0) - (a.value || 0)) // Ordena los picos más altos arriba
+              .map((item: any, index: number) => (
+                <div key={index} className="flex items-center justify-between gap-6 font-semibold">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    {/* Indicador circular con el color exacto de la línea del gráfico */}
+                    <span
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: item.stroke }}
+                    />
+                    <span className="truncate text-slate-600 text-[11px]">
+                      {item.name}
+                    </span>
+                  </div>
+                  <span className="text-slate-900 font-black text-right tabular-nums whitespace-nowrap">
+                    {item.value !== null && item.value !== undefined ? `${item.value.toFixed(2)} kW` : '-'}
+                  </span>
+                </div>
+              ))}
+          </div>
+
+          {/* Información Técnica de Contexto en el Pie del Tooltip */}
+          <div className="mt-2.5 border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-medium flex justify-between">
+            <span>Analizador: Metrel</span>
+            <span className="font-bold text-[#0797d5]">Voltguard</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // ── SECCIÓN MODULAR ACTUALIZADA CON CONTROLES DE RANGO DE CALENDARIO ──
+  const renderDemandSection = () => {
+    const colors = ['#2f5597', '#4caf50', '#9c27b0', '#00bcd4', '#ff9800', '#e91e63', '#795548', '#607d8b', '#03a9f4', '#eab308', '#ec4899'];
+
+    return (
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
+        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center border-b border-slate-100 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+              <BarChart3 size={22} />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-950 text-base tracking-tight">Cuadro de Demanda</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Demanda instantánea calculada y expresada en KiloVatios (kW)</p>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="csv-metrel" className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-black text-white transition-all duration-300 cursor-pointer shadow-md bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5">
+              <UploadCloud size={16} />
+              {importing ? "Importando..." : "Importar .Mediciones.csv"}
+            </label>
+            <input id="csv-metrel" type="file" accept=".csv" onChange={handleFileChange} className="hidden" disabled={importing} />
+          </div>
+        </div>
+
+        {/* FILTRO DE CALENDARIO RESTRINGIDO AL RANGO REAL */}
+        {rawChartData.length > 0 && (
+          <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-slate-50 p-4 border border-slate-100">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Fecha de Inicio</label>
+              <input
+                type="date"
+                value={startDate}
+                min={limitesPatron.min}
+                max={limitesPatron.max}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none shadow-sm"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Fecha de Cierre</label>
+              <input
+                type="date"
+                value={endDate}
+                min={limitesPatron.min}
+                max={limitesPatron.max}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none shadow-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleApplyDateFilter}
+              className="rounded-xl bg-slate-800 px-4 py-2 text-xs font-black text-white hover:bg-slate-900 transition-colors shadow-sm cursor-pointer h-[34px]"
+            >
+              Filtrar Periodo
+            </button>
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              className="flex items-center gap-x-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer h-[34px] ml-auto"
+            >
+              <RefreshCw size={14} /> Restablecer Vista
+            </button>
+          </div>
+        )}
+
+        {rawChartData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
+            <BarChart3 size={36} className="text-slate-300 animate-pulse" />
+            <p className="mt-3 text-xs font-bold text-slate-500">Sin historial de curvas de demanda registrado para este rango</p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {/* PANEL DE BOTONES INTERACTIVOS POR DÍAS */}
+            <div className="flex flex-wrap gap-1.5 rounded-2xl bg-slate-100 p-2 border border-slate-200/40">
+              <button
+                type="button"
+                onClick={() => toggleSerieVisibility("Promedio_General")}
+                className={`flex items-center gap-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["Promedio_General"] ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white border-slate-200 text-slate-600'}`}
+              >
+                <ChartNoAxesCombined size={14} /> Promedio General
+              </button>
+
+              {seriesKeys.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleSerieVisibility(key)}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries[key] ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-600'}`}
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+
+            {/* CONTENEDOR CAPTURADOR DE EVENTO ASOCIADO A LA REF DE REACT */}
+            <div
+              ref={chartContainerRef}
+              className="h-80 w-full text-xs font-medium text-slate-500 select-none cursor-ew-resize"
+            >
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={dataFiltradaZoom}
+                  margin={{ top: 5, right: 10, left: -15, bottom: 5 }}
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseUp}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="horaMinuto" tickLine={false} stroke="#94a3b8" allowDuplicatedCategory={false} />
+                  <YAxis domain={[0, 'auto']} tickLine={false} stroke="#94a3b8" />
+
+                  {/* 🔥 INYECCIÓN DEL TOOLTIP TOTALMENTE PERSONALIZADO EN KW */}
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    shared={true} // Permite cruzar los datos de todas las curvas activas en esa hora
+                  />
+
+                  {visibleSeries["Promedio_General"] && (
+                    <Line type="monotone" name="Promedio General" dataKey="Promedio_General" stroke="#ff5722" strokeWidth={3.5} dot={false} connectNulls animationDuration={100} />
+                  )}
+
+                  {seriesKeys.map((key, idx) =>
+                    visibleSeries[key] ? (
+                      <Line key={key} type="monotone" name={key} dataKey={key} stroke={colors[idx % colors.length]} strokeWidth={1.5} dot={false} connectNulls animationDuration={100} />
+                    ) : null
+                  )}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  };
 
   // ── 📄 NUEVO: FILTRADO DE DOCUMENTOS EN TIEMPO REAL ──
   const certificadosMantenimiento = board?.assignedDocuments?.filter(
@@ -336,7 +718,7 @@ const BoardDetailPage = () => {
   // };
 
 
-const renderNfpaSection = () => {
+  const renderNfpaSection = () => {
     if (!board?.nfpa) {
       return (
         <div className="rounded-3xl border border-slate-200 bg-slate-50/50 p-8 text-center text-xs font-semibold text-slate-400">
@@ -380,7 +762,7 @@ const renderNfpaSection = () => {
               <h2 className="text-lg font-black uppercase text-slate-900 tracking-tight">
                 Riesgo de arco eléctrico y electrocución presente
               </h2>
-              
+
               {/* NUEVA UBICACIÓN DE LA NORMA: En la cabecera técnica */}
               <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold">
                 <p className="text-slate-500">Se requiere EPP de acuerdo a categoría</p>
@@ -459,7 +841,7 @@ const renderNfpaSection = () => {
 
             {/* ── NUEVA DISTRIBUCIÓN REORGANIZADA DEL PIE DE PÁGINA (3 COLUMNAS) ── */}
             <div className="mt-5 border-t border-slate-100 pt-4 grid gap-4 grid-cols-1 sm:grid-cols-3 items-center text-xs text-slate-400 font-medium">
-              
+
               {/* COLUMNA IZQUIERDA: Nombre del Tablero */}
               <div className="text-left">
                 <p className="text-slate-700 font-bold">
@@ -471,9 +853,9 @@ const renderNfpaSection = () => {
               <div className="flex items-center justify-start sm:justify-center gap-2">
                 <span className="text-[11px] font-semibold text-slate-400">Creado por:</span>
                 <div className="flex items-center gap-1.5 rounded-xl bg-slate-50 border border-slate-200/60 px-2.5 py-1 shadow-sm">
-                  <img 
-                    src="/voltguard.png" 
-                    alt="Voltguard Logo" 
+                  <img
+                    src="/voltguard.png"
+                    alt="Voltguard Logo"
                     className="size-4.5 object-contain"
                   />
                   <span className="font-black text-slate-800 tracking-tight text-[12px]">
@@ -498,7 +880,7 @@ const renderNfpaSection = () => {
       </>
     );
   };
-  
+
 
   const renderInsulationMeasurements = () => {
     const records = board?.insulationMeasurements ?? [];
@@ -863,6 +1245,9 @@ const renderNfpaSection = () => {
         {renderNfpaSection()}
         {/* {renderGroundingSection()}
         {renderLoadPanelSection()} */}
+
+        {/* PANEL DE CONTROL DE GRÁFICOS INYECTADO AUTOMÁTICAMENTE AQUÍ */}
+        {renderDemandSection()}
 
         {/* ── ESPECIFICACIONES TÉCNICAS (CASCADA COMPACTA) ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

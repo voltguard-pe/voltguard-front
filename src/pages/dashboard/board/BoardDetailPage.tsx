@@ -349,36 +349,35 @@ const BoardDetailPage = () => {
     });
   };
 
-  // ── COMPONENTE DE TOOLTIP PERSONALIZADO (AÑADIDO PARA MEJOR LECTURA) ──
+  // ── COMPONENTE DE TOOLTIP PERSONALIZADO RESPONSIVE ──
   const CustomTooltip = ({ active, label, payload }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xl max-w-xs font-sans text-xs">
+        <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xl max-w-[280px] sm:max-w-xs font-sans text-xs">
           {/* Cabecera del Tooltip con la Hora Precisa */}
-          <div className="mb-2 border-b border-slate-100 pb-1.5 flex justify-between items-center">
-            <span className="font-semibold text-slate-400 uppercase tracking-wider text-[10px]">Intervalo Diario</span>
-            <span className="flex items-center gap-x-1 font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200/60 text-[11px]">
-              <Clock size={14} /> {label} hrs
+          <div className="mb-2 border-b border-slate-100 pb-1.5 flex justify-between items-center gap-2">
+            <span className="font-semibold text-slate-400 uppercase tracking-wider text-[9px] sm:text-[10px]">Intervalo Diario</span>
+            <span className="flex items-center gap-x-1 font-black text-slate-900 bg-slate-100 px-1.5 sm:px-2 py-0.5 rounded-md border border-slate-200/60 text-[10px] sm:text-[11px] shrink-0">
+              <Clock size={12} /> {label} hrs
             </span>
           </div>
 
           {/* Listado dinámico de las series/días activos ordenados de mayor a menor valor */}
-          <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1">
             {[...payload]
-              .sort((a, b) => (b.value || 0) - (a.value || 0)) // Ordena los picos más altos arriba
+              .sort((a, b) => (b.value || 0) - (a.value || 0))
               .map((item: any, index: number) => (
-                <div key={index} className="flex items-center justify-between gap-6 font-semibold">
+                <div key={index} className="flex items-center justify-between gap-4 sm:gap-6 font-semibold">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    {/* Indicador circular con el color exacto de la línea del gráfico */}
                     <span
-                      className="size-2 shrink-0 rounded-full"
+                      className="size-1.5 sm:size-2 shrink-0 rounded-full"
                       style={{ backgroundColor: item.stroke }}
                     />
-                    <span className="truncate text-slate-600 text-[11px]">
+                    <span className="truncate text-slate-600 text-[10px] sm:text-[11px]">
                       {item.name}
                     </span>
                   </div>
-                  <span className="text-slate-900 font-black text-right tabular-nums whitespace-nowrap">
+                  <span className="text-slate-900 font-black text-right tabular-nums whitespace-nowrap text-[10px] sm:text-[11px]">
                     {item.value !== null && item.value !== undefined ? `${item.value.toFixed(2)} kW` : '-'}
                   </span>
                 </div>
@@ -386,7 +385,7 @@ const BoardDetailPage = () => {
           </div>
 
           {/* Información Técnica de Contexto en el Pie del Tooltip */}
-          <div className="mt-2.5 border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-medium flex justify-between">
+          <div className="mt-2.5 border-t border-slate-100 pt-2 text-[9px] sm:text-[10px] text-slate-400 font-medium flex justify-between">
             <span>Analizador: Metrel</span>
             <span className="font-bold text-[#0797d5]">Voltguard</span>
           </div>
@@ -396,87 +395,113 @@ const BoardDetailPage = () => {
     return null;
   };
 
-  // ── SECCIÓN MODULAR ACTUALIZADA CON CONTROLES DE RANGO DE CALENDARIO ──
+  // ── SECCIÓN MODULAR 100% RESPONSIVE ──
   const renderDemandSection = () => {
-    const colors = ['#2f5597', '#4caf50', '#9c27b0', '#00bcd4', '#ff9800', '#e91e63', '#795548', '#607d8b', '#03a9f4', '#eab308', '#ec4899'];
+    // Paleta de colores para las distintas series de días importados
+    const colors = [
+      '#2f5597', '#4caf50', '#9c27b0', '#00bcd4', '#ff9800',
+      '#e91e63', '#795548', '#607d8b', '#03a9f4', '#eab308', '#ec4899'
+    ];
 
     return (
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
-        <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center border-b border-slate-100 pb-5">
+      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans">
+
+        {/* ── 1. CABECERA: TÍTULO, SUBTÍTULO E IMPORTACIÓN DE ARCHIVO ── */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
-              <BarChart3 size={22} />
+            <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-600">
+              <BarChart3 size={20} className="sm:size-[22px]" />
             </div>
             <div>
-              <h2 className="font-bold text-slate-950 text-base tracking-tight">Cuadro de Demanda</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Demanda instantánea calculada y expresada en KiloVatios (kW)</p>
+              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
+                Cuadro de Demanda
+              </h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                Demanda instantánea calculada y expresada en KiloVatios (kW)
+              </p>
             </div>
           </div>
 
-          <div>
-            <label htmlFor="csv-metrel" className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-xs font-black text-white transition-all duration-300 cursor-pointer shadow-md bg-emerald-600 hover:bg-emerald-700 hover:-translate-y-0.5">
+          {/* Botón de importación adaptable */}
+          <div className="w-full sm:w-auto">
+            <label
+              htmlFor="csv-metrel"
+              className="flex sm:inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl px-5 py-3 text-xs font-black text-white transition-all duration-300 cursor-pointer shadow-md bg-emerald-600 hover:bg-emerald-700 active:scale-95"
+            >
               <UploadCloud size={16} />
               {importing ? "Importando..." : "Importar .Mediciones.csv"}
             </label>
-            <input id="csv-metrel" type="file" accept=".csv" onChange={handleFileChange} className="hidden" disabled={importing} />
+            <input
+              id="csv-metrel"
+              type="file"
+              accept=".csv"
+              onChange={handleFileChange}
+              className="hidden"
+              disabled={importing}
+            />
           </div>
         </div>
 
-        {/* FILTRO DE CALENDARIO RESTRINGIDO AL RANGO REAL */}
+        {/* ── 2. FILTROS DE FECHAS (GRID RESPONSIVE) ── */}
         {rawChartData.length > 0 && (
-          <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl bg-slate-50 p-4 border border-slate-100">
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Fecha de Inicio</label>
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end rounded-2xl bg-slate-50 p-3 sm:p-4 border border-slate-100">
+            <div className="flex flex-col gap-1 col-span-1">
+              <label className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 tracking-wider">Inicio</label>
               <input
                 type="date"
                 value={startDate}
                 min={limitesPatron.min}
                 max={limitesPatron.max}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none shadow-sm"
+                className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 sm:py-2 text-xs font-bold text-slate-700 focus:outline-none shadow-sm"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Fecha de Cierre</label>
+            <div className="flex flex-col gap-1 col-span-1">
+              <label className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 tracking-wider">Cierre</label>
               <input
                 type="date"
                 value={endDate}
                 min={limitesPatron.min}
                 max={limitesPatron.max}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none shadow-sm"
+                className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 sm:py-2 text-xs font-bold text-slate-700 focus:outline-none shadow-sm"
               />
             </div>
             <button
               type="button"
               onClick={handleApplyDateFilter}
-              className="rounded-xl bg-slate-800 px-4 py-2 text-xs font-black text-white hover:bg-slate-900 transition-colors shadow-sm cursor-pointer h-[34px]"
+              className="col-span-2 sm:col-span-1 rounded-xl bg-slate-800 px-4 py-2 text-xs font-black text-white hover:bg-slate-900 transition-colors shadow-sm cursor-pointer h-[34px]"
             >
               Filtrar Periodo
             </button>
             <button
               type="button"
               onClick={handleResetZoom}
-              className="flex items-center gap-x-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer h-[34px] ml-auto"
+              className="col-span-2 sm:col-span-1 sm:ml-auto flex items-center justify-center gap-x-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer h-[34px]"
             >
               <RefreshCw size={14} /> Restablecer Vista
             </button>
           </div>
         )}
 
+        {/* ── 3. ESTADO SIN DATOS ── */}
         {rawChartData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
-            <BarChart3 size={36} className="text-slate-300 animate-pulse" />
-            <p className="mt-3 text-xs font-bold text-slate-500">Sin historial de curvas de demanda registrado para este rango</p>
+          <div className="flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center">
+            <BarChart3 size={32} className="text-slate-300 animate-pulse" />
+            <p className="mt-3 text-xs font-bold text-slate-500">Sin historial de curvas de demanda para este rango</p>
           </div>
         ) : (
           <div className="space-y-5">
-            {/* PANEL DE BOTONES INTERACTIVOS POR DÍAS */}
-            <div className="flex flex-wrap gap-1.5 rounded-2xl bg-slate-100 p-2 border border-slate-200/40">
+
+            {/* ── 4. BOTONERA DE FILTRADO DE SERIE (SCROLL EN MÓVIL) ── */}
+            <div className="flex gap-1.5 overflow-x-auto pb-2 sm:pb-0 sm:flex-wrap rounded-2xl bg-slate-100 p-2 border border-slate-200/40 scrollbar-none">
               <button
                 type="button"
                 onClick={() => toggleSerieVisibility("Promedio_General")}
-                className={`flex items-center gap-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["Promedio_General"] ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white border-slate-200 text-slate-600'}`}
+                className={`flex shrink-0 items-center gap-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["Promedio_General"]
+                    ? 'bg-orange-600 border-orange-600 text-white'
+                    : 'bg-white border-slate-200 text-slate-600'
+                  }`}
               >
                 <ChartNoAxesCombined size={14} /> Promedio General
               </button>
@@ -486,203 +511,220 @@ const BoardDetailPage = () => {
                   key={key}
                   type="button"
                   onClick={() => toggleSerieVisibility(key)}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries[key] ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-600'}`}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key]
+                      ? 'bg-slate-800 border-slate-800 text-white'
+                      : 'bg-white border-slate-200 text-slate-600'
+                    }`}
                 >
                   {key}
                 </button>
               ))}
             </div>
 
-            {/* CONTENEDOR CAPTURADOR DE EVENTO ASOCIADO A LA REF DE REACT */}
-            <div
-              ref={chartContainerRef}
-              className="h-96 w-full text-xs font-medium text-slate-500 select-none cursor-ew-resize"
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={dataFiltradaZoom}
-                  margin={{ top: 25, right: 15, left: 35, bottom: 25 }} // un poco más de margen superior para etiquetas
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-
-                  {/* ── 🟢 FONDO TENUE: HORA FUERA DE PUNTA (00:00 a 18:00) ── */}
-                  <ReferenceArea
-                    x1="00:00"
-                    x2="18:00"
-                    fill="#f8fafc" // Slate 50 muy tenue
-                    fillOpacity={0.55}
-                  >
-                    <Label
-                      value="HORA FUERA DE PUNTA (HFP)"
-                      position="top"
-                      offset={10}
-                      fill="#0284c7" // Color azul institucional para HFP
-                      style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }}
-                    />
-                  </ReferenceArea>
-
-                  {/* ── 🔴 FONDO TENUE: HORA PUNTA (18:00 a 23:00) ── */}
-                  <ReferenceArea
-                    x1="18:00"
-                    x2="23:00"
-                    fill="#fff1f2" // Rose 50 muy tenue para alertar la Hora Punta
-                    fillOpacity={0.65}
-                  >
-                    <Label
-                      value="HORA PUNTA (HP)"
-                      position="top"
-                      offset={10}
-                      fill="#f43f5e"
-                      style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }}
-                    />
-                  </ReferenceArea>
-
-                  {/* ── 🟢 FONDO TENUE: HORA FUERA DE PUNTA (23:00 a 23:55) ── */}
-                  <ReferenceArea
-                    x1="23:00"
-                    x2="23:55"
-                    fill="#f8fafc"
-                    fillOpacity={0.55}
-                  />
-
-                  {/* ── ⚡ LÍNEA VERTICAL DEL PICO MÁXIMO ABSOLUTO ── */}
-                  {horaPicoMaximo && (
-                    <ReferenceLine
-                      x={horaPicoMaximo}
-                      stroke="#be123c" // Rojo oscuro institucional
-                      strokeWidth={2}
-                      strokeDasharray="4 4" // Línea discontinua
-                    >
-                      <Label
-                        value="PICO MÁXIMO DEL MES"
-                        position="top"
-                        offset={10}
-                        fill="#be123c"
-                        style={{ fontSize: '9px', fontWeight: '900', background: '#fff' }}
-                      />
-                    </ReferenceLine>
-                  )}
-
-                  <XAxis
-                    dataKey="horaMinuto"
-                    tickLine={false}
-                    stroke="#94a3b8"
-                    allowDuplicatedCategory={false}
-                    
-                    dy={10} // Empuja todo el bloque de escala hacia abajo para que no choque con el gráfico
-
-                    // ── 🔥 CLAVE 1: Mostrar etiqueta solo cada 12 registros (Equivale a cada 1 hora en muestras de 5 min)
-                    interval={11}
-
-                    // ── 🔥 CLAVE 2: Rotar las horas -45 grados para que no se pisen
-                    tick={{
-                      angle: -45,
-                      textAnchor: 'end',
-                      fontSize: '10px',
-                      fontWeight: '600',
-                      fill: '#64748b'
-                    }}
-                    height={65} // Aumentamos la altura del eje X para dar espacio a la inclinación del texto
-                  >
-                    <Label
-                      value="Hora del día"
-                      position="insideBottom"
-                      offset={-18} // Empuja el texto hacia abajo para que no choque con los números
-                      style={{ textAnchor: 'middle', fill: '#64748b', fontWeight: 'bold', fontSize: '11px' }}
-                    />
-                  </XAxis>
-
-                  <YAxis
-                    domain={[0, 'auto']}
-                    tickLine={false}
-                    stroke="#94a3b8"
-                  >
-                    <Label
-                      value="Demanda de Potencia Activa (kW)"
-                      angle={-90} // Rota el texto verticalmente
-                      position="insideLeft"
-                      // offset={-5} // Ajusta la distancia con respecto al borde izquierdo
-                      style={{ textAnchor: 'middle', fill: '#64748b', fontWeight: 'bold', fontSize: '11px' }}
-                    />
-                  </YAxis>
-
-                  <Tooltip
-                    content={<CustomTooltip />}
-                    shared={true}
-                  />
-
-                  {visibleSeries["Promedio_General"] && (
-                    <Line type="monotone" name="Promedio General" dataKey="Promedio_General" stroke="#ff5722" strokeWidth={3.5} dot={false} connectNulls animationDuration={100} />
-                  )}
-
-                  {seriesKeys.map((key, idx) =>
-                    visibleSeries[key] ? (
-                      <Line key={key} type="monotone" name={key} dataKey={key} stroke={colors[idx % colors.length]} strokeWidth={1.5} dot={false} connectNulls animationDuration={100} />
-                    ) : null
-                  )}
-                </LineChart>
-              </ResponsiveContainer>
+            {/* INDICADOR DE CONTROL TÁCTIL EN CELULARES */}
+            <div className="flex items-center justify-between gap-2 px-1 sm:hidden">
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Panel Gráfico</span>
+              <span className="flex items-center gap-1 text-[9px] font-black text-slate-500 animate-pulse bg-slate-100 px-2 py-1 rounded-lg border border-slate-200/60">
+                Desliza para explorar horas →
+              </span>
             </div>
 
-            {/* ── SECCIÓN DE ANALÍTICA DE POTENCIA (LUZ DEL SUR / OSINERGMIN) ── */}
-            {analisisPotencia && (
-              <div className="mt-8 grid grid-cols-1 gap-6 border-t border-slate-100 pt-6 md:grid-cols-3">
+            {/* ── 5. CONTENEDOR CON SCROLL HORIZONTAL DE UX MEJORADA ── */}
+            <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
 
-                {/* CARD 1: HORA PUNTA */}
-                <div className="rounded-2xl border border-rose-100 bg-rose-50/30 p-5">
+              {/* 
+              Establece un ancho mínimo cómodo de 850px en móvil para que las etiquetas no colisionen. 
+              En pantallas de escritorio (sm hacia arriba), se expande a w-full automáticamente.
+            */}
+              <div
+                ref={chartContainerRef}
+                className="h-72 sm:h-80 md:h-[420px] w-[850px] sm:w-full text-xs font-medium text-slate-500 select-none cursor-ew-resize"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={dataFiltradaZoom}
+                    // Con un ancho mínimo de 850px, los márgenes de escritorio son seguros en cualquier pantalla
+                    margin={{ top: 25, right: 15, left: 10, bottom: 25 }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+
+                    {/* FONDO TENUE: HORA FUERA DE PUNTA (HFP - 00:00 a 18:00) */}
+                    <ReferenceArea x1="00:00" x2="18:00" fill="#f8fafc" fillOpacity={0.55}>
+                      <Label
+                        value="HORA FUERA DE PUNTA (HFP)"
+                        position="top"
+                        offset={10}
+                        fill="#0284c7"
+                        style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }}
+                      />
+                    </ReferenceArea>
+
+                    {/* FONDO TENUE: HORA PUNTA (HP - 18:00 a 23:00) */}
+                    <ReferenceArea x1="18:00" x2="23:00" fill="#fff1f2" fillOpacity={0.65}>
+                      <Label
+                        value="HORA PUNTA (HP)"
+                        position="top"
+                        offset={10}
+                        fill="#f43f5e"
+                        style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }}
+                      />
+                    </ReferenceArea>
+
+                    {/* FONDO TENUE: HFP (23:00 a 23:55) */}
+                    <ReferenceArea x1="23:00" x2="23:55" fill="#f8fafc" fillOpacity={0.55} />
+
+                    {/* LÍNEA VERTICAL DEL PICO MÁXIMO DEL PERIODO */}
+                    {horaPicoMaximo && (
+                      <ReferenceLine x={horaPicoMaximo} stroke="#be123c" strokeWidth={2} strokeDasharray="4 4">
+                        <Label
+                          value="PICO MÁXIMO DEL PERIODO"
+                          position="top"
+                          offset={10}
+                          fill="#be123c"
+                          style={{ fontSize: '8px', fontWeight: '900' }}
+                        />
+                      </ReferenceLine>
+                    )}
+
+                    {/* EJE X: Con espacio óptimo para todas las horas */}
+                    <XAxis
+                      dataKey="horaMinuto"
+                      tickLine={false}
+                      stroke="#94a3b8"
+                      allowDuplicatedCategory={false}
+                      dy={10}
+                      interval={11} // Muestra etiquetas legibles cada hora aproximada
+                      tick={{
+                        angle: -45,
+                        textAnchor: 'end',
+                        fontSize: '9px',
+                        fontWeight: '600',
+                        fill: '#64748b'
+                      }}
+                      height={60}
+                    >
+                      <Label
+                        value="HORA DEL DÍA (HH:MM)"
+                        position="insideBottom"
+                        offset={-15}
+                        style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
+                      />
+                    </XAxis>
+
+                    {/* EJE Y: Rotulado cómodo y legible */}
+                    <YAxis
+                      domain={[0, 'auto']}
+                      tickLine={false}
+                      stroke="#94a3b8"
+                      width={50}
+                      tick={{ fontSize: '10px' }}
+                    >
+                      <Label
+                        value="Demanda (kW)"
+                        angle={-90}
+                        position="insideLeft"
+                        // offset={-10}
+                        style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
+                      />
+                    </YAxis>
+
+                    {/* Tooltip con render de datos ordenados */}
+                    <Tooltip content={<CustomTooltip />} shared={true} />
+
+                    {/* Render del promedio de consumo en negrita */}
+                    {visibleSeries["Promedio_General"] && (
+                      <Line
+                        type="monotone"
+                        name="Promedio General"
+                        dataKey="Promedio_General"
+                        stroke="#ff5722"
+                        strokeWidth={2.5}
+                        dot={false}
+                        connectNulls
+                        animationDuration={150}
+                      />
+                    )}
+
+                    {/* Render de los días activos cargados */}
+                    {seriesKeys.map((key, idx) =>
+                      visibleSeries[key] ? (
+                        <Line
+                          key={key}
+                          type="monotone"
+                          name={key}
+                          dataKey={key}
+                          stroke={colors[idx % colors.length]}
+                          strokeWidth={1.5}
+                          dot={false}
+                          connectNulls
+                          animationDuration={150}
+                        />
+                      ) : null
+                    )}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* ── 6. SECCIÓN DE TARJETAS DE ANALÍTICA TARIFA/POTENCIA ── */}
+            {analisisPotencia && (
+              <div className="mt-8 grid grid-cols-1 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2 md:grid-cols-3">
+
+                {/* CARD 1: MAX HORA PUNTA (HP) */}
+                <div className="rounded-2xl border border-rose-100 bg-rose-50/30 p-4 sm:p-5">
                   <div className="flex items-center gap-2 text-rose-700">
-                    <Clock size={18} className="animate-pulse" />
-                    <h3 className="text-xs font-black uppercase tracking-wider">Pico Máximo en Hora Punta (HP)</h3>
+                    <Clock size={16} className="animate-pulse" />
+                    <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Pico Máximo en Hora Punta (HP)</h3>
                   </div>
-                  <p className="mt-3 text-3xl font-black text-rose-950">
-                    {analisisPotencia.maxHP?.valor.toFixed(1)} <span className="text-sm font-bold text-rose-500">kW</span>
+                  <p className="mt-2 text-2xl sm:text-3xl font-black text-rose-950">
+                    {analisisPotencia.maxHP?.valor.toFixed(1)} <span className="text-xs sm:text-sm font-bold text-rose-500">kW</span>
                   </p>
-                  <div className="mt-2 text-xs text-slate-500">
+                  <div className="mt-1 text-[11px] sm:text-xs text-slate-500">
                     Registrado el <strong className="text-slate-700">{analisisPotencia.maxHP?.fecha}</strong> a las <strong className="text-slate-700">{analisisPotencia.maxHP?.hora} hrs</strong>.
                   </div>
-                  <span className="mt-3 inline-block rounded-lg bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                  <span className="mt-2.5 inline-block rounded-lg bg-rose-100 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-rose-700">
                     Horario Crítico: 18:00 a 23:00 hrs
                   </span>
                 </div>
 
-                {/* CARD 2: HORAS FUERA DE PUNTA */}
-                <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-5">
+                {/* CARD 2: MAX HORAS FUERA DE PUNTA (HFP) */}
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-4 sm:p-5">
                   <div className="flex items-center gap-2 text-blue-700">
-                    <Zap size={18} />
-                    <h3 className="text-xs font-black uppercase tracking-wider">Pico Máximo Fuera de Punta (HFP)</h3>
+                    <Zap size={16} />
+                    <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Pico Máximo Fuera de Punta (HFP)</h3>
                   </div>
-                  <p className="mt-3 text-3xl font-black text-blue-950">
-                    {analisisPotencia.maxHFP?.valor.toFixed(1)} <span className="text-sm font-bold text-blue-500">kW</span>
+                  <p className="mt-2 text-2xl sm:text-3xl font-black text-blue-950">
+                    {analisisPotencia.maxHFP?.valor.toFixed(1)} <span className="text-xs sm:text-sm font-bold text-blue-500">kW</span>
                   </p>
-                  <div className="mt-2 text-xs text-slate-500">
+                  <div className="mt-1 text-[11px] sm:text-xs text-slate-500">
                     Registrado el <strong className="text-slate-700">{analisisPotencia.maxHFP?.fecha}</strong> a las <strong className="text-slate-700">{analisisPotencia.maxHFP?.hora} hrs</strong>.
                   </div>
-                  <span className="mt-3 inline-block rounded-lg bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                  <span className="mt-2.5 inline-block rounded-lg bg-blue-100 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-blue-700">
                     Horario Base: 23:00 a 18:00 hrs
                   </span>
                 </div>
 
-                {/* CARD 3: AUDITORÍA & SIMULACIÓN DE AHORRO */}
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-5 flex flex-col justify-between">
+                {/* CARD 3: SIMULADOR DE AHORRO MULTI-INPUT */}
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4 sm:p-5 flex flex-col justify-between col-span-1 sm:col-span-2 md:col-span-1 font-sans">
                   <div>
                     <div className="flex items-center gap-2 text-emerald-700">
-                      <TrendingDown size={18} />
-                      <h3 className="text-xs font-black uppercase tracking-wider">Simulador de Ahorro Estimado</h3>
+                      <TrendingDown size={16} />
+                      <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Simulador de Ahorro Estimado</h3>
                     </div>
-                    <p className="mt-3 text-3xl font-black text-emerald-950">
+                    <p className="mt-2 text-2xl sm:text-3xl font-black text-emerald-950">
                       S/. {analisisPotencia.ahorroEstimado.toLocaleString("es-PE")}
-                      <span className="text-sm font-bold text-emerald-600">/ mes</span>
+                      <span className="text-xs sm:text-sm font-bold text-emerald-600">/ mes</span>
                     </p>
-                    <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
-                      Aplanando tus picos en hora punta un 15% y evitando excesos de potencia contratada ({tarifaContratada} kW).
+                    <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 leading-relaxed">
+                      Estimación de reducción reduciendo picos en un 15% comparado con tu límite contratado de ({tarifaContratada} kW).
                     </p>
                   </div>
 
-                  {/* Inputs rápidos interactivos para el consultor de la empresa */}
+                  {/* Controles de Entrada Rápidos */}
                   <div className="mt-4 flex gap-x-2 border-t border-emerald-100/60 pt-3">
                     <div className="flex-1">
                       <label className="text-[9px] font-bold text-slate-400 block mb-1">Contratada (kW)</label>

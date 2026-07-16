@@ -11,6 +11,7 @@ import {
   Info,
   MapPin,
   RefreshCw,
+  TrendingDown,
   UploadCloud,
   X,
   Zap
@@ -24,7 +25,7 @@ import { getBoardByCode } from "../../../services/board.service";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
-import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Label, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getDemandChartData, uploadMetrelCsv } from "../../../services/measurement.service";
 
 // const groundingData = [
@@ -79,6 +80,19 @@ const BoardDetailPage = () => {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState<number>(0);
   const chartContainerRef = useRef<HTMLDivElement | null>(null); // Referencia del contenedor del gráfico
+
+  // Tarifas referenciales de Media Tensión de Luz del Sur (Valores promedio que puedes dejar editables)
+  const [tarifaContratada, setTarifaContratada] = useState<number>(350); // kW contratados de ejemplo
+  const [costokW_HP, setCostokW_HP] = useState<number>(48.50); // S/. por kW en Hora Punta (Referencial)
+  const [costokW_HFP] = useState<number>(22.10); // S/. por kW Fuera de Punta (Referencial)
+  const [horaPicoMaximo, setHoraPicoMaximo] = useState<string | null>(null);
+
+  // Estados para almacenar el análisis calculado
+  const [analisisPotencia, setAnalisisPotencia] = useState<{
+    maxHP: { valor: number; hora: string; fecha: string } | null;
+    maxHFP: { valor: number; hora: string; fecha: string } | null;
+    ahorroEstimado: number;
+  } | null>(null);
 
   const fetchChartData = async (boardId: string, start?: string, end?: string) => {
     try {
@@ -200,6 +214,12 @@ const BoardDetailPage = () => {
     fetchBoard();
   }, [code, publicCode]);
 
+  useEffect(() => {
+    if (rawChartData.length > 0) {
+      calcularMetricasLuzDelSur(rawChartData);
+    }
+  }, [rawChartData, tarifaContratada, costokW_HP, costokW_HFP]);
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !board?._id) return;
@@ -266,6 +286,68 @@ const BoardDetailPage = () => {
   };
 
   const dataFiltradaZoom = rawChartData.slice(zoomRange.startIdx, zoomRange.endIdx + 1);
+
+  const calcularMetricasLuzDelSur = (data: any[]) => {
+    if (!data || data.length === 0) return;
+
+    let maxHP = { valor: 0, hora: "", fecha: "" };
+    let maxHFP = { valor: 0, hora: "", fecha: "" };
+    let valorPicoAbsoluto = 0;
+    let horaPicoAbsoluto = "";
+
+    data.forEach((row) => {
+      const horaStr = row.horaMinuto;
+      const [horas, minutos] = horaStr.split(":").map(Number);
+      const totalMinutos = horas * 60 + minutos;
+
+      // Horas Punta (18:00 a 23:00 hrs)
+      const esHoraPunta = totalMinutos >= 18 * 60 && totalMinutos < 23 * 60;
+
+      Object.keys(row).forEach((key) => {
+        if (key === "horaMinuto" || key === "Promedio_General") return;
+
+        const valor = row[key];
+        if (valor !== null && valor !== undefined) {
+          // Encontrar pico absoluto general para la línea vertical
+          if (valor > valorPicoAbsoluto) {
+            valorPicoAbsoluto = valor;
+            horaPicoAbsoluto = horaStr;
+          }
+
+          // Clasificar por HP y HFP
+          if (esHoraPunta) {
+            if (valor > maxHP.valor) {
+              maxHP = { valor, hora: horaStr, fecha: key };
+            }
+          } else {
+            if (valor > maxHFP.valor) {
+              maxHFP = { valor, hora: horaStr, fecha: key };
+            }
+          }
+        }
+      });
+    });
+
+    // Guardamos la hora del pico máximo absoluto para la línea vertical
+    if (horaPicoAbsoluto) {
+      setHoraPicoMaximo(horaPicoAbsoluto);
+    }
+
+    // Simulación de costos
+    const picoMaximoAbsoluto = Math.max(maxHP.valor, maxHFP.valor);
+    let sobrecostoPenalidad = 0;
+    if (picoMaximoAbsoluto > tarifaContratada) {
+      sobrecostoPenalidad = (picoMaximoAbsoluto - tarifaContratada) * costokW_HFP * 1.5;
+    }
+
+    const ahorroPotenciaHP = maxHP.valor * 0.15 * costokW_HP;
+
+    setAnalisisPotencia({
+      maxHP,
+      maxHFP,
+      ahorroEstimado: Math.round((ahorroPotenciaHP + sobrecostoPenalidad) * 100) / 100
+    });
+  };
 
   // ── COMPONENTE DE TOOLTIP PERSONALIZADO (AÑADIDO PARA MEJOR LECTURA) ──
   const CustomTooltip = ({ active, label, payload }: any) => {
@@ -414,25 +496,83 @@ const BoardDetailPage = () => {
             {/* CONTENEDOR CAPTURADOR DE EVENTO ASOCIADO A LA REF DE REACT */}
             <div
               ref={chartContainerRef}
-              className="h-80 w-full text-xs font-medium text-slate-500 select-none cursor-ew-resize"
+              className="h-96 w-full text-xs font-medium text-slate-500 select-none cursor-ew-resize"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={dataFiltradaZoom}
-                  margin={{ top: 5, right: 10, left: -15, bottom: 5 }}
+                  margin={{ top: 20, right: 15, left: -15, bottom: 5 }} // un poco más de margen superior para etiquetas
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+
+                  {/* ── 🟢 FONDO TENUE: HORA FUERA DE PUNTA (00:00 a 18:00) ── */}
+                  <ReferenceArea
+                    x1="00:00"
+                    x2="18:00"
+                    fill="#f8fafc" // Slate 50 muy tenue
+                    fillOpacity={0.55}
+                  >
+                    <Label
+                      value="HORA FUERA DE PUNTA (HFP)"
+                      position="top"
+                      offset={10}
+                      fill="#0284c7" // Color azul institucional para HFP
+                      style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }}
+                    />
+                  </ReferenceArea>
+
+                  {/* ── 🔴 FONDO TENUE: HORA PUNTA (18:00 a 23:00) ── */}
+                  <ReferenceArea
+                    x1="18:00"
+                    x2="23:00"
+                    fill="#fff1f2" // Rose 50 muy tenue para alertar la Hora Punta
+                    fillOpacity={0.65}
+                  >
+                    <Label
+                      value="HORA PUNTA (HP)"
+                      position="top"
+                      offset={10}
+                      fill="#f43f5e"
+                      style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }}
+                    />
+                  </ReferenceArea>
+
+                  {/* ── 🟢 FONDO TENUE: HORA FUERA DE PUNTA (23:00 a 23:55) ── */}
+                  <ReferenceArea
+                    x1="23:00"
+                    x2="23:55"
+                    fill="#f8fafc"
+                    fillOpacity={0.55}
+                  />
+
+                  {/* ── ⚡ LÍNEA VERTICAL DEL PICO MÁXIMO ABSOLUTO ── */}
+                  {horaPicoMaximo && (
+                    <ReferenceLine
+                      x={horaPicoMaximo}
+                      stroke="#be123c" // Rojo oscuro institucional
+                      strokeWidth={2}
+                      strokeDasharray="4 4" // Línea discontinua
+                    >
+                      <Label
+                        value="PICO MÁXIMO DEL MES"
+                        position="top"
+                        offset={10}
+                        fill="#be123c"
+                        style={{ fontSize: '9px', fontWeight: '900', background: '#fff' }}
+                      />
+                    </ReferenceLine>
+                  )}
+
                   <XAxis dataKey="horaMinuto" tickLine={false} stroke="#94a3b8" allowDuplicatedCategory={false} />
                   <YAxis domain={[0, 'auto']} tickLine={false} stroke="#94a3b8" />
 
-                  {/* 🔥 INYECCIÓN DEL TOOLTIP TOTALMENTE PERSONALIZADO EN KW */}
                   <Tooltip
                     content={<CustomTooltip />}
-                    shared={true} // Permite cruzar los datos de todas las curvas activas en esa hora
+                    shared={true}
                   />
 
                   {visibleSeries["Promedio_General"] && (
@@ -447,6 +587,86 @@ const BoardDetailPage = () => {
                 </LineChart>
               </ResponsiveContainer>
             </div>
+
+            {/* ── SECCIÓN DE ANALÍTICA DE POTENCIA (LUZ DEL SUR / OSINERGMIN) ── */}
+            {analisisPotencia && (
+              <div className="mt-8 grid grid-cols-1 gap-6 border-t border-slate-100 pt-6 md:grid-cols-3">
+
+                {/* CARD 1: HORA PUNTA */}
+                <div className="rounded-2xl border border-rose-100 bg-rose-50/30 p-5">
+                  <div className="flex items-center gap-2 text-rose-700">
+                    <Clock size={18} className="animate-pulse" />
+                    <h3 className="text-xs font-black uppercase tracking-wider">Pico Máximo en Hora Punta (HP)</h3>
+                  </div>
+                  <p className="mt-3 text-3xl font-black text-rose-950">
+                    {analisisPotencia.maxHP?.valor.toFixed(1)} <span className="text-sm font-bold text-rose-500">kW</span>
+                  </p>
+                  <div className="mt-2 text-xs text-slate-500">
+                    Registrado el <strong className="text-slate-700">{analisisPotencia.maxHP?.fecha}</strong> a las <strong className="text-slate-700">{analisisPotencia.maxHP?.hora} hrs</strong>.
+                  </div>
+                  <span className="mt-3 inline-block rounded-lg bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700">
+                    Horario Crítico: 18:00 a 23:00 hrs
+                  </span>
+                </div>
+
+                {/* CARD 2: HORAS FUERA DE PUNTA */}
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/30 p-5">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <Zap size={18} />
+                    <h3 className="text-xs font-black uppercase tracking-wider">Pico Máximo Fuera de Punta (HFP)</h3>
+                  </div>
+                  <p className="mt-3 text-3xl font-black text-blue-950">
+                    {analisisPotencia.maxHFP?.valor.toFixed(1)} <span className="text-sm font-bold text-blue-500">kW</span>
+                  </p>
+                  <div className="mt-2 text-xs text-slate-500">
+                    Registrado el <strong className="text-slate-700">{analisisPotencia.maxHFP?.fecha}</strong> a las <strong className="text-slate-700">{analisisPotencia.maxHFP?.hora} hrs</strong>.
+                  </div>
+                  <span className="mt-3 inline-block rounded-lg bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                    Horario Base: 23:00 a 18:00 hrs
+                  </span>
+                </div>
+
+                {/* CARD 3: AUDITORÍA & SIMULACIÓN DE AHORRO */}
+                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-5 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 text-emerald-700">
+                      <TrendingDown size={18} />
+                      <h3 className="text-xs font-black uppercase tracking-wider">Simulador de Ahorro Estimado</h3>
+                    </div>
+                    <p className="mt-3 text-3xl font-black text-emerald-950">
+                      S/. {analisisPotencia.ahorroEstimado.toLocaleString("es-PE")}
+                      <span className="text-sm font-bold text-emerald-600">/ mes</span>
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500 leading-relaxed">
+                      Aplanando tus picos en hora punta un 15% y evitando excesos de potencia contratada ({tarifaContratada} kW).
+                    </p>
+                  </div>
+
+                  {/* Inputs rápidos interactivos para el consultor de la empresa */}
+                  <div className="mt-4 flex gap-x-2 border-t border-emerald-100/60 pt-3">
+                    <div className="flex-1">
+                      <label className="text-[9px] font-bold text-slate-400 block mb-1">Contratada (kW)</label>
+                      <input
+                        type="number"
+                        value={tarifaContratada}
+                        onChange={(e) => setTarifaContratada(Number(e.target.value))}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[9px] font-bold text-slate-400 block mb-1">Costo kW HP (S/.)</label>
+                      <input
+                        type="number"
+                        value={costokW_HP}
+                        onChange={(e) => setCostokW_HP(Number(e.target.value))}
+                        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            )}
           </div>
         )}
       </section>

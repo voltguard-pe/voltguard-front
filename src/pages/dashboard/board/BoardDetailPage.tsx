@@ -501,7 +501,7 @@ const BoardDetailPage = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={dataFiltradaZoom}
-                  margin={{ top: 20, right: 15, left: -15, bottom: 5 }} // un poco más de margen superior para etiquetas
+                  margin={{ top: 25, right: 15, left: 35, bottom: 25 }} // un poco más de margen superior para etiquetas
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUp}
@@ -567,8 +567,48 @@ const BoardDetailPage = () => {
                     </ReferenceLine>
                   )}
 
-                  <XAxis dataKey="horaMinuto" tickLine={false} stroke="#94a3b8" allowDuplicatedCategory={false} />
-                  <YAxis domain={[0, 'auto']} tickLine={false} stroke="#94a3b8" />
+                  <XAxis
+                    dataKey="horaMinuto"
+                    tickLine={false}
+                    stroke="#94a3b8"
+                    allowDuplicatedCategory={false}
+                    
+                    dy={10} // Empuja todo el bloque de escala hacia abajo para que no choque con el gráfico
+
+                    // ── 🔥 CLAVE 1: Mostrar etiqueta solo cada 12 registros (Equivale a cada 1 hora en muestras de 5 min)
+                    interval={11}
+
+                    // ── 🔥 CLAVE 2: Rotar las horas -45 grados para que no se pisen
+                    tick={{
+                      angle: -45,
+                      textAnchor: 'end',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      fill: '#64748b'
+                    }}
+                    height={65} // Aumentamos la altura del eje X para dar espacio a la inclinación del texto
+                  >
+                    <Label
+                      value="Hora del día"
+                      position="insideBottom"
+                      offset={-18} // Empuja el texto hacia abajo para que no choque con los números
+                      style={{ textAnchor: 'middle', fill: '#64748b', fontWeight: 'bold', fontSize: '11px' }}
+                    />
+                  </XAxis>
+
+                  <YAxis
+                    domain={[0, 'auto']}
+                    tickLine={false}
+                    stroke="#94a3b8"
+                  >
+                    <Label
+                      value="Demanda de Potencia Activa (kW)"
+                      angle={-90} // Rota el texto verticalmente
+                      position="insideLeft"
+                      // offset={-5} // Ajusta la distancia con respecto al borde izquierdo
+                      style={{ textAnchor: 'middle', fill: '#64748b', fontWeight: 'bold', fontSize: '11px' }}
+                    />
+                  </YAxis>
 
                   <Tooltip
                     content={<CustomTooltip />}

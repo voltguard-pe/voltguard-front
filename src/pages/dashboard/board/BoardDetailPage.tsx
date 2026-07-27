@@ -403,7 +403,7 @@ const BoardDetailPage = () => {
     });
   };
 
-// ── TOOLTIP PERSONALIZADO PARA ENERGÍA REACTIVA (DINÁMICO CON FILTROS) ──
+  // ── TOOLTIP PERSONALIZADO PARA ENERGÍA REACTIVA (DINÁMICO CON FILTROS) ──
   const ReactiveTooltip = ({ active, label, payload }: any) => {
     if (active && payload && payload.length) {
       // 1. Obtener los datos completos de la hora seleccionada
@@ -812,9 +812,24 @@ const BoardDetailPage = () => {
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
           <div className="h-72 sm:h-80 md:h-[380px] w-[850px] sm:w-full text-xs select-none">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dataFiltradaZoom} style={{border: "none"}}>
+              <LineChart data={dataFiltradaZoom} margin={{ top: 15, right: 15, left: 10, bottom: 25 }} style={{ border: "none" }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="horaMinuto" tickLine={false} interval={11} stroke="#94a3b8" />
+                {/* XAxis con Label inyectado */}
+                <XAxis 
+                  dataKey="horaMinuto" 
+                  tickLine={false} 
+                  interval={11} 
+                  stroke="#94a3b8" 
+                  dy={5}
+                  tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
+                >
+                  <Label 
+                    value="Hora del Día" 
+                    position="insideBottom" 
+                    offset={-15} 
+                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} 
+                  />
+                </XAxis>
                 <YAxis tickLine={false} stroke="#94a3b8" width={45} domain={[0, 'auto']}>
                   <Label value="Potencia Reactiva (kvar)" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px' }} />
                 </YAxis>
@@ -912,9 +927,23 @@ const BoardDetailPage = () => {
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barrasVisibles} margin={{ top: 25, right: 15, left: 10, bottom: 25 }} style={{ outline: 'none', border: 'none' }}>
+              <BarChart data={barrasVisibles} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }} />
+                {/* XAxis con Label inyectado */}
+                <XAxis 
+                  dataKey="name" 
+                  tickLine={false} 
+                  stroke="#94a3b8" 
+                  dy={8} 
+                  tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}
+                >
+                  <Label 
+                    value="Días del Periodo" 
+                    position="insideBottom" 
+                    offset={-20} 
+                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} 
+                  />
+                </XAxis>
                 <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
                   <Label value="Energía Activa (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
                 </YAxis>

@@ -431,10 +431,10 @@ const BoardDetailPage = () => {
                 <tr className="border-b border-slate-200 text-[10px] uppercase text-slate-400 font-extrabold">
                   <th className="py-1 pr-2 bg-white">Día / Fila</th>
                   {mostrarCapacitiva && (
-                    <th className="py-1 px-2 text-right text-red-600 bg-white">Capacitivo (kvar c)</th>
+                    <th className="py-1 px-2 text-right text-red-600 bg-white">Capacitivo</th>
                   )}
                   {mostrarInductiva && (
-                    <th className="py-1 pl-2 text-right text-blue-600 bg-white">Inductivo (kvar i)</th>
+                    <th className="py-1 pl-2 text-right text-blue-600 bg-white">Inductivo</th>
                   )}
                 </tr>
               </thead>
@@ -444,12 +444,12 @@ const BoardDetailPage = () => {
                   <td className="py-1.5 pr-2">Promedio</td>
                   {mostrarCapacitiva && (
                     <td className="py-1.5 px-2 text-right text-red-600 tabular-nums">
-                      {rowData['kvar_capacitivo'] !== undefined && rowData['kvar_capacitivo'] !== null ? `${Number(rowData['kvar_capacitivo']).toFixed(2)}` : '-'}
+                      {rowData['kvar_capacitivo'] !== undefined && rowData['kvar_capacitivo'] !== null ? `${Number(rowData['kvar_capacitivo']).toFixed(2)} (kvar c)` : '-'}
                     </td>
                   )}
                   {mostrarInductiva && (
                     <td className="py-1.5 pl-2 text-right text-blue-600 tabular-nums">
-                      {rowData['kvar_inductivo'] !== undefined && rowData['kvar_inductivo'] !== null ? `${Number(rowData['kvar_inductivo']).toFixed(2)}` : '-'}
+                      {rowData['kvar_inductivo'] !== undefined && rowData['kvar_inductivo'] !== null ? `${Number(rowData['kvar_inductivo']).toFixed(2)} (kvar i)` : '-'}
                     </td>
                   )}
                 </tr>
@@ -464,12 +464,12 @@ const BoardDetailPage = () => {
                       <td className="py-1.5 pr-2 text-slate-600 font-bold whitespace-nowrap">{dia}</td>
                       {mostrarCapacitiva && (
                         <td className="py-1.5 px-2 text-right text-slate-900 tabular-nums">
-                          {valCap !== undefined && valCap !== null ? `${Number(valCap).toFixed(2)}` : '-'}
+                          {valCap !== undefined && valCap !== null ? `${Number(valCap).toFixed(2)} (kvar c)` : '-'}
                         </td>
                       )}
                       {mostrarInductiva && (
                         <td className="py-1.5 pl-2 text-right text-slate-900 tabular-nums">
-                          {valInd !== undefined && valInd !== null ? `${Number(valInd).toFixed(2)}` : '-'}
+                          {valInd !== undefined && valInd !== null ? `${Number(valInd).toFixed(2)} (kvar i)` : '-'}
                         </td>
                       )}
                     </tr>

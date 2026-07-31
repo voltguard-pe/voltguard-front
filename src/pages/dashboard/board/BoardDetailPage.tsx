@@ -15,7 +15,6 @@ import {
   Info,
   MapPin,
   RefreshCw,
-  TrendingDown,
   UploadCloud,
   X,
   Zap
@@ -105,6 +104,9 @@ const BoardDetailPage = () => {
     maxHFP: { valor: number; hora: string; fecha: string } | null;
     ahorroEstimado: number;
   } | null>(null);
+
+  console.log(setTarifaContratada)
+  console.log(setCostokW_HP)
 
   const [energiaPorDiaData, setEnergiaPorDiaData] = useState<any[]>([]);
 
@@ -696,7 +698,8 @@ const BoardDetailPage = () => {
             </div>
 
             {analisisPotencia && (
-              <div className="mt-8 grid grid-cols-1 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2 md:grid-cols-3">
+              // <div className="mt-8 grid grid-cols-1 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2 md:grid-cols-3">
+              <div className="mt-8 grid grid-cols-1 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2">
                 <div className="rounded-2xl border border-rose-100 bg-rose-50/30 p-4 sm:p-5">
                   <div className="flex items-center gap-2 text-rose-700">
                     <Clock size={16} className="animate-pulse" />
@@ -721,7 +724,7 @@ const BoardDetailPage = () => {
                   <span className="mt-2.5 inline-block rounded-lg bg-blue-100 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-blue-700">Horario Base: 23:00 a 18:00 hrs</span>
                 </div>
 
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4 sm:p-5 flex flex-col justify-between col-span-1 sm:col-span-2 md:col-span-1 font-sans">
+                {/* <div className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4 sm:p-5 flex flex-col justify-between col-span-1 sm:col-span-2 md:col-span-1 font-sans">
                   <div>
                     <div className="flex items-center gap-2 text-emerald-700">
                       <TrendingDown size={16} />
@@ -740,7 +743,7 @@ const BoardDetailPage = () => {
                       <input type="number" value={costokW_HP} onChange={(e) => setCostokW_HP(Number(e.target.value))} className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none" />
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             )}
           </div>
@@ -815,19 +818,19 @@ const BoardDetailPage = () => {
               <LineChart data={dataFiltradaZoom} margin={{ top: 15, right: 15, left: 10, bottom: 25 }} style={{ border: "none" }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 {/* XAxis con Label inyectado */}
-                <XAxis 
-                  dataKey="horaMinuto" 
-                  tickLine={false} 
-                  interval={11} 
-                  stroke="#94a3b8" 
+                <XAxis
+                  dataKey="horaMinuto"
+                  tickLine={false}
+                  interval={11}
+                  stroke="#94a3b8"
                   dy={5}
                   tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
                 >
-                  <Label 
-                    value="Hora del Día" 
-                    position="insideBottom" 
-                    offset={-15} 
-                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} 
+                  <Label
+                    value="Hora del Día"
+                    position="insideBottom"
+                    offset={-15}
+                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
                   />
                 </XAxis>
                 <YAxis tickLine={false} stroke="#94a3b8" width={45} domain={[0, 'auto']}>
@@ -930,6 +933,131 @@ const BoardDetailPage = () => {
               <BarChart data={barrasVisibles} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 {/* XAxis con Label inyectado */}
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  dy={8}
+                  tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}
+                >
+                  <Label
+                    value="Días del Periodo"
+                    position="insideBottom"
+                    offset={-20}
+                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
+                  />
+                </XAxis>
+                <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
+                  <Label value="Energía Activa (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                </YAxis>
+                <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(value: any) => [`${Number(value).toFixed(1)} kWh`, 'Consumo Total']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                <Bar dataKey="kWh" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={50} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+// ── SECCIÓN MODULAR 4: HUELLA DE CARBONO Y EMISIONES DE CO₂ (PERÚ) ──
+  const renderCarbonEmissionsSection = () => {
+    // Factor de Emisión Oficial SEIN Perú: 0.00021 tCO₂ por kWh (0.21 kg CO₂ / kWh)
+    const FACTOR_EMISION_PERU = 0.00021;
+
+    // Filtrar los datos en Toneladas de CO₂ según los días visibles seleccionados
+    const emisionesData = energiaPorDiaData
+      .filter(d => visibleSeries[d.name] !== false)
+      .map(item => {
+        const tCO2_dia = (item.kWh || 0) * FACTOR_EMISION_PERU;
+        return {
+          name: item.name,
+          kWh: item.kWh,
+          tCO2: Number(tCO2_dia.toFixed(4)),
+          kgCO2: Number((tCO2_dia * 1000).toFixed(2))
+        };
+      });
+
+    if (emisionesData.length === 0) return null;
+
+    // Métricas para tarjetas resumen
+    const totalTCO2Semana = emisionesData.reduce((acc, curr) => acc + curr.tCO2, 0);
+    const promedioTCO2Diario = emisionesData.length > 0 ? totalTCO2Semana / emisionesData.length : 0;
+    const proyeccionTCO2Mes = promedioTCO2Diario * 30;
+    const proyeccionTCO2Ano = promedioTCO2Diario * 365;
+
+    return (
+      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
+        {/* Cabecera de la Sección */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-teal-500/10 text-teal-600">
+              <Zap size={20} className="sm:size-[22px]" />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">Emisiones de CO₂ por Día (Huella de Carbono)</h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Dióxido de Carbono equivalente emitido por el consumo eléctrico (tCO₂eq - SEIN Perú)</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tarjetas de Resumen (Día, Mes, Año) */}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-teal-200/60 bg-teal-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-teal-800">Emisión Diaria Promedio</p>
+            <p className="mt-1 text-2xl font-black text-teal-950">
+              {promedioTCO2Diario < 0.01 
+                ? (promedioTCO2Diario * 1000).toFixed(2) 
+                : promedioTCO2Diario.toFixed(3)}
+              <span className="text-xs font-bold text-teal-700 ml-1">
+                {promedioTCO2Diario < 0.01 ? "kg CO₂/día" : "tCO₂/día"}
+              </span>
+            </p>
+            <p className="mt-1 text-[10px] text-slate-500">Equivalencia del periodo filtrado</p>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800">Proyección Mensual (30 días)</p>
+            <p className="mt-1 text-2xl font-black text-emerald-950">
+              {proyeccionTCO2Mes.toFixed(3)} <span className="text-xs font-bold text-emerald-700">tCO₂/mes</span>
+            </p>
+            <p className="mt-1 text-[10px] text-slate-500">Estimación a 30 días de operación</p>
+          </div>
+
+          <div className="rounded-2xl border border-sky-200/60 bg-sky-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-sky-800">Proyección Anual (365 días)</p>
+            <p className="mt-1 text-2xl font-black text-sky-950">
+              {proyeccionTCO2Ano.toFixed(2)} <span className="text-xs font-bold text-sky-700">tCO₂/año</span>
+            </p>
+            <p className="mt-1 text-[10px] text-slate-500">Estimación a 365 días de operación</p>
+          </div>
+        </div>
+
+        {/* Seleccionador de Días */}
+        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
+          <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
+          {seriesKeys.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggleSerieVisibility(key)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${
+                visibleSeries[key] !== false
+                  ? 'bg-teal-700 border-teal-700 text-white shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-400'
+              }`}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+
+        {/* Gráfico de Barras de Toneladas de CO2 */}
+        <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
+          <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={emisionesData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis 
                   dataKey="name" 
                   tickLine={false} 
@@ -944,11 +1072,30 @@ const BoardDetailPage = () => {
                     style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} 
                   />
                 </XAxis>
-                <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
-                  <Label value="Energía Activa (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                <YAxis 
+                  tickLine={false} 
+                  stroke="#94a3b8" 
+                  width={65} 
+                  tick={{ fontSize: '10px' }}
+                  tickFormatter={(val) => val.toFixed(3)}
+                >
+                  <Label 
+                    value="Emisiones (tCO₂)" 
+                    angle={-90} 
+                    position="insideLeft" 
+                    offset={-5} 
+                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} 
+                  />
                 </YAxis>
-                <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(value: any) => [`${Number(value).toFixed(1)} kWh`, 'Consumo Total']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="kWh" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                <Tooltip 
+                  cursor={{ fill: '#f1f5f9', opacity: 0.6 }} 
+                  formatter={(val: any) => [
+                    `${Number(val).toFixed(4)} tCO₂ (${(Number(val) * 1000).toFixed(1)} kg CO₂)` , 
+                    'Huella de Carbono'
+                  ]} 
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
+                />
+                <Bar dataKey="tCO2" fill="#0d9488" radius={[6, 6, 0, 0]} maxBarSize={50} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1276,6 +1423,7 @@ const BoardDetailPage = () => {
         {renderDemandSection()}
         {renderReactivePowerSection()}
         {renderEnergyBarSection()}
+        {renderCarbonEmissionsSection()}
 
         {/* ── ESPECIFICACIONES TÉCNICAS (CASCADA COMPACTA) ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

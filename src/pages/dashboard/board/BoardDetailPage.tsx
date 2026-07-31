@@ -39,6 +39,28 @@ import { getDemandChartData, uploadMetrelCsv } from "../../../services/measureme
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 
+// ── OBJETOS HARDCODEADOS PARA LA PRESENTACIÓN ──
+const documentosHardcodeados = [
+  {
+    _id: "spat-001",
+    title: "Certificado de Medición y Mantenimiento SPAT (Pozo a Tierra)",
+    type: "POZO_A_TIERRA",
+    url: "/pdfs/GESENER Certificado SPAT V2.0.pdf", // Ruta local pública
+  },
+  // {
+  //   _id: "mant-001",
+  //   title: "Certificado de Mantenimiento de Tableros Eléctricos",
+  //   type: "MANTENIMIENTO",
+  //   url: "/pdfs/certificado_mantenimiento.pdf",
+  // },
+  {
+    _id: "oper-001",
+    title: "Certificado de Operatividad de Tableros Eléctricos",
+    type: "OPERATIVIDAD",
+    url: "/pdfs/CERTIFICADO DE OPERATIVIDAD DE TABLEROS ELECTRICOS - RECOLETA.pdf",
+  },
+];
+
 // ── CONSTANTES DE PALETAS DE COLORES ──
 const MAIN_COLORS = [
   '#2f5597', '#4caf50', '#9c27b0', '#00bcd4', '#ff9800',
@@ -1104,9 +1126,21 @@ const BoardDetailPage = () => {
   };
 
   // ── MANEJO Y RENDERIZADO DE DOCUMENTOS Y PDF ──
-  const certificadosSpat = board?.assignedDocuments?.filter(doc => doc.type as string === "POZO_A_TIERRA") || [];
-  const certificadosMantenimiento = board?.assignedDocuments?.filter(doc => doc.type === "MANTENIMIENTO") || [];
-  const certificadosOperatividad = board?.assignedDocuments?.filter(doc => doc.type === "OPERATIVIDAD") || [];
+  // const certificadosSpat = board?.assignedDocuments?.filter(doc => doc.type as string === "POZO_A_TIERRA") || [];
+  // const certificadosMantenimiento = board?.assignedDocuments?.filter(doc => doc.type === "MANTENIMIENTO") || [];
+  // const certificadosOperatividad = board?.assignedDocuments?.filter(doc => doc.type === "OPERATIVIDAD") || [];
+
+  const certificadosSpat = documentosHardcodeados.filter(
+  (doc) => doc.type === "POZO_A_TIERRA"
+);
+
+const certificadosMantenimiento = documentosHardcodeados.filter(
+  (doc) => doc.type === "MANTENIMIENTO"
+);
+
+const certificadosOperatividad = documentosHardcodeados.filter(
+  (doc) => doc.type === "OPERATIVIDAD"
+);
 
   // const openPdfInNewTab = async (url: string, title: string) => {
   //   try {
@@ -1122,27 +1156,27 @@ const BoardDetailPage = () => {
   //   }
   // };
 
-  // const openPdfInNewTab = (url: string) => {
-  //   if (!url) return;
-  //   // Abrimos directamente la URL de Cloudinary en una pestaña nueva.
-  //   // El navegador ejecutará su visor nativo de PDF sin problemas de CORS ni Blobs vacíos.
-  //   window.open(url, "_blank", "noopener,noreferrer");
-  // };
+  const openPdfInNewTab = (url: string) => {
+    if (!url) return;
+    // Abrimos directamente la URL de Cloudinary en una pestaña nueva.
+    // El navegador ejecutará su visor nativo de PDF sin problemas de CORS ni Blobs vacíos.
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
 
-  const openPdfInNewTab = async (url: string) => {
-  try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    // 💡 Forzamos explícitamente que el Blob sea interpretado como application/pdf
-    const pdfBlob = new Blob([blob], { type: "application/pdf" });
-    const blobUrl = URL.createObjectURL(pdfBlob);
+//   const openPdfInNewTab = async (url: string) => {
+//   try {
+//     const response = await fetch(url);
+//     const blob = await response.blob();
+//     // 💡 Forzamos explícitamente que el Blob sea interpretado como application/pdf
+//     const pdfBlob = new Blob([blob], { type: "application/pdf" });
+//     const blobUrl = URL.createObjectURL(pdfBlob);
     
-    window.open(blobUrl, "_blank");
-  } catch (error) {
-    console.error("Error al abrir PDF:", error);
-    window.open(url, "_blank");
-  }
-};
+//     window.open(blobUrl, "_blank");
+//   } catch (error) {
+//     console.error("Error al abrir PDF:", error);
+//     window.open(url, "_blank");
+//   }
+// };
 
   const renderField = (label: string, data: unknown, index: number) => (
     <div style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${index * 30}ms` }} className="rounded-2xl bg-slate-50 p-4 transition-all hover:bg-slate-100/80">
@@ -1203,7 +1237,8 @@ const BoardDetailPage = () => {
           <div className="flex flex-wrap gap-2">
             {documentsList.map((doc) => (
               // <button key={doc._id} onClick={() => openPdfInNewTab(doc.cloudinaryUrl, doc.title)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
-              <button key={doc._id} onClick={() => openPdfInNewTab(doc.cloudinaryUrl)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
+              // <button key={doc._id} onClick={() => openPdfInNewTab(doc.cloudinaryUrl)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
+              <button key={doc._id} onClick={() => openPdfInNewTab(doc.url)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
                 <FileImage size={15} />
                 {doc.title}
               </button>

@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 // Servicios reales
 import { getDocumentsByCompany, deleteDocument } from "../../../services/document.service";
 import { getBoards } from "../../../services/board.service";
-import { getCompanies } from "../../../services/company.service"; 
+import { getCompanies } from "../../../services/company.service";
 import type { DocumentResponseDTO, CompanySummaryDTO } from "../../../shared/types/BoardProps";
 import { UploadDocumentsModal } from "../../../components/dashboard/modals/UploadDocumentsModal";
 import { AssignDocToBoardsModal } from "../../../components/dashboard/modals/AssignDocToBoardsModal";
@@ -159,9 +159,9 @@ const DocumentDashboardPage = () => {
 
   return (
     <div className="space-y-6">
-      
+
       {/* ── ENCABEZADO PRINCIPAL ── */}
-      <div 
+      <div
         style={{ animation: "fadeUp 0.4s ease both" }}
         className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center"
       >
@@ -206,7 +206,7 @@ const DocumentDashboardPage = () => {
       </div>
 
       {/* ── BARRA DE CONTROL DE FILTROS ── */}
-      <div 
+      <div
         style={{ animation: "fadeUp 0.4s ease 160ms both" }}
         className="rounded-3xl border border-slate-200 bg-white shadow-xs"
       >
@@ -214,7 +214,7 @@ const DocumentDashboardPage = () => {
           <div className="relative w-full lg:max-w-sm">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
-              value={search} 
+              value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar certificado por título..."
               className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-700 outline-none transition focus:border-[#0797d5]"
@@ -222,7 +222,7 @@ const DocumentDashboardPage = () => {
           </div>
 
           <select
-            value={selectedCompany} 
+            value={selectedCompany}
             onChange={(e) => setSelectedCompany(e.target.value)}
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-[#0797d5] lg:max-w-xs cursor-pointer"
           >
@@ -241,9 +241,9 @@ const DocumentDashboardPage = () => {
             </div>
           ) : (
             filteredCompanies.map((company, companyIndex) => (
-              <section 
-                key={company.publicCode} 
-                style={{ 
+              <section
+                key={company.publicCode}
+                style={{
                   animation: "fadeUp 0.45s ease both",
                   animationDelay: `${companyIndex * 50}ms` // Cascada suave por bloque corporativo
                 }}
@@ -279,8 +279,8 @@ const DocumentDashboardPage = () => {
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-sm">
                       {company.documents.map((doc: any, docIndex: number) => (
-                        <tr 
-                          key={doc._id} 
+                        <tr
+                          key={doc._id}
                           style={{
                             animation: "fadeUp 0.35s ease both",
                             animationDelay: `${docIndex * 25}ms` // Despliegue ultra veloz secuencial en filas
@@ -299,8 +299,16 @@ const DocumentDashboardPage = () => {
                             </div>
                           </td>
                           <td className="px-5 py-3.5">
-                            <span className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${doc.type === 'OPERATIVIDAD' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-amber-50 text-amber-700 border border-amber-100'}`}>
-                              {doc.type}
+                            <span
+                              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold 
+                              ${doc.type === 'OPERATIVIDAD'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                  : doc.type === 'POZO_A_TIERRA'
+                                    ? 'bg-sky-50 text-sky-700 border border-sky-100' // 👈 Color distintivo para SPAT
+                                    : 'bg-amber-50 text-amber-700 border border-amber-100'
+                                }`}
+                            >
+                              {doc.type === 'POZO_A_TIERRA' ? 'POZO A TIERRA (SPAT)' : doc.type}
                             </span>
                           </td>
                           <td className="px-5 py-3.5 text-xs font-medium text-slate-500">
@@ -340,9 +348,9 @@ const DocumentDashboardPage = () => {
                               >
                                 <Eye size={16} />
                               </button>
-                              <button 
+                              <button
                                 type="button"
-                                onClick={() => handleDelete(doc._id)} 
+                                onClick={() => handleDelete(doc._id)}
                                 className="flex size-9 items-center justify-center rounded-xl text-red-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-600 cursor-pointer"
                               >
                                 <Trash2 size={16} />
@@ -360,7 +368,7 @@ const DocumentDashboardPage = () => {
 
           {/* Estado de Vacío Interactivo */}
           {!loading && filteredCompanies.length === 0 && (
-            <div 
+            <div
               style={{ animation: "fadeUp 0.4s ease both" }}
               className="px-5 py-16 text-center"
             >

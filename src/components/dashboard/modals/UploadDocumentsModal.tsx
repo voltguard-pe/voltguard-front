@@ -131,6 +131,7 @@ export const UploadDocumentsModal = ({ isOpen, onClose, companies, onSuccess }: 
               >
                 <option value="MANTENIMIENTO">Certificado de Mantenimiento</option>
                 <option value="OPERATIVIDAD">Certificado de Operatividad</option>
+                <option value="POZO_A_TIERRA">Protocolo / Certificado de Pozo a Tierra (SPAT)</option>
               </select>
             </div>
           </div>

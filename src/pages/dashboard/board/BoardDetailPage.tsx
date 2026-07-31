@@ -1104,6 +1104,7 @@ const BoardDetailPage = () => {
   };
 
   // ── MANEJO Y RENDERIZADO DE DOCUMENTOS Y PDF ──
+  const certificadosSpat = board?.assignedDocuments?.filter(doc => doc.type as string === "POZO_A_TIERRA") || [];
   const certificadosMantenimiento = board?.assignedDocuments?.filter(doc => doc.type === "MANTENIMIENTO") || [];
   const certificadosOperatividad = board?.assignedDocuments?.filter(doc => doc.type === "OPERATIVIDAD") || [];
 
@@ -1121,12 +1122,27 @@ const BoardDetailPage = () => {
   //   }
   // };
 
-  const openPdfInNewTab = (url: string) => {
-    if (!url) return;
-    // Abrimos directamente la URL de Cloudinary en una pestaña nueva.
-    // El navegador ejecutará su visor nativo de PDF sin problemas de CORS ni Blobs vacíos.
-    window.open(url, "_blank", "noopener,noreferrer");
-  };
+  // const openPdfInNewTab = (url: string) => {
+  //   if (!url) return;
+  //   // Abrimos directamente la URL de Cloudinary en una pestaña nueva.
+  //   // El navegador ejecutará su visor nativo de PDF sin problemas de CORS ni Blobs vacíos.
+  //   window.open(url, "_blank", "noopener,noreferrer");
+  // };
+
+  const openPdfInNewTab = async (url: string) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    // 💡 Forzamos explícitamente que el Blob sea interpretado como application/pdf
+    const pdfBlob = new Blob([blob], { type: "application/pdf" });
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    
+    window.open(blobUrl, "_blank");
+  } catch (error) {
+    console.error("Error al abrir PDF:", error);
+    window.open(url, "_blank");
+  }
+};
 
   const renderField = (label: string, data: unknown, index: number) => (
     <div style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${index * 30}ms` }} className="rounded-2xl bg-slate-50 p-4 transition-all hover:bg-slate-100/80">
@@ -1429,6 +1445,12 @@ const BoardDetailPage = () => {
 
         {/* Renderizado de bloques modulares */}
         {renderNfpaSection()}
+        {/* 3. 🛡️ SECCIÓN SUPERIOR: PROTOCOLOS Y CERTIFICADOS SPAT (POZO A TIERRA) */}
+        {renderPdfSection(
+          "Certificados de Puesta a Tierra (SPAT)",
+          "Protocolos de medición de resistencia (Ω), corriente de fuga y salud del pozo",
+          certificadosSpat
+        )}
         {/* {renderGroundingSection()}
         {renderLoadPanelSection()} */}
 

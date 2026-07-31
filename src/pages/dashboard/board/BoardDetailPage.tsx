@@ -960,7 +960,7 @@ const BoardDetailPage = () => {
     );
   };
 
-// ── SECCIÓN MODULAR 4: HUELLA DE CARBONO Y EMISIONES DE CO₂ (PERÚ) ──
+  // ── SECCIÓN MODULAR 4: HUELLA DE CARBONO Y EMISIONES DE CO₂ (PERÚ) ──
   const renderCarbonEmissionsSection = () => {
     // Factor de Emisión Oficial SEIN Perú: 0.00021 tCO₂ por kWh (0.21 kg CO₂ / kWh)
     const FACTOR_EMISION_PERU = 0.00021;
@@ -1006,8 +1006,8 @@ const BoardDetailPage = () => {
           <div className="rounded-2xl border border-teal-200/60 bg-teal-50/40 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-teal-800">Emisión Diaria Promedio</p>
             <p className="mt-1 text-2xl font-black text-teal-950">
-              {promedioTCO2Diario < 0.01 
-                ? (promedioTCO2Diario * 1000).toFixed(2) 
+              {promedioTCO2Diario < 0.01
+                ? (promedioTCO2Diario * 1000).toFixed(2)
                 : promedioTCO2Diario.toFixed(3)}
               <span className="text-xs font-bold text-teal-700 ml-1">
                 {promedioTCO2Diario < 0.01 ? "kg CO₂/día" : "tCO₂/día"}
@@ -1041,11 +1041,10 @@ const BoardDetailPage = () => {
               key={key}
               type="button"
               onClick={() => toggleSerieVisibility(key)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${
-                visibleSeries[key] !== false
-                  ? 'bg-teal-700 border-teal-700 text-white shadow-sm'
-                  : 'bg-white border-slate-200 text-slate-400'
-              }`}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
+                ? 'bg-teal-700 border-teal-700 text-white shadow-sm'
+                : 'bg-white border-slate-200 text-slate-400'
+                }`}
             >
               {key}
             </button>
@@ -1058,42 +1057,42 @@ const BoardDetailPage = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={emisionesData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis 
-                  dataKey="name" 
-                  tickLine={false} 
-                  stroke="#94a3b8" 
-                  dy={8} 
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  dy={8}
                   tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}
                 >
-                  <Label 
-                    value="Días del Periodo" 
-                    position="insideBottom" 
-                    offset={-20} 
-                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} 
+                  <Label
+                    value="Días del Periodo"
+                    position="insideBottom"
+                    offset={-20}
+                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
                   />
                 </XAxis>
-                <YAxis 
-                  tickLine={false} 
-                  stroke="#94a3b8" 
-                  width={65} 
+                <YAxis
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  width={65}
                   tick={{ fontSize: '10px' }}
                   tickFormatter={(val) => val.toFixed(3)}
                 >
-                  <Label 
-                    value="Emisiones (tCO₂)" 
-                    angle={-90} 
-                    position="insideLeft" 
-                    offset={-5} 
-                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} 
+                  <Label
+                    value="Emisiones (tCO₂)"
+                    angle={-90}
+                    position="insideLeft"
+                    offset={-5}
+                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
                   />
                 </YAxis>
-                <Tooltip 
-                  cursor={{ fill: '#f1f5f9', opacity: 0.6 }} 
+                <Tooltip
+                  cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
                   formatter={(val: any) => [
-                    `${Number(val).toFixed(4)} tCO₂ (${(Number(val) * 1000).toFixed(1)} kg CO₂)` , 
+                    `${Number(val).toFixed(4)} tCO₂ (${(Number(val) * 1000).toFixed(1)} kg CO₂)`,
                     'Huella de Carbono'
-                  ]} 
-                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} 
+                  ]}
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                 />
                 <Bar dataKey="tCO2" fill="#0d9488" radius={[6, 6, 0, 0]} maxBarSize={50} />
               </BarChart>
@@ -1108,18 +1107,25 @@ const BoardDetailPage = () => {
   const certificadosMantenimiento = board?.assignedDocuments?.filter(doc => doc.type === "MANTENIMIENTO") || [];
   const certificadosOperatividad = board?.assignedDocuments?.filter(doc => doc.type === "OPERATIVIDAD") || [];
 
-  const openPdfInNewTab = async (url: string, title: string) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const pdfBlob = new Blob([blob], { type: "application/pdf" });
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      const newTab = window.open(blobUrl, "_blank");
-      if (newTab) newTab.document.title = title;
-    } catch (error) {
-      console.error("Error al abrir el PDF:", error);
-      window.open(url, "_blank");
-    }
+  // const openPdfInNewTab = async (url: string, title: string) => {
+  //   try {
+  //     const response = await fetch(url);
+  //     const blob = await response.blob();
+  //     const pdfBlob = new Blob([blob], { type: "application/pdf" });
+  //     const blobUrl = URL.createObjectURL(pdfBlob);
+  //     const newTab = window.open(blobUrl, "_blank");
+  //     if (newTab) newTab.document.title = title;
+  //   } catch (error) {
+  //     console.error("Error al abrir el PDF:", error);
+  //     window.open(url, "_blank");
+  //   }
+  // };
+
+  const openPdfInNewTab = (url: string) => {
+    if (!url) return;
+    // Abrimos directamente la URL de Cloudinary en una pestaña nueva.
+    // El navegador ejecutará su visor nativo de PDF sin problemas de CORS ni Blobs vacíos.
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const renderField = (label: string, data: unknown, index: number) => (
@@ -1158,32 +1164,39 @@ const BoardDetailPage = () => {
     </section>
   );
 
-  const renderPdfSection = (title: string, description: string, documentsList: any[]) => (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]"><FileImage size={22} /></div>
-        <div>
-          <h2 className="font-bold text-slate-950 text-base tracking-tight">{title}</h2>
-          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+  const renderPdfSection = (title: string, description: string, documentsList: any[]) => {
+    if (!documentsList || documentsList.length === 0) {
+      return null;
+    }
+
+    return (
+      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]"><FileImage size={22} /></div>
+          <div>
+            <h2 className="font-bold text-slate-950 text-base tracking-tight">{title}</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+          </div>
         </div>
-      </div>
-      {documentsList.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
-          <FileImage size={32} className="text-slate-300" />
-          <p className="mt-2 text-xs font-bold text-slate-500">Sin documentos registrados</p>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {documentsList.map((doc) => (
-            <button key={doc._id} onClick={() => openPdfInNewTab(doc.cloudinaryUrl, doc.title)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
-              <FileImage size={15} />
-              {doc.title}
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  );
+        {documentsList.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+            <FileImage size={32} className="text-slate-300" />
+            <p className="mt-2 text-xs font-bold text-slate-500">Sin documentos registrados</p>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {documentsList.map((doc) => (
+              // <button key={doc._id} onClick={() => openPdfInNewTab(doc.cloudinaryUrl, doc.title)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
+              <button key={doc._id} onClick={() => openPdfInNewTab(doc.cloudinaryUrl)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
+                <FileImage size={15} />
+                {doc.title}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
 
   // ── SECCIÓN MODULAR 4: NFPA RIESGOS ELECTRICOS ──
   const renderNfpaSection = () => {
@@ -1221,7 +1234,7 @@ const BoardDetailPage = () => {
               <div className="mt-1.5 flex flex-wrap items-center justify-center gap-2 text-xs font-semibold">
                 <p className="text-slate-500">Se requiere EPP de acuerdo a categoría</p>
                 <span className="text-slate-300 hidden sm:inline">•</span>
-                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 font-bold border border-slate-200/60">Norma NFPA 70E - 2024</span>
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700 font-bold border border-slate-200/60">Norma NFPA 70E - 2027</span>
               </div>
             </div>
 

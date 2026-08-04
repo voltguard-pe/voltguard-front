@@ -72,10 +72,6 @@ const MAIN_COLORS = [
   '#e91e63', '#795548', '#607d8b', '#03a9f4', '#eab308', '#ec4899'
 ];
 
-// Colores según boceto: Rojo para kvar c (capacitiva) y Azul para kvar i (inductiva)
-const REACTIVE_COLOR_CAPACITIVE = "#ef4444"; // Rojo (kvar c)
-const REACTIVE_COLOR_INDUCTIVE = "#2563eb";  // Azul (kvar i)
-
 // ── FUNCIONES AUXILIARES DE FORMATEO ──
 const value = (data: unknown) =>
   data === null || data === undefined || data === "" ? "-" : String(data);
@@ -779,15 +775,20 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── SECCIÓN MODULAR 2: POTENCIA REACTIVA COMBINADA (KVAR C Y KVAR I) ──
+// ── SECCIÓN MODULAR 2: POTENCIA REACTIVA COMBINADA (KVAR C Y KVAR I) ──
   const renderReactivePowerSection = () => {
     if (rawChartData.length === 0) return null;
+
+    // Constantes de color para RECHARTS (puedes definirlas fuera si prefieres)
+    const COLOR_INDUCTIVO_LINEA = "#1d4ed8"; // Azul intenso (Blue 700)
+    const COLOR_CAPACITIVO_LINEA = "#dc2626"; // Rojo intenso (Red 600)
 
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
         <div className="mb-5 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-purple-500/10 text-purple-600">
+            {/* Ícono actualizado a Azul (corresponde a inductiva/principal) */}
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600">
               <Activity size={22} />
             </div>
             <div>
@@ -797,25 +798,25 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Control de visibilidad para Reactiva Inductiva (Azul) y Capacitiva (Rojo) */}
-        {/* Selector de Modos y Días */}
+        {/* Control de visibilidad */}
         <div className="space-y-2 mb-4">
-          {/* Botones de Modos de Reactiva */}
           <div className="flex gap-2 overflow-x-auto pb-1 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
+            {/* Botón Capacitiva - Mantiene Rojo */}
             <button
               type="button"
               onClick={() => toggleSerieVisibility("kvar_capacitivo")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_capacitivo"] ? 'bg-red-500 text-white border-red-500' : 'bg-white text-slate-600 border-slate-200'}`}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_capacitivo"] ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'}`}
             >
-              <span className="size-2.5 rounded-full bg-red-500 inline-block"></span>
+              <span className={`size-2.5 rounded-full inline-block ${visibleSeries["kvar_capacitivo"] ? 'bg-white' : 'bg-red-600'}`}></span>
               kvar c (Capacitiva)
             </button>
+            {/* Botón Inductiva - Mantiene Azul */}
             <button
               type="button"
               onClick={() => toggleSerieVisibility("kvar_inductivo")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_inductivo"] ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_inductivo"] ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-200'}`}
             >
-              <span className="size-2.5 rounded-full bg-blue-600 inline-block"></span>
+              <span className={`size-2.5 rounded-full inline-block ${visibleSeries["kvar_inductivo"] ? 'bg-white' : 'bg-blue-700'}`}></span>
               kvar i (Inductiva)
             </button>
           </div>
@@ -844,7 +845,6 @@ const BoardDetailPage = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dataFiltradaZoom} margin={{ top: 15, right: 15, left: 10, bottom: 25 }} style={{ border: "none" }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                {/* XAxis con Label inyectado */}
                 <XAxis
                   dataKey="horaMinuto"
                   tickLine={false}
@@ -865,15 +865,15 @@ const BoardDetailPage = () => {
                 </YAxis>
                 <Tooltip content={<ReactiveTooltip />} shared={true} />
 
-                {/* Promedios Generales si están activos */}
+                {/* Líneas de Promedio (Grosor 3 para destacar) */}
                 {visibleSeries["kvar_capacitivo"] && (
-                  <Line type="monotone" name="Promedio Capacitivo" dataKey="kvar_capacitivo" stroke="#dc2626" strokeWidth={2.5} dot={false} connectNulls />
+                  <Line type="monotone" name="Promedio Capacitivo" dataKey="kvar_capacitivo" stroke={COLOR_CAPACITIVO_LINEA} strokeWidth={3} dot={false} connectNulls />
                 )}
                 {visibleSeries["kvar_inductivo"] && (
-                  <Line type="monotone" name="Promedio Inductivo" dataKey="kvar_inductivo" stroke="#1d4ed8" strokeWidth={2.5} dot={false} connectNulls />
+                  <Line type="monotone" name="Promedio Inductivo" dataKey="kvar_inductivo" stroke={COLOR_INDUCTIVO_LINEA} strokeWidth={3} dot={false} connectNulls />
                 )}
 
-                {/* Trazado diario individual de Capacitiva e Inductiva por cada día de la semana */}
+                {/* Trazado diario individual (Usando las mismas constantes para consistencia) */}
                 {seriesKeys.map((key, _idx) => (
                   <React.Fragment key={key}>
                     {visibleSeries[key] !== false && visibleSeries["kvar_capacitivo"] && (
@@ -881,8 +881,9 @@ const BoardDetailPage = () => {
                         type="monotone"
                         name={`kvar c - ${key}`}
                         dataKey={`capacitiva_${key}`}
-                        stroke={REACTIVE_COLOR_CAPACITIVE}
-                        strokeWidth={1.5}
+                        stroke={COLOR_CAPACITIVO_LINEA}
+                        strokeWidth={1}
+                        strokeOpacity={0.5} // Opacidad baja para no saturar
                         dot={false}
                         connectNulls
                       />
@@ -892,8 +893,9 @@ const BoardDetailPage = () => {
                         type="monotone"
                         name={`kvar i - ${key}`}
                         dataKey={`inductiva_${key}`}
-                        stroke={REACTIVE_COLOR_INDUCTIVE}
-                        strokeWidth={1.5}
+                        stroke={COLOR_INDUCTIVO_LINEA}
+                        strokeWidth={1}
+                        strokeOpacity={0.5} // Opacidad baja
                         dot={false}
                         connectNulls
                       />
@@ -910,7 +912,6 @@ const BoardDetailPage = () => {
 
   // ── SECCIÓN MODULAR 3: ENERGÍA CONSUMIDA POR DÍA ──
   const renderEnergyBarSection = () => {
-    // Filtrar dinámicamente las barras según los días visibles seleccionados por el usuario
     const barrasVisibles = energiaPorDiaData.filter(d => visibleSeries[d.name] !== false);
 
     if (barrasVisibles.length === 0) return null;
@@ -919,7 +920,8 @@ const BoardDetailPage = () => {
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600">
+            {/* Ícono actualizado a AZUL */}
+            <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-blue-500/10 text-blue-600">
               <Container size={20} className="sm:size-[22px]" />
             </div>
             <div>
@@ -929,14 +931,7 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 px-1 sm:hidden mb-2">
-          <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Historial de Energía</span>
-          <span className="flex items-center gap-1 text-[9px] font-black text-slate-500 animate-pulse bg-slate-100 px-2 py-1 rounded-lg border border-slate-200/60">
-            Desliza para ver todos los días →
-          </span>
-        </div>
-
-        {/* Botones interactivos para Filtro por Día (Mostrar / Ocultar) */}
+        {/* Botones interactivos - Actualizados a AZUL */}
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
           {seriesKeys.map((key) => (
@@ -944,8 +939,9 @@ const BoardDetailPage = () => {
               key={key}
               type="button"
               onClick={() => toggleSerieVisibility(key)}
+              // Clases actualizadas: bg-blue-700, border-blue-700
               className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
-                ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                ? 'bg-blue-700 border-blue-700 text-white shadow-sm'
                 : 'bg-white border-slate-200 text-slate-400'
                 }`}
             >
@@ -959,7 +955,6 @@ const BoardDetailPage = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={barrasVisibles} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                {/* XAxis con Label inyectado */}
                 <XAxis
                   dataKey="name"
                   tickLine={false}
@@ -967,18 +962,14 @@ const BoardDetailPage = () => {
                   dy={8}
                   tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}
                 >
-                  <Label
-                    value="Días del Periodo"
-                    position="insideBottom"
-                    offset={-20}
-                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
-                  />
+                  <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
                 </XAxis>
                 <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
                   <Label value="Energía Activa (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
                 </YAxis>
                 <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(value: any) => [`${Number(value).toFixed(1)} kWh`, 'Consumo Total']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="kWh" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                {/* Relleno de Barra actualizado a AZUL (Blue 600) */}
+                <Bar dataKey="kWh" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={50} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -989,17 +980,14 @@ const BoardDetailPage = () => {
 
   // ── SECCIÓN MODULAR 4: HUELLA DE CARBONO Y EMISIONES DE CO₂ (PERÚ) ──
   const renderCarbonEmissionsSection = () => {
-    // Factor de Emisión Oficial SEIN Perú: 0.00021 tCO₂ por kWh (0.21 kg CO₂ / kWh)
     const FACTOR_EMISION_PERU = 0.00021;
 
-    // Filtrar los datos en Toneladas de CO₂ según los días visibles seleccionados
     const emisionesData = energiaPorDiaData
       .filter(d => visibleSeries[d.name] !== false)
       .map(item => {
         const tCO2_dia = (item.kWh || 0) * FACTOR_EMISION_PERU;
         return {
           name: item.name,
-          kWh: item.kWh,
           tCO2: Number(tCO2_dia.toFixed(4)),
           kgCO2: Number((tCO2_dia * 1000).toFixed(2))
         };
@@ -1007,7 +995,6 @@ const BoardDetailPage = () => {
 
     if (emisionesData.length === 0) return null;
 
-    // Métricas para tarjetas resumen
     const totalTCO2Semana = emisionesData.reduce((acc, curr) => acc + curr.tCO2, 0);
     const promedioTCO2Diario = emisionesData.length > 0 ? totalTCO2Semana / emisionesData.length : 0;
     const proyeccionTCO2Mes = promedioTCO2Diario * 30;
@@ -1015,10 +1002,10 @@ const BoardDetailPage = () => {
 
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
-        {/* Cabecera de la Sección */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-teal-500/10 text-teal-600">
+            {/* Ícono actualizado a GRIS (Slate 500) */}
+            <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-slate-500/10 text-slate-600">
               <Zap size={20} className="sm:size-[22px]" />
             </div>
             <div>
@@ -1028,39 +1015,42 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Tarjetas de Resumen (Día, Mes, Año) */}
+        {/* Tarjetas de Resumen - Actualizadas todas a variantes de GRIS (Slate) */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-teal-200/60 bg-teal-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-teal-800">Emisión Diaria Promedio</p>
-            <p className="mt-1 text-2xl font-black text-teal-950">
+          {/* Tarjeta 1 */}
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">Emisión Diaria Promedio</p>
+            <p className="mt-1 text-2xl font-black text-slate-950">
               {promedioTCO2Diario < 0.01
                 ? (promedioTCO2Diario * 1000).toFixed(2)
                 : promedioTCO2Diario.toFixed(3)}
-              <span className="text-xs font-bold text-teal-700 ml-1">
+              <span className="text-xs font-bold text-slate-600 ml-1">
                 {promedioTCO2Diario < 0.01 ? "kg CO₂/día" : "tCO₂/día"}
               </span>
             </p>
             <p className="mt-1 text-[10px] text-slate-500">Equivalencia del periodo filtrado</p>
           </div>
 
-          <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-800">Proyección Mensual (30 días)</p>
-            <p className="mt-1 text-2xl font-black text-emerald-950">
-              {proyeccionTCO2Mes.toFixed(3)} <span className="text-xs font-bold text-emerald-700">tCO₂/mes</span>
+          {/* Tarjeta 2 */}
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">Proyección Mensual (30 días)</p>
+            <p className="mt-1 text-2xl font-black text-slate-950">
+              {proyeccionTCO2Mes.toFixed(3)} <span className="text-xs font-bold text-slate-600">tCO₂/mes</span>
             </p>
             <p className="mt-1 text-[10px] text-slate-500">Estimación a 30 días de operación</p>
           </div>
 
-          <div className="rounded-2xl border border-sky-200/60 bg-sky-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-sky-800">Proyección Anual (365 días)</p>
-            <p className="mt-1 text-2xl font-black text-sky-950">
-              {proyeccionTCO2Ano.toFixed(2)} <span className="text-xs font-bold text-sky-700">tCO₂/año</span>
+          {/* Tarjeta 3 */}
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">Proyección Anual (365 días)</p>
+            <p className="mt-1 text-2xl font-black text-slate-950">
+              {proyeccionTCO2Ano.toFixed(2)} <span className="text-xs font-bold text-slate-600">tCO₂/año</span>
             </p>
             <p className="mt-1 text-[10px] text-slate-500">Estimación a 365 días de operación</p>
           </div>
         </div>
 
-        {/* Seleccionador de Días */}
+        {/* Seleccionador de Días - Actualizado a GRIS OSCURO (Slate 700/800) */}
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
           {seriesKeys.map((key) => (
@@ -1068,8 +1058,9 @@ const BoardDetailPage = () => {
               key={key}
               type="button"
               onClick={() => toggleSerieVisibility(key)}
+              // Clases actualizadas: bg-slate-700, border-slate-700
               className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
-                ? 'bg-teal-700 border-teal-700 text-white shadow-sm'
+                ? 'bg-slate-700 border-slate-700 text-white shadow-sm'
                 : 'bg-white border-slate-200 text-slate-400'
                 }`}
             >
@@ -1078,50 +1069,20 @@ const BoardDetailPage = () => {
           ))}
         </div>
 
-        {/* Gráfico de Barras de Toneladas de CO2 */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={emisionesData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  stroke="#94a3b8"
-                  dy={8}
-                  tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}
-                >
-                  <Label
-                    value="Días del Periodo"
-                    position="insideBottom"
-                    offset={-20}
-                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
-                  />
+                <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
+                  <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
                 </XAxis>
-                <YAxis
-                  tickLine={false}
-                  stroke="#94a3b8"
-                  width={65}
-                  tick={{ fontSize: '10px' }}
-                  tickFormatter={(val) => val.toFixed(3)}
-                >
-                  <Label
-                    value="Emisiones (tCO₂)"
-                    angle={-90}
-                    position="insideLeft"
-                    offset={-5}
-                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
-                  />
+                <YAxis tickLine={false} stroke="#94a3b8" width={65} tick={{ fontSize: '10px' }} tickFormatter={(val) => val.toFixed(3)}>
+                  <Label value="Emisiones (tCO₂)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
                 </YAxis>
-                <Tooltip
-                  cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
-                  formatter={(val: any) => [
-                    `${Number(val).toFixed(4)} tCO₂ (${(Number(val) * 1000).toFixed(1)} kg CO₂)`,
-                    'Huella de Carbono'
-                  ]}
-                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                />
-                <Bar dataKey="tCO2" fill="#0d9488" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(val: any) => [`${Number(val).toFixed(4)} tCO₂ (${(Number(val) * 1000).toFixed(1)} kg CO₂)`, 'Huella de Carbono']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                {/* Relleno de Barra actualizado a GRIS (Slate 500) */}
+                <Bar dataKey="tCO2" fill="#64748b" radius={[6, 6, 0, 0]} maxBarSize={50} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -4,10 +4,10 @@ import {
     Award,
     Check,
     ChevronDown,
+    FileCheck,
     FileCode,
     FileText,
     HelpCircle,
-    Image,
     Layers,
     Shield,
     ShieldAlert,
@@ -18,7 +18,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-/* ─── Keyframes (mismo sistema que HomePage) ─────────────────────────────── */
+/* ─── Keyframes ─────────────────────────────────────────────────────────── */
 
 const STYLE = `
 @keyframes fadeUp { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
@@ -27,7 +27,7 @@ const STYLE = `
 @keyframes blobMove { 0%,100%{border-radius:60% 40% 30% 70%/60% 30% 70% 40%} 50%{border-radius:30% 60% 70% 40%/50% 60% 30% 60%} }
 @keyframes electricPulse { 0%,100%{opacity:1;filter:drop-shadow(0 0 4px #0797d5)} 50%{opacity:0.5;filter:drop-shadow(0 0 12px #0797d5) drop-shadow(0 0 24px #0797d5)} }
 @keyframes gridFade { 0%,100%{opacity:0.03} 50%{opacity:0.07} }
-@keyframes particleDrift { 0%{transform:translateY(0) translateX(0) scale(1);opacity:0.7} 100%{transform:translateY(-120px) translateX(20px) scale(0);opacity:0} }
+@keyframes particleDrift { 0%,100%{transform:translateY(0) translateX(0) scale(1);opacity:0.7} 100%{transform:translateY(-120px) translateX(20px) scale(0);opacity:0} }
 @keyframes glowPulse { 0%,100%{box-shadow:0 0 20px rgba(7,151,213,0.2),0 0 40px rgba(7,151,213,0.1)} 50%{box-shadow:0 0 40px rgba(7,151,213,0.4),0 0 80px rgba(7,151,213,0.2)} }
 @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
 @keyframes zap { 0%,100%{opacity:1} 25%{opacity:0.2} 75%{opacity:0.7} }
@@ -50,60 +50,91 @@ function InjectStyles() {
 
 interface FAQItem { q: string; a: string; }
 interface Plan {
-    id: "free" | "pro";
+    id: "basic" | "pyme" | "enterprise";
     name: string; badge?: string; priceLabel: string; subLabel: string;
     description: string; color: string; featured: boolean; features: string[]; cta: string; path: string;
     limits: { empresas: number | string; tableros: number | string; usuarios: number | string; docs: number | string; };
 }
 
-/* ─── Data — idéntica a HomePage.tsx ────────────────────────────────────── */
+/* ─── Data — Matriz de la imagen y norma ITSE ───────────────────────────── */
 
 const plans: Plan[] = [
     {
-        id: "free",
-        name: "Free", priceLabel: "Gratis", subLabel: "Plan de entrada",
-        description: "Mapeo piloto inicial para explorar el ecosistema digital de Voltguard.",
-        color: "slate", featured: false, cta: "Comenzar gratis", path: "/auth/register?plan=free",
-        features: ["1 Tablero Eléctrico", "Exclusivo para Tablero General (TG)", "Seguimiento de parámetros en tiempo real", "Visor digital en plataforma web", "Soporte técnico por email"],
-        limits: { empresas: 1, tableros: 1, usuarios: 2, docs: 5 }
+        id: "basic",
+        name: "Plan Básico", priceLabel: "Gratis", subLabel: "Pequeño Comercio (Esencial: 01 tablero)",
+        description: "Mapeo inicial y rotulación en PDF para pequeños locales que inician su ordenamiento eléctrico.",
+        color: "slate", featured: false, cta: "Comenzar gratis", path: "/auth?plan=basic",
+        features: [
+            "01 Tablero Eléctrico",
+            "Rotulación (Leyenda) en PDF",
+            "Visor digital en plataforma web Voltguard",
+            "Soporte técnico por email"
+        ],
+        limits: { empresas: 1, tableros: 1, usuarios: 1, docs: 3 }
     },
     {
-        id: "pro",
-        name: "Pro Corporativo", badge: "Más recomendado", priceLabel: "Consulte con Ventas",
-        subLabel: "Suscripción anual personalizada",
-        description: "Optimizado para plantas industriales, clínicas y auditorías de alta exigencia bajo norma.",
-        color: "blue", featured: true, cta: "Contactar ventas", path: "/contact-sales",
-        features: ["Hasta 200 Tableros Eléctricos", "Despliegue, levantamiento e inspección presencial", "Diseño de diagramas unifilares y rotulación de circuitos", "Pruebas de aislamiento (Megado) y análisis termográfico", "Estudio de seguridad NFPA 70E y programa predictivo NFPA 70B", "Emisión de certificados de operatividad y mantenimiento", "Visualización, descarga de Etiquetas (PDF) y archivos CAD (.DWG)"],
-        limits: { empresas: "Multi-sede", tableros: 200, usuarios: "∞", docs: "∞" }
+        id: "pyme",
+        name: "Plan Intermedio", badge: "Recomendado PYME", priceLabel: "S/ 250.00 + IGV",
+        subLabel: "Comercial / Servicios (01 a 04 tableros)",
+        description: "Optimizado para pymes y comercios que necesitan regularizar licencias ITSE y obtener firma CIP.",
+        color: "blue", featured: true, cta: "Adquirir Plan Intermedio", path: "/contact-sales?plan=pyme",
+        features: [
+            "01 a 04 Tableros Eléctricos",
+            "Rotulación (Leyenda) en PDF",
+            "Diagrama Unifilar en CAD y Leyenda Normativa CNE",
+            "Gestión de Seguridad y Licencias ITSE",
+            "Firma de Ingeniero Colegiado (CIP)",
+            "Servicio de Mantenimiento Preventivo",
+            "Gestión Documental y Emisión de Certificados"
+        ],
+        limits: { empresas: 1, tableros: 4, usuarios: 5, docs: "Ilimitados" }
+    },
+    {
+        id: "enterprise",
+        name: "Plan Empresarial", badge: "Alta Exigencia", priceLabel: "Contáctenos",
+        subLabel: "Industria (Más de 05 tableros / Multi-tablero)",
+        description: "Cobertura completa para plantas industriales, clínicas y auditorías de alta exigencia bajo normas NFPA.",
+        color: "slate", featured: false, cta: "Contactar ventas", path: "/contact-sales?plan=enterprise",
+        features: [
+            "Más de 05 Tableros Eléctricos",
+            "Incluye todas las características del Plan Intermedio",
+            "Evaluación de Puesta a Tierra y Power Quality",
+            "Etiquetado NFPA 70E e Inspección Termográfica NFPA 70B",
+            "Monitoreo de Consumo, CO2 y Demandas Máximas",
+            "Asesoría en Seguridad Ocupacional"
+        ],
+        limits: { empresas: "Multi-sede", tableros: "Ilimitados", usuarios: "Ilimitados", docs: "Ilimitados" }
     }
 ];
 
 const faqs: FAQItem[] = [
-    { q: "¿Quién se encarga de subir los diagramas, fotos y certificados al sistema?", a: "Todo el trabajo de campo, levantamiento técnico y procesamiento de archivos es realizado exclusivamente por el personal calificado de Voltguard. Tus usuarios y clientes solo ingresan al sistema web para visualizar el estado de sus activos y descargar la documentación autorizada según su plan." },
-    { q: "¿Cómo funciona el límite de tableros en cada plan?", a: "Los límites representan el alcance máximo del inventario de ingeniería contratado. El Plan Free incluye únicamente el Tablero General (TG) piloto; el Plan Pro Corporativo se despliega a nivel industrial cubriendo hasta 200 tableros eléctricos en configuración multi-sede." },
-    { q: "¿Cuál es la diferencia entre los entregables PDF y CAD?", a: "El Plan Pro Corporativo permite descargar reportes ejecutivos, estudios NFPA 70E y etiquetas normativas en PDF, además de los planos originales digitalizados en formato CAD (.DWG), ideales para modificaciones de ingeniería interna o futuras ampliaciones." },
-    { q: "¿Qué normativas de seguridad se aplican en las inspecciones?", a: "Nuestro equipo realiza la rotulación e identificación de riesgos basándose en NFPA 70E (seguridad eléctrica en el trabajo) y NFPA 70B (programa de mantenimiento predictivo y preventivo), aplicables desde el Plan Pro Corporativo." },
+    { q: "¿Cómo ayuda Voltguard a mi empresa a pasar la inspección ITSE de Defensa Civil?", a: "Voltguard automatiza la generación de diagramas unifilares en formato CAD, rotula la leyenda de tableros bajo el Código Nacional de Electricidad (CNE) y coordina la validación firmada por un Ingeniero Colegiado (CIP) para responder a las observaciones municipales." },
+    { q: "¿Quién realiza el trabajo técnico en campo y sube los documentos?", a: "El equipo especializado de Voltguard realiza la inspección presencial, pruebas de pozo a tierra y medición termográfica. Posteriormente, todos los planos, reportes y certificados quedan disponibles en tu panel de usuario para descarga inmediata." },
+    { q: "¿Qué diferencia existe entre el Plan Básico, Intermedio y Empresarial?", a: "El Plan Básico (Gratis) permite mapear 1 tablero con leyenda PDF[cite: 1]. El Plan Intermedio cubre hasta 4 tableros, entregando diagramas CAD, expediente ITSE y firma CIP[cite: 1]. El Plan Empresarial es para instalaciones industriales con más de 5 tableros, sumando análisis energético, termografía NFPA 70B y protocolo NFPA 70E[cite: 1]." },
+    { q: "¿Puedo descargar los planos en formato CAD para modificaciones futuras?", a: "Sí, a partir del Plan Intermedio se habilita la visualización y descarga de los planos unifilares digitalizados en formato CAD (.DWG) y los certificados oficiales en PDF[cite: 1]." },
 ];
 
 const tableRows: {
     category?: string; label?: string; icon?: React.ElementType;
-    free: boolean | string | null; pro: boolean | string | null;
+    basic: boolean | string | null; pyme: boolean | string | null; enterprise: boolean | string | null;
 }[] = [
-    { label: "Límite de tableros cubiertos",       icon: Zap,       free: "1 Tablero",           pro: "Hasta 200 Tableros" },
-    { label: "Jerarquía técnica permitida",         icon: Layers,    free: "Solo Tablero General", pro: "Toda la Red Interna" },
-    { label: "Permisos de descarga",                icon: FileCode,  free: "Solo visualización web", pro: "PDF + Planos CAD (.DWG)" },
-    { category: "Entregables de Ingeniería (Personal Voltguard)", free: null, pro: null },
-    { label: "Levantamiento fotográfico técnico",   icon: Image,     free: false, pro: true },
-    { label: "Diseño de diagramas unifilares",      icon: FileText,  free: false, pro: true },
-    { label: "Rotulación de circuitos y leyendas",  icon: Layers,    free: false, pro: true },
-    { label: "Estudio de Seguridad NFPA 70E",       icon: Shield,    free: false, pro: true },
-    { category: "Ingeniería Avanzada y Campo (Exclusivo Pro Corporativo)", free: null, pro: null },
-    { label: "Inspección y despliegue presencial",  icon: Users,     free: false, pro: true },
-    { label: "Pruebas de aislamiento (Megado)",     icon: Activity,  free: false, pro: true },
-    { label: "Escaneo por Termografía Infrarroja",  icon: Activity,  free: false, pro: true },
-    { label: "Cuadro de cargas y Demanda Máxima",   icon: FileText,  free: false, pro: true },
-    { label: "Emisión de certificados de operatividad", icon: Award, free: false, pro: true },
-    { label: "Programa Predictivo NFPA 70B",        icon: ShieldAlert, free: false, pro: true },
+    { label: "Cantidad de tableros eléctricos", icon: Zap, basic: "01 tablero", pyme: "01 a 04 tableros", enterprise: "Más de 05 tableros" },
+    { label: "Segmento recomendado", icon: Layers, basic: "Pequeño Comercio", pyme: "Comercial / Servicios", enterprise: "Industria / Multi-tablero" },
+    { label: "Precio de la Licencia / Servicio", icon: FileText, basic: "Gratis", pyme: "S/ 250.00 + IGV", enterprise: "Contáctenos" },
+    { category: "Entregables Normativos y Documentales", basic: null, pyme: null, enterprise: null },
+    { label: "Rotulación (Leyenda) en PDF", icon: FileText, basic: true, pyme: true, enterprise: true },
+    { label: "Diagrama Unifilar en CAD y Leyenda CNE", icon: FileCode, basic: false, pyme: true, enterprise: true },
+    { label: "Gestión de Seguridad y Licencias ITSE", icon: FileCheck, basic: false, pyme: true, enterprise: true },
+    { label: "Firma de Ingeniero Colegiado (CIP)", icon: Award, basic: false, pyme: true, enterprise: true },
+    { label: "Servicio de Mantenimiento Preventivo", icon: Shield, basic: false, pyme: true, enterprise: true },
+    { label: "Gestión Documental y Emisión de Certificados", icon: FileText, basic: false, pyme: true, enterprise: true },
+    { category: "Ingeniería Avanzada, NFPA y Monitoreo (Plan Empresarial)", basic: null, pyme: null, enterprise: null },
+    { label: "Evaluación de Sistemas de Puesta a Tierra", icon: Activity, basic: false, pyme: false, enterprise: true },
+    { label: "Inspección Termográfica Infrarroja (NFPA 70B)", icon: ShieldAlert, basic: false, pyme: false, enterprise: true },
+    { label: "Etiquetado de Seguridad Eléctrica (NFPA 70E)", icon: Shield, basic: false, pyme: false, enterprise: true },
+    { label: "Análisis de Calidad de Energía (Power Quality)", icon: Zap, basic: false, pyme: false, enterprise: true },
+    { label: "Monitoreo de Consumo, CO2 y Potencia Reactiva", icon: Activity, basic: false, pyme: false, enterprise: true },
+    { label: "Asesoría en Seguridad Ocupacional (NFPA 70E)", icon: Users, basic: false, pyme: false, enterprise: true },
 ];
 
 /* ─── Hooks ──────────────────────────────────────────────────────────────── */
@@ -120,49 +151,26 @@ function useInViewRepeatable(threshold = 0.1) {
     return { ref, inView };
 }
 
-/* ─── Decorative helpers (idénticos a HomePage) ──────────────────────────── */
-
-// function BackgroundGrid() {
-//     return (
-//         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-//             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ animation: "gridFade 4s ease-in-out infinite" }}>
-//                 <defs><pattern id="pgp" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="#0797d5" strokeWidth="0.5" /></pattern></defs>
-//                 <rect width="100%" height="100%" fill="url(#pgp)" />
-//             </svg>
-//         </div>
-//     );
-// }
-
-// function FloatingParticles({ count = 8 }: { count?: number }) {
-//     const p = Array.from({ length: count }, (_, i) => ({ id: i, x: 10 + (i * 12) % 85, y: 20 + (i * 17) % 70, delay: i * 0.7, duration: 3 + (i % 3), size: 2 + (i % 3) }));
-//     return (
-//         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-//             {p.map(pt => <div key={pt.id} className="absolute rounded-full bg-[#0797d5]" style={{ left: `${pt.x}%`, top: `${pt.y}%`, width: pt.size, height: pt.size, opacity: 0.5, animation: `particleDrift ${pt.duration}s ease-in ${pt.delay}s infinite` }} />)}
-//         </div>
-//     );
-// }
-
-/* ─── Plan Card — mismo componente que HomePage ──────────────────────────── */
+/* ─── Plan Card ──────────────────────────────────────────────────────────── */
 
 function PlanCard({ plan, index, active }: { plan: Plan; index: number; active: boolean }) {
     const navigate = useNavigate();
-    const [hovered, setHovered] = useState(false);
-    const isFree = plan.color === "slate";
-    console.log(hovered)
+    const [, setHovered] = useState(false);
+    const isFeatured = plan.featured;
 
     return (
         <div
             onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
             style={{ opacity: active ? 1 : 0, transform: active ? "translateY(0) scale(1)" : "translateY(32px) scale(0.97)", transition: `opacity 0.6s ease ${index * 150}ms, transform 0.6s ease ${index * 150}ms` }}
             className={`relative rounded-3xl flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-2
-                ${isFree
+                ${!isFeatured
                     ? "border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-[#0797d5]/10"
                     : "border border-[#0797d5]/40 shadow-xl shadow-[#0797d5]/15 hover:shadow-2xl hover:shadow-[#0797d5]/25"
                 }`}
         >
             {/* ── HEADER ── */}
-            <div className={`relative px-7 py-8 overflow-hidden ${isFree ? "bg-slate-100" : "bg-gradient-to-br from-[#0797d5] to-[#05c4f7]"}`}>
-                {!isFree && (
+            <div className={`relative px-7 py-8 overflow-hidden ${!isFeatured ? "bg-slate-100" : "bg-gradient-to-br from-[#0797d5] to-[#05c4f7]"}`}>
+                {isFeatured && (
                     <>
                         <div className="absolute inset-0 pointer-events-none opacity-10">
                             <svg width="100%" height="100%"><defs><pattern id="hgp" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="0.5" /></pattern></defs><rect width="100%" height="100%" fill="url(#hgp)" /></svg>
@@ -172,57 +180,46 @@ function PlanCard({ plan, index, active }: { plan: Plan; index: number; active: 
                     </>
                 )}
                 {plan.badge && (
-                    <div className="absolute top-0 right-0 overflow-hidden w-24 h-24 pointer-events-none">
-                        <div className="absolute top-4 right-[-22px] rotate-45 bg-[#8ccf2f] text-white text-[10px] font-black px-8 py-1 shadow-md tracking-wide uppercase">
-                            Popular
+                    <div className="absolute top-0 right-0 overflow-hidden w-28 h-28 pointer-events-none">
+                        <div className="absolute top-5 right-[-24px] rotate-45 bg-[#8ccf2f] text-white text-[9px] font-black px-8 py-1 shadow-md tracking-wide uppercase text-center">
+                            {plan.badge}
                         </div>
                     </div>
                 )}
-                <span className={`relative z-10 block text-center text-2xl font-black tracking-tight ${isFree ? "text-slate-600" : "text-white"}`}>
+                <span className={`relative z-10 block text-center text-2xl font-black tracking-tight ${!isFeatured ? "text-slate-800" : "text-white"}`}>
                     {plan.name}
                 </span>
+                <p className={`relative z-10 text-center text-xs mt-1 font-medium ${!isFeatured ? "text-slate-500" : "text-white/80"}`}>
+                    {plan.subLabel}
+                </p>
             </div>
 
             {/* ── BODY ── */}
             <div className="bg-white flex flex-col flex-1 px-7 pt-7 pb-7 gap-6">
-                {/* <div className="text-center py-2">
-                    <div className={`text-4xl font-black tracking-tight leading-none ${isFree ? "text-slate-900" : "text-[#0797d5]"}`}>
-                        {isFree ? "0 dólares" : "Consulte"}
-                        <span className="text-sm font-medium text-slate-400 tracking-normal">/año</span>
+                <div className="text-center py-2">
+                    <div className={`text-3xl font-black tracking-tight leading-none ${!isFeatured ? "text-slate-900" : "text-[#0797d5]"}`}>
+                        {plan.priceLabel}
                     </div>
-                    <span className="text-xs text-slate-400 mt-2 block font-medium">
-                        {isFree ? "Sin tarjetas de crédito" : "Suscripción anual personalizada"}
-                    </span>
-                    <p className="text-sm text-slate-500 mt-4 leading-relaxed max-w-sm mx-auto">{plan.description}</p>
+                    <p className="text-xs text-slate-500 mt-3 leading-relaxed max-w-sm mx-auto">{plan.description}</p>
                 </div>
 
-                <div className={`h-px w-full ${isFree ? "bg-slate-100" : "bg-[#0797d5]/10"}`} /> */}
+                <div className="h-px w-full bg-slate-100" />
 
                 <ul className="space-y-3 flex-1">
                     {plan.features.map((f) => (
                         <li key={f} className="flex items-start gap-2.5 text-sm group/item">
-                            <span className={`mt-0.5 shrink-0 size-4 rounded-full flex items-center justify-center transition-all duration-300 group-hover/item:scale-110 ${isFree ? "bg-slate-100 text-slate-400" : "bg-[#0797d5]/10 text-[#0797d5]"}`}>
+                            <span className={`mt-0.5 shrink-0 size-4 rounded-full flex items-center justify-center transition-all duration-300 group-hover/item:scale-110 ${!isFeatured ? "bg-slate-100 text-slate-600" : "bg-[#0797d5]/10 text-[#0797d5]"}`}>
                                 <Check size={10} strokeWidth={3} />
                             </span>
-                            <span className={isFree ? "text-slate-600" : "text-slate-700 font-medium"}>{f}</span>
+                            <span className="text-slate-700 text-xs sm:text-sm font-medium leading-snug">{f}</span>
                         </li>
                     ))}
-                    {isFree && (
-                        <>
-                            {["Diagramas unifilares CAD (.DWG)", "Análisis termográfico avanzado", "Certificados NFPA 70E / 70B"].map(locked => (
-                                <li key={locked} className="flex items-start gap-2.5 text-sm opacity-40 select-none">
-                                    <span className="mt-0.5 shrink-0 size-4 rounded-full flex items-center justify-center bg-slate-100 text-slate-300"><Check size={10} strokeWidth={3} /></span>
-                                    <span className="text-slate-400 line-through">{locked}</span>
-                                </li>
-                            ))}
-                        </>
-                    )}
                 </ul>
 
                 <button
                     onClick={() => navigate(plan.path)}
                     className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 hover:-translate-y-0.5 cursor-pointer relative overflow-hidden group/btn
-                        ${isFree
+                        ${!isFeatured
                             ? "border-2 border-slate-300 hover:border-[#0797d5] bg-white text-slate-800 hover:text-[#0797d5] hover:shadow-md"
                             : "bg-gradient-to-r from-[#0797d5] to-[#05c4f7] hover:from-[#087fb3] hover:to-[#0797d5] text-white hover:shadow-xl hover:shadow-[#0797d5]/40"
                         }`}
@@ -235,17 +232,17 @@ function PlanCard({ plan, index, active }: { plan: Plan; index: number; active: 
     );
 }
 
-/* ─── Comparison Table ───────────────────────────────────────────────────── */
+/* ─── Comparison Table Cell Helper ───────────────────────────────────────── */
 
 function CellValue({ val }: { val: boolean | string | null }) {
     if (val === null) return null;
     if (typeof val === "boolean") return val
         ? <Check size={17} className="text-[#0797d5] mx-auto" strokeWidth={3} />
-        : <X size={16} className="text-slate-200 mx-auto" strokeWidth={2} />;
-    return <span className="text-slate-700 font-semibold text-xs sm:text-sm">{val}</span>;
+        : <X size={16} className="text-slate-300 mx-auto" strokeWidth={2} />;
+    return <span className="text-slate-700 font-bold text-xs sm:text-sm">{val}</span>;
 }
 
-/* ─── FAQ Row — mismo componente que HomePage ────────────────────────────── */
+/* ─── FAQ Row ────────────────────────────────────────────────────────────── */
 
 function FAQRow({ q, a, index, active }: FAQItem & { index: number; active: boolean }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -281,7 +278,7 @@ export default function PlanesPage() {
         <div className="bg-slate-50 min-h-screen py-20 overflow-x-hidden relative">
             <InjectStyles />
 
-            {/* Fondo decorativo — igual a HomePage */}
+            {/* Fondo decorativo */}
             <div className="absolute top-0 left-0 right-0 h-[500px] pointer-events-none overflow-hidden z-0">
                 <div className="absolute -top-32 -left-32 size-96 rounded-full bg-[#0797d5]/5 blur-3xl" style={{ animation: "blobMove 8s ease-in-out infinite" }} />
                 <div className="absolute top-20 -right-32 size-80 rounded-full bg-[#8ccf2f]/5 blur-3xl" style={{ animation: "blobMove 10s ease-in-out 2s infinite reverse" }} />
@@ -294,7 +291,7 @@ export default function PlanesPage() {
                     style={{ opacity: headerVisible ? 1 : 0, transform: headerVisible ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.65s ease, transform 0.65s ease" }}>
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#0797d5]/20 bg-[#0797d5]/5 text-sm font-semibold text-[#0797d5] mb-6">
                         <Award size={15} />
-                        Dimensionamiento Comercial B2B
+                        Licencias y Certificación ITSE
                     </div>
                     <h1 className="text-4xl sm:text-5xl font-black text-slate-950 tracking-tight leading-none mb-4">
                         Planes a tu{" "}
@@ -304,41 +301,42 @@ export default function PlanesPage() {
                         </span>
                     </h1>
                     <p className="text-slate-500 text-base max-w-xl mx-auto leading-relaxed">
-                        Prueba la plataforma de manera autónoma con el plan inicial o implementa Voltguard de forma integral en toda tu organización corporativa con la asistencia experta de nuestros ingenieros especialistas.
+                        Adquiere una suscripción Voltguard para habilitar la emisión de expedientes ITSE, planos CAD unifilares y firmas autorizadas de Ingeniero Colegiado (CIP).
                     </p>
                 </div>
 
-                {/* ── TARJETAS DE PLANES ── */}
-                <div ref={cardsRef} className="grid gap-8 md:grid-cols-2 max-w-4xl mx-auto mb-8">
+                {/* ── TARJETAS DE PLANES (3 Niveles) ── */}
+                <div ref={cardsRef} className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto mb-8">
                     {plans.map((plan, i) => <PlanCard key={plan.name} plan={plan} index={i} active={cardsVisible} />)}
                 </div>
                 <p className="text-center text-xs text-slate-400 mb-24">
-                    La descarga técnica (Etiquetas PDF o Archivos CAD originales) se habilita en tu consola interna basándose estrictamente en el plan corporativo contratado.
+                    La descarga de entregables de ingeniería (Planos CAD .DWG y Certificados CIP) está sujeta al plan contratado.
                 </p>
 
-                {/* ── TABLA COMPARATIVA ── */}
+                {/* ── TABLA COMPARATIVA (Basada en la imagen recibida) ── */}
                 <div ref={tableRef} className="mb-24"
                     style={{ opacity: tableVisible ? 1 : 0, transform: tableVisible ? "translateY(0)" : "translateY(28px)", transition: "opacity 0.7s ease, transform 0.7s ease" }}>
                     <div className="text-center lg:text-left mb-8">
-                        <h2 className="text-2xl font-black text-slate-950 tracking-tight">Comparativa detallada de servicios</h2>
-                        <p className="text-sm text-slate-500 mt-1">Revisa el alcance operativo y los formatos autorizados de descarga para tu auditoría.</p>
+                        <h2 className="text-2xl font-black text-slate-950 tracking-tight">Matriz comparativa de características y alcance</h2>
+                        <p className="text-sm text-slate-500 mt-1">Revisa detalladamente las opciones del sistema Voltguard de acuerdo con la exigencia técnica de tu negocio.</p>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="border-b border-slate-100 bg-slate-50/70">
-                                        <th className="p-5 text-sm font-bold text-slate-400 uppercase tracking-wider w-1/2">Capacidad y Cobertura</th>
-                                        <th className="p-5 text-sm font-black text-slate-500 text-center">Free</th>
-                                        <th className="p-5 text-sm font-black text-[#0797d5] text-center bg-[#0797d5]/3">Pro Corporativo</th>
+                                        <th className="p-5 text-sm font-bold text-slate-500 uppercase tracking-wider w-2/5">Características y Alcance</th>
+                                        <th className="p-5 text-sm font-black text-slate-600 text-center">Plan Básico</th>
+                                        <th className="p-5 text-sm font-black text-[#0797d5] text-center bg-[#0797d5]/5">Plan Intermedio</th>
+                                        <th className="p-5 text-sm font-black text-slate-800 text-center">Plan Empresarial</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-sm">
                                     {tableRows.map((row, i) => {
                                         if (row.category) {
                                             return (
-                                                <tr key={i} className="bg-slate-50/60">
-                                                    <td className="px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-400" colSpan={3}>{row.category}</td>
+                                                <tr key={i} className="bg-slate-50/80">
+                                                    <td className="px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-400" colSpan={4}>{row.category}</td>
                                                 </tr>
                                             );
                                         }
@@ -351,8 +349,9 @@ export default function PlanesPage() {
                                                         {row.label}
                                                     </div>
                                                 </td>
-                                                <td className="p-4 sm:p-5 text-center bg-slate-50/30"><CellValue val={row.free} /></td>
-                                                <td className="p-4 sm:p-5 text-center bg-[#0797d5]/2"><CellValue val={row.pro} /></td>
+                                                <td className="p-4 sm:p-5 text-center bg-slate-50/30"><CellValue val={row.basic} /></td>
+                                                <td className="p-4 sm:p-5 text-center bg-[#0797d5]/3"><CellValue val={row.pyme} /></td>
+                                                <td className="p-4 sm:p-5 text-center bg-slate-50/20"><CellValue val={row.enterprise} /></td>
                                             </tr>
                                         );
                                     })}
@@ -368,10 +367,10 @@ export default function PlanesPage() {
                         style={{ opacity: faqHeadVisible ? 1 : 0, transform: faqHeadVisible ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.65s ease, transform 0.65s ease" }}>
                         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0797d5]/8 border border-[#0797d5]/20 text-[#0797d5] text-xs font-bold mb-4">
                             <HelpCircle size={13} style={{ animation: "zap 2s ease-in-out infinite" }} />
-                            Consultas del Servicio
+                            Consultas Frecuentes
                         </div>
-                        <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Preguntas frecuentes</h2>
-                        <p className="text-slate-500 text-sm mt-2">¿Tienes dudas sobre los alcances del servicio o el procesamiento de datos técnicos? Aquí te respondemos.</p>
+                        <h2 className="text-2xl sm:text-3xl font-black text-slate-950 tracking-tight">Preguntas sobre Planes e ITSE</h2>
+                        <p className="text-slate-500 text-sm mt-2">¿Tienes dudas sobre los entregables o la contratación de licencias? Consulta la información detallada.</p>
                     </div>
                     <div ref={faqListRef} className="space-y-3">
                         {faqs.map((faq, i) => <FAQRow key={i} {...faq} index={i} active={faqListVisible} />)}
@@ -386,13 +385,13 @@ export default function PlanesPage() {
                             <Shield size={22} />
                         </div>
                         <div>
-                            <h3 className="font-bold text-slate-950 text-base">¿Tienes un volumen mayor a 200 tableros?</h3>
-                            <p className="text-xs text-slate-500 mt-0.5">Diseñamos propuestas y SLAs corporativos a la medida de grandes complejos industriales o multi-sedes.</p>
+                            <h3 className="font-bold text-slate-950 text-base">¿Tienes una red de instalaciones o multi-sedes complejas?</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">Estructuramos proyectos a la medida con auditorías integrales bajo normas ITSE, CNE y NFPA.</p>
                         </div>
                     </div>
                     <button onClick={() => navigate("/contact-sales")}
                         className="group inline-flex items-center gap-2 px-5 py-3 bg-slate-950 hover:bg-slate-800 text-white font-bold text-sm rounded-xl transition-all duration-200 shrink-0 cursor-pointer">
-                        Contactar con Soporte Corporativo
+                        Solicitar Asesoría Personalizada
                         <ArrowRight size={15} className="group-hover:translate-x-0.5 transition-transform" />
                     </button>
                 </div>

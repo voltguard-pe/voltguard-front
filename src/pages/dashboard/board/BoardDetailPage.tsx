@@ -72,6 +72,10 @@ const MAIN_COLORS = [
   '#e91e63', '#795548', '#607d8b', '#03a9f4', '#eab308', '#ec4899'
 ];
 
+// Colores según especificación: Rojo para kvar c (capacitiva) y Azul para kvar i (inductiva)
+const REACTIVE_COLOR_CAPACITIVE = "#dc2626"; // Rojo (kvar c)
+const REACTIVE_COLOR_INDUCTIVE = "#1d4ed8";  // Azul (kvar i)
+
 // ── FUNCIONES AUXILIARES DE FORMATEO ──
 const value = (data: unknown) =>
   data === null || data === undefined || data === "" ? "-" : String(data);
@@ -99,6 +103,7 @@ const BoardDetailPage = () => {
   // ── ESTADOS DEL GRÁFICO INTERACTIVO (RECHARTS) ──
   const [rawChartData, setRawChartData] = useState<any[]>([]);
   const [seriesKeys, setSeriesKeys] = useState<string[]>([]);
+  const [selectedReactiveDay, setSelectedReactiveDay] = useState<string | null>(null); // ← AÑADIR ESTA LÍNEA
   const [visibleSeries, setVisibleSeries] = useState<{ [key: string]: boolean }>({
     "Promedio_General": true,
     "kvar_inductivo": true,
@@ -169,6 +174,7 @@ const BoardDetailPage = () => {
         let sumaCap = 0;
         let count = 0;
 
+        // ── DENTRO DE fetchChartData EN TU REACT COMPONENT ──
         rawKeys.forEach((diaKey) => {
           const partes = diaKey.split(' ');
           const fechaYMD = partes[0];
@@ -177,31 +183,23 @@ const BoardDetailPage = () => {
           const labelCorto = `${dia}/${mes} (${diaNombre})`;
 
           const punto = agrupado[diaKey]?.[hora];
-          let valP = typeof punto === 'number' ? punto : punto?.p;
-          let valInd = punto?.ind;
-          let valCap = punto?.cap;
 
-          if (valP !== undefined && valP !== null) {
-            row[labelCorto] = valP;
-            sumaP += valP;
+          // Extraer p, ind y cap directamente de la respuesta del backend
+          const valP = typeof punto === 'number' ? punto : (punto?.p ?? 0);
+          const valInd = typeof punto === 'object' ? (punto?.ind ?? 0) : 0;
+          const valCap = typeof punto === 'object' ? (punto?.cap ?? 0) : 0;
 
-            if (valInd === undefined || valInd === null) {
-              valInd = Math.max(0, valP * 0.28 + (Math.sin(labelsX.indexOf(hora) / 8) * 1.5));
-            }
-            if (valCap === undefined || valCap === null) {
-              valCap = Math.max(0, valP * 0.12 + (Math.cos(labelsX.indexOf(hora) / 10) * 1.2));
-            }
+          row[labelCorto] = valP;
+          row[`inductiva_${labelCorto}`] = valInd;
+          row[`capacitiva_${labelCorto}`] = valCap;
 
-            row[`inductiva_${labelCorto}`] = valInd;
-            row[`capacitiva_${labelCorto}`] = valCap;
+          sumaP += valP;
+          sumaInd += valInd;
+          sumaCap += valCap;
+          count++;
 
-            sumaInd += valInd;
-            sumaCap += valCap;
-            count++;
-
-            if (!energiaAcumuladaAux[labelCorto]) energiaAcumuladaAux[labelCorto] = 0;
-            energiaAcumuladaAux[labelCorto] += valP;
-          }
+          if (!energiaAcumuladaAux[labelCorto]) energiaAcumuladaAux[labelCorto] = 0;
+          energiaAcumuladaAux[labelCorto] += valP;
         });
 
         row["Promedio_General"] = count > 0 ? Math.round((sumaP / count) * 100) / 100 : null;
@@ -232,6 +230,8 @@ const BoardDetailPage = () => {
       setEnergiaPorDiaData(barrasProcesadas);
       setRawChartData(formattedData);
       setSeriesKeys(sortedCleanKeys);
+      // ← AÑADIR ESTA LÍNEA: Asigna el primer día disponible al cargar los datos
+      setSelectedReactiveDay(prev => (prev && sortedCleanKeys.includes(prev) ? prev : sortedCleanKeys[0] || null));
 
       // Inicializar todos los días visibles por defecto
       setVisibleSeries(prev => {
@@ -428,84 +428,80 @@ const BoardDetailPage = () => {
     });
   };
 
-  // ── TOOLTIP PERSONALIZADO PARA ENERGÍA REACTIVA (DINÁMICO CON FILTROS) ──
+  // ── TOOLTIP PERSONALIZADO PARA ENERGÍA REACTIVA ──
   const ReactiveTooltip = ({ active, label, payload }: any) => {
     if (active && payload && payload.length) {
-      // 1. Obtener los datos completos de la hora seleccionada
       const rowData = payload[0]?.payload || {};
+      const activeDay = selectedReactiveDay || seriesKeys[0] || "";
 
-      // 2. Determinar qué tipos de reactiva están visibles según el botón
+      const valCap = rowData[`capacitiva_${activeDay}`];
+      const valInd = rowData[`inductiva_${activeDay}`];
+
       const mostrarCapacitiva = visibleSeries["kvar_capacitivo"] !== false;
       const mostrarInductiva = visibleSeries["kvar_inductivo"] !== false;
 
-      // 3. Filtrar los días visibles (excluyendo días desactivados por el usuario)
-      const listaDiasVisibles = seriesKeys.filter(dia => visibleSeries[dia] !== false);
-
       return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl font-sans text-xs min-w-[260px] max-w-[340px]">
-          {/* Cabecera del Tooltip */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl font-sans text-xs min-w-[220px]">
           <div className="mb-2 border-b border-slate-100 pb-2 flex justify-between items-center">
             <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Potencia Reactiva</span>
             <span className="font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">{label} hrs</span>
           </div>
 
-          {/* Contenedor con Scrollbar si hay múltiples días */}
-          <div className="max-h-56 overflow-y-auto pr-1 scrollbar-thin">
-            <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 bg-white shadow-sm z-10">
-                <tr className="border-b border-slate-200 text-[10px] uppercase text-slate-400 font-extrabold">
-                  <th className="py-1 pr-2 bg-white">Día / Fila</th>
-                  {mostrarCapacitiva && (
-                    <th className="py-1 px-2 text-right text-red-600 bg-white">Capacitivo</th>
-                  )}
-                  {mostrarInductiva && (
-                    <th className="py-1 pl-2 text-right text-blue-600 bg-white">Inductivo</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-[11px] font-semibold text-slate-700">
-                {/* Fila de Promedio General */}
-                <tr className="bg-slate-50 font-bold text-slate-900">
-                  <td className="py-1.5 pr-2">Promedio</td>
-                  {mostrarCapacitiva && (
-                    <td className="py-1.5 px-2 text-right text-red-600 tabular-nums">
-                      {rowData['kvar_capacitivo'] !== undefined && rowData['kvar_capacitivo'] !== null ? `${Number(rowData['kvar_capacitivo']).toFixed(2)} (kvar c)` : '-'}
-                    </td>
-                  )}
-                  {mostrarInductiva && (
-                    <td className="py-1.5 pl-2 text-right text-blue-600 tabular-nums">
-                      {rowData['kvar_inductivo'] !== undefined && rowData['kvar_inductivo'] !== null ? `${Number(rowData['kvar_inductivo']).toFixed(2)} (kvar i)` : '-'}
-                    </td>
-                  )}
-                </tr>
+          <p className="text-[11px] font-bold text-slate-700 mb-2 border-b border-slate-100 pb-1">
+            Día: <span className="text-slate-900">{activeDay}</span>
+          </p>
 
-                {/* Filas por cada Día Visible */}
-                {listaDiasVisibles.map((dia) => {
-                  const valCap = rowData[`capacitiva_${dia}`];
-                  const valInd = rowData[`inductiva_${dia}`];
+          <div className="space-y-2 font-semibold text-[11px]">
+            {/* {mostrarCapacitiva && (
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-red-600 font-bold">
+                  <span className="size-2 rounded-full bg-red-500 inline-block"></span>
+                  kvar c (Capacitiva):
+                </span>
+                <span className="text-slate-900 font-black tabular-nums">
+                  {valCap !== undefined && valCap !== null ? `${Number(valCap).toFixed(2)} kvar` : '-'}
+                </span>
+              </div>
+            )}
 
-                  return (
-                    <tr key={dia} className="hover:bg-slate-50/70">
-                      <td className="py-1.5 pr-2 text-slate-600 font-bold whitespace-nowrap">{dia}</td>
-                      {mostrarCapacitiva && (
-                        <td className="py-1.5 px-2 text-right text-slate-900 tabular-nums">
-                          {valCap !== undefined && valCap !== null ? `${Number(valCap).toFixed(2)} (kvar c)` : '-'}
-                        </td>
-                      )}
-                      {mostrarInductiva && (
-                        <td className="py-1.5 pl-2 text-right text-slate-900 tabular-nums">
-                          {valInd !== undefined && valInd !== null ? `${Number(valInd).toFixed(2)} (kvar i)` : '-'}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            {mostrarInductiva && (
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-blue-600 font-bold">
+                  <span className="size-2 rounded-full bg-blue-600 inline-block"></span>
+                  kvar i (Inductiva):
+                </span>
+                <span className="text-slate-900 font-black tabular-nums">
+                  {valInd !== undefined && valInd !== null ? `${Number(valInd).toFixed(2)} kvar` : '-'}
+                </span>
+              </div>
+            )} */}
+
+            {mostrarCapacitiva && valCap > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-red-600 font-bold">
+                  <span className="size-2 rounded-full bg-red-500 inline-block"></span>
+                  kvar c (Capacitiva):
+                </span>
+                <span className="text-slate-900 font-black tabular-nums">
+                  {`${Number(valCap).toFixed(2)} kvar`}
+                </span>
+              </div>
+            )}
+
+            {mostrarInductiva && valInd > 0 && (
+              <div className="flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-blue-600 font-bold">
+                  <span className="size-2 rounded-full bg-blue-600 inline-block"></span>
+                  kvar i (Inductiva):
+                </span>
+                <span className="text-slate-900 font-black tabular-nums">
+                  {`${Number(valInd).toFixed(2)} kvar`}
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Pie de página con unidades */}
-          <div className="mt-2 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400 font-medium flex justify-between">
+          <div className="mt-2.5 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400 font-medium flex justify-between">
             <span>Valores en <strong>kvar</strong></span>
             <span className="font-bold text-[#0797d5]">Voltguard</span>
           </div>
@@ -775,75 +771,78 @@ const BoardDetailPage = () => {
     );
   };
 
-// ── SECCIÓN MODULAR 2: POTENCIA REACTIVA COMBINADA (KVAR C Y KVAR I) ──
+  // ── SECCIÓN MODULAR 2: POTENCIA REACTIVA POR DÍA SELECCIONADO ──
   const renderReactivePowerSection = () => {
     if (rawChartData.length === 0) return null;
 
-    // Constantes de color para RECHARTS (puedes definirlas fuera si prefieres)
-    const COLOR_INDUCTIVO_LINEA = "#1d4ed8"; // Azul intenso (Blue 700)
-    const COLOR_CAPACITIVO_LINEA = "#dc2626"; // Rojo intenso (Red 600)
+    const activeDay = selectedReactiveDay || seriesKeys[0] || "";
 
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
+        {/* Encabezado */}
         <div className="mb-5 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            {/* Ícono actualizado a Azul (corresponde a inductiva/principal) */}
             <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600">
               <Activity size={22} />
             </div>
             <div>
               <h2 className="font-bold text-slate-950 text-base">Análisis de Potencia Reactiva (Capacitiva e Inductiva)</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Monitoreo semanal continuado (Lunes a Domingo) para control del factor de potencia (kvar)</p>
+              <p className="text-xs text-slate-500 mt-0.5">Visualización detallada por día de las curvas de potencia reactiva (kvar)</p>
             </div>
           </div>
         </div>
 
-        {/* Control de visibilidad */}
-        <div className="space-y-2 mb-4">
+        {/* Controles: Selector de Día y Toggles de Visibilidad (Conservados) */}
+        <div className="space-y-3 mb-5">
+          {/* Barra de Selección de Día */}
+          <div className="flex gap-1.5 overflow-x-auto pb-1 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
+            <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">SELECCIONAR DÍA:</span>
+            {seriesKeys.map((key) => {
+              const isSelected = activeDay === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedReactiveDay(key)}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
+                      ? 'bg-slate-900 border-slate-900 text-white shadow-md scale-105'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                >
+                  {key}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Botones de Alternado de Visibilidad (kvar c / kvar i) */}
           <div className="flex gap-2 overflow-x-auto pb-1 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
-            {/* Botón Capacitiva - Mantiene Rojo */}
             <button
               type="button"
               onClick={() => toggleSerieVisibility("kvar_capacitivo")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_capacitivo"] ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'}`}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_capacitivo"] !== false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'
+                }`}
             >
-              <span className={`size-2.5 rounded-full inline-block ${visibleSeries["kvar_capacitivo"] ? 'bg-white' : 'bg-red-600'}`}></span>
+              <span className={`size-2.5 rounded-full inline-block ${visibleSeries["kvar_capacitivo"] !== false ? 'bg-white' : 'bg-red-600'}`}></span>
               kvar c (Capacitiva)
             </button>
-            {/* Botón Inductiva - Mantiene Azul */}
             <button
               type="button"
               onClick={() => toggleSerieVisibility("kvar_inductivo")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_inductivo"] ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-200'}`}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_inductivo"] !== false ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-200'
+                }`}
             >
-              <span className={`size-2.5 rounded-full inline-block ${visibleSeries["kvar_inductivo"] ? 'bg-white' : 'bg-blue-700'}`}></span>
+              <span className={`size-2.5 rounded-full inline-block ${visibleSeries["kvar_inductivo"] !== false ? 'bg-white' : 'bg-blue-700'}`}></span>
               kvar i (Inductiva)
             </button>
           </div>
-
-          {/* Botones de selección de Días */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-none">
-            <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
-            {seriesKeys.map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => toggleSerieVisibility(key)}
-                className={`rounded-xl px-3 py-1 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
-                  ? 'bg-slate-800 border-slate-800 text-white shadow-sm'
-                  : 'bg-white border-slate-200 text-slate-400'
-                  }`}
-              >
-                {key}
-              </button>
-            ))}
-          </div>
         </div>
 
+        {/* Gráfico Recharts dibujando los datos reales del día seleccionado */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
           <div className="h-72 sm:h-80 md:h-[380px] w-[850px] sm:w-full text-xs select-none">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dataFiltradaZoom} margin={{ top: 15, right: 15, left: 10, bottom: 25 }} style={{ border: "none" }}>
+              <LineChart data={dataFiltradaZoom} margin={{ top: 15, right: 15, left: 10, bottom: 25 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis
                   dataKey="horaMinuto"
@@ -861,47 +860,37 @@ const BoardDetailPage = () => {
                   />
                 </XAxis>
                 <YAxis tickLine={false} stroke="#94a3b8" width={45} domain={[0, 'auto']}>
-                  <Label value="Potencia Reactiva (kvar)" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px' }} />
+                  <Label value="N [kvar]" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px' }} />
                 </YAxis>
                 <Tooltip content={<ReactiveTooltip />} shared={true} />
 
-                {/* Líneas de Promedio (Grosor 3 para destacar) */}
-                {visibleSeries["kvar_capacitivo"] && (
-                  <Line type="monotone" name="Promedio Capacitivo" dataKey="kvar_capacitivo" stroke={COLOR_CAPACITIVO_LINEA} strokeWidth={3} dot={false} connectNulls />
-                )}
-                {visibleSeries["kvar_inductivo"] && (
-                  <Line type="monotone" name="Promedio Inductivo" dataKey="kvar_inductivo" stroke={COLOR_INDUCTIVO_LINEA} strokeWidth={3} dot={false} connectNulls />
+                {/* Línea Capacitiva Real (Rojo) */}
+                {visibleSeries["kvar_capacitivo"] !== false && activeDay && (
+                  <Line
+                    type="linear"
+                    name={`Ntotcap+ - ${activeDay}`}
+                    dataKey={`capacitiva_${activeDay}`}
+                    stroke={REACTIVE_COLOR_CAPACITIVE}
+                    strokeWidth={1.5}
+                    dot={false}
+                    connectNulls={true}
+                    isAnimationActive={false}
+                  />
                 )}
 
-                {/* Trazado diario individual (Usando las mismas constantes para consistencia) */}
-                {seriesKeys.map((key, _idx) => (
-                  <React.Fragment key={key}>
-                    {visibleSeries[key] !== false && visibleSeries["kvar_capacitivo"] && (
-                      <Line
-                        type="monotone"
-                        name={`kvar c - ${key}`}
-                        dataKey={`capacitiva_${key}`}
-                        stroke={COLOR_CAPACITIVO_LINEA}
-                        strokeWidth={1}
-                        strokeOpacity={0.5} // Opacidad baja para no saturar
-                        dot={false}
-                        connectNulls
-                      />
-                    )}
-                    {visibleSeries[key] !== false && visibleSeries["kvar_inductivo"] && (
-                      <Line
-                        type="monotone"
-                        name={`kvar i - ${key}`}
-                        dataKey={`inductiva_${key}`}
-                        stroke={COLOR_INDUCTIVO_LINEA}
-                        strokeWidth={1}
-                        strokeOpacity={0.5} // Opacidad baja
-                        dot={false}
-                        connectNulls
-                      />
-                    )}
-                  </React.Fragment>
-                ))}
+                {/* Línea Inductiva Real (Azul) */}
+                {visibleSeries["kvar_inductivo"] !== false && activeDay && (
+                  <Line
+                    type="linear"
+                    name={`Ntotind+ - ${activeDay}`}
+                    dataKey={`inductiva_${activeDay}`}
+                    stroke={REACTIVE_COLOR_INDUCTIVE}
+                    strokeWidth={1.5}
+                    dot={false}
+                    connectNulls={true}
+                    isAnimationActive={false}
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </div>

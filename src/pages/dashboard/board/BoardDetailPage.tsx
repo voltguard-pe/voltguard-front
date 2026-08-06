@@ -9,6 +9,7 @@ import {
   ChartNoAxesCombined,
   CheckCircle2,
   Clock,
+  Coins,
   Container,
   FileDown,
   FileImage,
@@ -18,6 +19,7 @@ import {
   MapPin,
   RefreshCw,
   Shield,
+  Sun,
   // ShieldCheck,
   UploadCloud,
   X,
@@ -805,8 +807,8 @@ const BoardDetailPage = () => {
                   type="button"
                   onClick={() => setSelectedReactiveDay(key)}
                   className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
-                      ? 'bg-slate-900 border-slate-900 text-white shadow-md scale-105'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    ? 'bg-slate-900 border-slate-900 text-white shadow-md scale-105'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                     }`}
                 >
                   {key}
@@ -899,17 +901,22 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── SECCIÓN MODULAR 3: ENERGÍA CONSUMIDA POR DÍA ──
+  // ── SECCIÓN MODULAR 3: ENERGÍA CONSUMIDA POR DÍA (CON TARJETAS RESUMEN) ──
   const renderEnergyBarSection = () => {
     const barrasVisibles = energiaPorDiaData.filter(d => visibleSeries[d.name] !== false);
 
     if (barrasVisibles.length === 0) return null;
 
+    // ── CÁLCULOS PARA LAS TARJETAS RESUMEN ──
+    const totalKWhSemana = barrasVisibles.reduce((acc, curr) => acc + (curr.kWh || 0), 0);
+    const promedioKWhDiario = barrasVisibles.length > 0 ? totalKWhSemana / barrasVisibles.length : 0;
+    const proyeccionKWhMes = promedioKWhDiario * 30;
+    const proyeccionKWhAno = promedioKWhDiario * 365;
+
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
-            {/* Ícono actualizado a AZUL */}
             <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-blue-500/10 text-blue-600">
               <Container size={20} className="sm:size-[22px]" />
             </div>
@@ -920,7 +927,37 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Botones interactivos - Actualizados a AZUL */}
+        {/* ── TARJETAS DE RESUMEN EN TONOS AZULES ── */}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Tarjeta 1: Promedio Diario */}
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Consumo Diario Promedio</p>
+            <p className="mt-1 text-2xl font-black text-blue-950">
+              {promedioKWhDiario.toFixed(1)} <span className="text-xs font-bold text-blue-600">kWh/día</span>
+            </p>
+            <p className="mt-1 text-[10px] text-blue-500">Promedio sobre los días seleccionados</p>
+          </div>
+
+          {/* Tarjeta 2: Proyección Mensual */}
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Proyección Mensual (30 días)</p>
+            <p className="mt-1 text-2xl font-black text-blue-950">
+              {proyeccionKWhMes.toFixed(1)} <span className="text-xs font-bold text-blue-600">kWh/mes</span>
+            </p>
+            <p className="mt-1 text-[10px] text-blue-500">Estimación a 30 días de operación</p>
+          </div>
+
+          {/* Tarjeta 3: Proyección Anual */}
+          <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Proyección Anual (365 días)</p>
+            <p className="mt-1 text-2xl font-black text-blue-950">
+              {proyeccionKWhAno.toFixed(0)} <span className="text-xs font-bold text-blue-600">kWh/año</span>
+            </p>
+            <p className="mt-1 text-[10px] text-blue-500">Estimación a 365 días de operación</p>
+          </div>
+        </div>
+
+        {/* Botones de Selección de Días */}
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
           {seriesKeys.map((key) => (
@@ -928,10 +965,9 @@ const BoardDetailPage = () => {
               key={key}
               type="button"
               onClick={() => toggleSerieVisibility(key)}
-              // Clases actualizadas: bg-blue-700, border-blue-700
               className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
-                ? 'bg-blue-700 border-blue-700 text-white shadow-sm'
-                : 'bg-white border-slate-200 text-slate-400'
+                  ? 'bg-blue-700 border-blue-700 text-white shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-400'
                 }`}
             >
               {key}
@@ -939,6 +975,7 @@ const BoardDetailPage = () => {
           ))}
         </div>
 
+        {/* Gráfico de Barras */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
             <ResponsiveContainer width="100%" height="100%">
@@ -957,7 +994,6 @@ const BoardDetailPage = () => {
                   <Label value="Energía Activa (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
                 </YAxis>
                 <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(value: any) => [`${Number(value).toFixed(1)} kWh`, 'Consumo Total']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                {/* Relleno de Barra actualizado a AZUL (Blue 600) */}
                 <Bar dataKey="kWh" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={50} />
               </BarChart>
             </ResponsiveContainer>
@@ -1072,6 +1108,205 @@ const BoardDetailPage = () => {
                 <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(val: any) => [`${Number(val).toFixed(4)} tCO₂ (${(Number(val) * 1000).toFixed(1)} kg CO₂)`, 'Huella de Carbono']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
                 {/* Relleno de Barra actualizado a GRIS (Slate 500) */}
                 <Bar dataKey="tCO2" fill="#64748b" radius={[6, 6, 0, 0]} maxBarSize={50} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+  // ── ESTADO Y TARIFAS PARA COSTO DE ENERGÍA Y ENERGÍA SOLAR ──
+  // Precio promedio referencial de la energía en Perú: ~S/. 0.45 por kWh
+  const TARIFO_KWH_PEN = 0.45;
+
+  // Rendimiento estimado de generación solar referencial (kWh/kWp al día)
+  const FACTOR_GENERACION_SOLAR_DIARIO = 0.15;
+
+  // ── SECCIÓN MODULAR 5: COSTO DE ENERGÍA ESTIMADO (S/.) ──
+  const renderEnergyCostSection = () => {
+    const costoData = energiaPorDiaData
+      .filter(d => visibleSeries[d.name] !== false)
+      .map(item => {
+        const costoSoles = (item.kWh || 0) * TARIFO_KWH_PEN;
+        return {
+          name: item.name,
+          costo: Number(costoSoles.toFixed(2)),
+          kWh: item.kWh
+        };
+      });
+
+    if (costoData.length === 0) return null;
+
+    const totalCostoSemana = costoData.reduce((acc, curr) => acc + curr.costo, 0);
+    const promedioCostoDiario = costoData.length > 0 ? totalCostoSemana / costoData.length : 0;
+
+    return (
+      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
+          <div className="flex items-center gap-3">
+            {/* Ícono Ámbar/Amarillo */}
+            <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-600">
+              <Coins size={20} className="sm:size-[22px]" />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">Costo de Energía Estimado (S/.)</h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Estimación económica del consumo eléctrico diario en soles (S/.)</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tarjeta de Resumen en Tono Ámbar */}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Costo Total del Periodo</p>
+            <p className="mt-1 text-2xl font-black text-amber-950">
+              S/. {totalCostoSemana.toFixed(2)}
+            </p>
+            <p className="mt-1 text-[10px] text-amber-600">Basado en tarifa promediada de S/. {TARIFO_KWH_PEN} / kWh</p>
+          </div>
+
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Gasto Diario Promedio</p>
+            <p className="mt-1 text-2xl font-black text-amber-950">
+              S/. {promedioCostoDiario.toFixed(2)} <span className="text-xs font-bold text-amber-600">/ día</span>
+            </p>
+            <p className="mt-1 text-[10px] text-amber-600">Promedio sobre días seleccionados</p>
+          </div>
+        </div>
+
+        {/* Botones de Días en Tono Ámbar */}
+        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
+          <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
+          {seriesKeys.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggleSerieVisibility(key)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
+                ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                : 'bg-white border-slate-200 text-slate-400'
+                }`}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
+          <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={costoData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
+                  <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                </XAxis>
+                <YAxis tickLine={false} stroke="#94a3b8" width={60} tick={{ fontSize: '10px' }} tickFormatter={(val) => `S/. ${val}`}>
+                  <Label value="Costo (S/.)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                </YAxis>
+                <Tooltip
+                  cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
+                  formatter={(val: any) => [`S/. ${Number(val).toFixed(2)}`, 'Costo Estimado']}
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                />
+                {/* Relleno de Barra en Ámbar/Amarillo (Amber 500) */}
+                <Bar dataKey="costo" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={50} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+  // ── SECCIÓN MODULAR 6: GENERACIÓN / POTENCIAL DE ENERGÍA SOLAR (kWh) ──
+  const renderSolarEnergySection = () => {
+    const solarData = energiaPorDiaData
+      .filter(d => visibleSeries[d.name] !== false)
+      .map(item => {
+        // Estimación de potencial/generación solar offset por consumo
+        const solarKWh = (item.kWh || 0) * FACTOR_GENERACION_SOLAR_DIARIO;
+        return {
+          name: item.name,
+          solarKWh: Number(solarKWh.toFixed(1)),
+          consumoTotal: item.kWh
+        };
+      });
+
+    if (solarData.length === 0) return null;
+
+    const totalSolar = solarData.reduce((acc, curr) => acc + curr.solarKWh, 0);
+
+    return (
+      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
+          <div className="flex items-center gap-3">
+            {/* Ícono Verde Solar */}
+            <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600">
+              <Sun size={20} className="sm:size-[22px]" />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">Potencial de Energía Solar por Día</h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Estimación de generación fotovoltaica por día expresada en KiloVatios-Hora (kWh)</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tarjeta de Resumen Verde */}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Generación Solar Estimada Total</p>
+            <p className="mt-1 text-2xl font-black text-emerald-950">
+              {totalSolar.toFixed(1)} <span className="text-xs font-bold text-emerald-600">kWh</span>
+            </p>
+            <p className="mt-1 text-[10px] text-emerald-600">Ahorro verde equivalente en el periodo filtrado</p>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Cobertura Solar Estimada</p>
+            <p className="mt-1 text-2xl font-black text-emerald-950">
+              {(FACTOR_GENERACION_SOLAR_DIARIO * 100).toFixed(0)}% <span className="text-xs font-bold text-emerald-600">del consumo</span>
+            </p>
+            <p className="mt-1 text-[10px] text-emerald-600">Proyección de autogeneración sobre la demanda</p>
+          </div>
+        </div>
+
+        {/* Botones de Días en Tono Verde */}
+        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
+          <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
+          {seriesKeys.map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggleSerieVisibility(key)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
+                ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+                : 'bg-white border-slate-200 text-slate-400'
+                }`}
+            >
+              {key}
+            </button>
+          ))}
+        </div>
+
+        <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
+          <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={solarData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
+                  <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                </XAxis>
+                <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
+                  <Label value="Energía Solar (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                </YAxis>
+                <Tooltip
+                  cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
+                  formatter={(val: any) => [`${Number(val).toFixed(1)} kWh`, 'Energía Solar']}
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                />
+                {/* Relleno de Barra en Verde (Emerald 600) */}
+                <Bar dataKey="solarKWh" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={50} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1614,6 +1849,8 @@ const BoardDetailPage = () => {
         {renderReactivePowerSection()}
         {renderEnergyBarSection()}
         {renderCarbonEmissionsSection()}
+        {renderEnergyCostSection()}   {/* ← Gráfico de Costo (S/.) en Ámbar */}
+        {renderSolarEnergySection()}  {/* ← Gráfico de Energía Solar en Verde */}
 
         {/* ── ESPECIFICACIONES TÉCNICAS (CASCADA COMPACTA) ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

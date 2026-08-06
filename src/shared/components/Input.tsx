@@ -2,7 +2,7 @@ import { Eye, EyeOff, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 
 type InputProps = {
-  label: string;
+  label?: string;
   name?: string;
   value: string | number;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -15,6 +15,7 @@ type InputProps = {
   min?: number;
   max?: number;
   step?: number;
+  maxLength?: number;
   error?: string;
 };
 
@@ -32,11 +33,12 @@ const Input = ({
   min,
   max,
   step,
+  maxLength,
   error,
 }: InputProps) => {
   const [showPassword, setShowPassword] = useState(false);
 
-  const inputId = name || label.toLowerCase().replace(/\s+/g, "-");
+  const inputId = name || label?.toLowerCase().replace(/\s+/g, "-");
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (type === "password" && event.target.value === "") {
@@ -69,6 +71,7 @@ const Input = ({
           min={min}
           max={max}
           step={step}
+          maxLength={maxLength}
           aria-invalid={!!error}
           aria-describedby={error ? `${inputId}-error` : undefined}
           className={`w-full rounded-2xl border bg-white py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400 ${

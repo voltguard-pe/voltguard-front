@@ -196,24 +196,6 @@ function FloatingParticles({ count = 8 }: { count?: number }) {
     );
 }
 
-function ElectricOrbit() {
-    return (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none" style={{ width: 220, height: 220 }}>
-            <div className="absolute inset-0 rounded-full border border-[#0797d5]/20" style={{ animation: "spinSlow 20s linear infinite" }}>
-                <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 size-3 rounded-full bg-[#0797d5]" style={{ boxShadow: "0 0 10px #0797d5" }} />
-            </div>
-            <div className="absolute inset-6 rounded-full border border-[#8ccf2f]/20" style={{ animation: "spinSlow 14s linear infinite reverse" }}>
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 size-2 rounded-full bg-[#8ccf2f]" style={{ boxShadow: "0 0 8px #8ccf2f" }} />
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-                <div className="size-12 rounded-2xl bg-gradient-to-br from-[#0797d5] to-[#05c4f7] flex items-center justify-center shadow-lg shadow-[#0797d5]/40" style={{ animation: "glowPulse 3s ease-in-out infinite" }}>
-                    <Zap size={22} color="white" style={{ animation: "electricPulse 1.5s ease-in-out infinite" }} />
-                </div>
-            </div>
-        </div>
-    );
-}
-
 /* ─── Stat sub-components ────────────────────────────────────────────────── */
 
 function AnimatedStat({ target, suffix, label, active, duration }: Stat & { active: boolean; duration?: number }) {
@@ -395,42 +377,6 @@ function PlanCard({ plan, index, active }: { plan: Plan; index: number; active: 
     );
 }
 
-/* ─── AI Badge & Widgets ─────────────────────────────────────────────────── */
-
-function AIBadge() {
-    const [frame, setFrame] = useState(0);
-    useEffect(() => { const t = setInterval(() => setFrame(f => (f + 1) % 4), 600); return () => clearInterval(t); }, []);
-    const dots = "·".repeat(frame + 1).padEnd(4, " ");
-    return (
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#8ccf2f]/30 bg-[#8ccf2f]/8 text-xs font-bold text-[#5a8c1a] mb-3">
-            <Cpu size={12} className="text-[#8ccf2f]" style={{ animation: "zap 1.2s ease-in-out infinite" }} />
-            IA Integrada {dots}
-        </div>
-    );
-}
-
-function LiveVoltageWidget() {
-    const [values, setValues] = useState([220, 219, 221, 220, 218, 222]);
-    useEffect(() => { const t = setInterval(() => setValues(v => [...v.slice(1), 218 + Math.round(Math.random() * 6)]), 800); return () => clearInterval(t); }, []);
-    const max = 225, min = 215;
-    const pts = values.map((v, i) => { const x = (i / (values.length - 1)) * 120; const y = 30 - ((v - min) / (max - min)) * 24; return `${x},${y}`; }).join(" ");
-    return (
-        <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-lg min-w-[160px]" style={{ animation: "float 5s ease-in-out 0.8s infinite" }}>
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-slate-500">Estado ITSE / CNE</span>
-                <span className="size-1.5 rounded-full bg-[#8ccf2f]" style={{ animation: "pulseRing 1.5s ease-out infinite", boxShadow: "0 0 6px #8ccf2f" }} />
-            </div>
-            <div className="flex items-end gap-1.5 mb-1">
-                <span className="text-xl font-black text-slate-950 tabular-nums" style={{ animation: "countBounce 0.4s ease" }}>Conforme</span>
-            </div>
-            <svg width="120" height="32" viewBox="0 0 120 32">
-                <defs><linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor="#0797d5" /><stop offset="100%" stopColor="#8ccf2f" /></linearGradient></defs>
-                <polyline points={pts} fill="none" stroke="url(#lineGrad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-        </div>
-    );
-}
-
 /* ─── Scroll Progress ────────────────────────────────────────────────────── */
 
 function ScrollProgress() {
@@ -459,9 +405,6 @@ export default function HomePage() {
     const { ref: normHeadRef, inView: normHeadVisible } = useInViewRepeatable(0.15);
     const { ref: testimonialRef, inView: testimonialVisible } = useInViewRepeatable(0.15);
 
-    const [dotScale, setDotScale] = useState(1);
-    useEffect(() => { const t = setInterval(() => setDotScale(s => s === 1 ? 0.6 : 1), 900); return () => clearInterval(t); }, []);
-
     const scrollToFeatures = useCallback(() => {
         document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
     }, []);
@@ -472,67 +415,46 @@ export default function HomePage() {
             <ScrollProgress />
 
             {/* ── HERO ─────────────────────────────────────────────────────── */}
-            <section className="relative overflow-hidden pt-10">
-                <BackgroundGrid />
-                <FloatingParticles count={10} />
-                <div className="absolute -top-32 -left-32 size-96 rounded-full bg-[#0797d5]/12 blur-3xl pointer-events-none" style={{ animation: "blobMove 8s ease-in-out infinite" }} />
-                <div className="absolute top-10 -right-32 size-80 rounded-full bg-[#8ccf2f]/10 blur-3xl pointer-events-none" style={{ animation: "blobMove 10s ease-in-out 2s infinite reverse" }} />
+            {/* ── HERO ─────────────────────────────────────────────────────── */}
+<section className="relative overflow-hidden pt-10">
+    <BackgroundGrid />
+    <FloatingParticles count={10} />
+    <div className="absolute -top-32 -left-32 size-96 rounded-full bg-[#0797d5]/12 blur-3xl pointer-events-none" style={{ animation: "blobMove 8s ease-in-out infinite" }} />
+    <div className="absolute top-10 -right-32 size-80 rounded-full bg-[#8ccf2f]/10 blur-3xl pointer-events-none" style={{ animation: "blobMove 10s ease-in-out 2s infinite reverse" }} />
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 items-center relative z-10">
-                    <div style={{ animation: "fadeUp 0.6s ease both" }}>
-                        <div className="flex flex-col items-start gap-3 mb-6">
-                            <AIBadge />
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#0797d5]/20 bg-[#0797d5]/5 text-sm font-semibold text-[#0797d5]" style={{ animation: "fadeUp 0.5s ease 0.1s both" }}>
-                                <span className="size-2 rounded-full bg-[#8ccf2f] relative" style={{ transform: `scale(${dotScale})`, transition: "transform 0.4s ease" }}>
-                                    <span className="absolute inset-[-4px] rounded-full border-2 border-[#8ccf2f] animate-ping opacity-60" />
-                                </span>
-                                Gestión para Inspecciones Técnicas de Seguridad (ITSE)
-                            </div>
-                        </div>
-                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-950 leading-[1.06]" style={{ animation: "fadeUp 0.6s ease 0.15s both" }}>
-                            Garantiza tu Licencia e Inspección ITSE con{" "}
-                            <span className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] bg-clip-text text-transparent" style={{ backgroundSize: "200% 200%", animation: "gradShift 4s ease infinite" }}>Voltguard</span>
-                        </h1>
-                        <p className="mt-5 text-lg text-slate-600 leading-8 max-w-xl" style={{ animation: "fadeUp 0.6s ease 0.25s both" }}>
-                            Simplifica el levantamiento de observaciones en tableros eléctricos. Obtén diagramas unifilares CAD, rotulado bajo CNE y certificados respaldados por Ingeniero Colegiado (CIP).
-                        </p>
-                        <div className="mt-8 flex flex-col sm:flex-row gap-3" style={{ animation: "fadeUp 0.6s ease 0.35s both" }}>
-                            <button onClick={() => navigate("/auth")} className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-[#0797d5] to-[#05c4f7] hover:from-[#087fb3] hover:to-[#0797d5] text-white font-bold text-sm rounded-2xl transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#0797d5]/40 relative overflow-hidden cursor-pointer">
-                                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-500" />
-                                Adquirir Licencia Voltguard <ArrowRight size={17} className="group-hover:translate-x-1 transition-transform duration-300" />
-                            </button>
-                            <button onClick={scrollToFeatures} className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white border border-slate-200 hover:border-[#0797d5]/50 text-slate-700 hover:text-[#0797d5] font-bold text-sm rounded-2xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:shadow-[#0797d5]/10 cursor-pointer">
-                                <TrendingUp size={16} className="group-hover:text-[#0797d5] transition-colors" />
-                                Alcance y Funcionalidades
-                            </button>
-                        </div>
-                        <div ref={heroStatsRef} className="mt-8 flex items-center gap-6" style={{ animation: "fadeUp 0.6s ease 0.45s both" }}>
-                            {heroStats.map((s, i) => (
-                                <div key={s.id} className="flex items-center gap-6">
-                                    <AnimatedStat {...s} active={heroStatsVisible} duration={900 + i * 200} />
-                                    {i < heroStats.length - 1 && <div className="w-px h-8 bg-gradient-to-b from-transparent via-slate-200 to-transparent" />}
-                                </div>
-                            ))}
-                        </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 items-center relative z-10">
+        <div style={{ animation: "fadeUp 0.6s ease both" }}>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-950 leading-[1.06]" style={{ animation: "fadeUp 0.6s ease 0.15s both" }}>
+                Garantiza tu Licencia e Inspección ITSE con{" "}
+                <span className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] bg-clip-text text-transparent" style={{ backgroundSize: "200% 200%", animation: "gradShift 4s ease infinite" }}>Voltguard</span>
+            </h1>
+            <p className="mt-5 text-lg text-slate-600 leading-8 max-w-xl" style={{ animation: "fadeUp 0.6s ease 0.25s both" }}>
+                Simplifica el levantamiento de observaciones en tableros eléctricos. Obtén diagramas unifilares CAD, rotulado bajo CNE y certificados respaldados por Ingeniero Colegiado (CIP).
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3" style={{ animation: "fadeUp 0.6s ease 0.35s both" }}>
+                <button onClick={scrollToFeatures} className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white border border-slate-200 hover:border-[#0797d5]/50 text-slate-700 hover:text-[#0797d5] font-bold text-sm rounded-2xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:shadow-[#0797d5]/10 cursor-pointer">
+                    <TrendingUp size={16} className="group-hover:text-[#0797d5] transition-colors" />
+                    Alcance y Funcionalidades
+                </button>
+            </div>
+            <div ref={heroStatsRef} className="mt-8 flex items-center gap-6" style={{ animation: "fadeUp 0.6s ease 0.45s both" }}>
+                {heroStats.map((s, i) => (
+                    <div key={s.id} className="flex items-center gap-6">
+                        <AnimatedStat {...s} active={heroStatsVisible} duration={900 + i * 200} />
+                        {i < heroStats.length - 1 && <div className="w-px h-8 bg-gradient-to-b from-transparent via-slate-200 to-transparent" />}
                     </div>
+                ))}
+            </div>
+        </div>
 
-                    <div ref={heroCardRef} className="relative" style={{ opacity: heroCardVisible ? 1 : 0, transform: heroCardVisible ? "translateX(0)" : "translateX(40px)", transition: "opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s" }}>
-                        <div className="absolute -top-12 -right-12 pointer-events-none opacity-50"><ElectricOrbit /></div>
-                        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl shadow-slate-200/80 hover:shadow-[#0797d5]/20 transition-shadow duration-500" style={{ animation: "float 5s ease-in-out infinite" }}>
-                            <img src="/hero-technician2.webp" alt="Ingeniero realizando inspección eléctrica ITSE" className="rounded-3xl object-cover h-[520px] w-full" />
-                            <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-[#0797d5]/10 via-transparent to-transparent pointer-events-none" />
-                        </div>
-                        <div className="absolute -top-4 -right-3 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-xl hover:shadow-[#0797d5]/20 hover:border-[#0797d5]/30 hover:scale-105 transition-all duration-300 cursor-default" style={{ animation: "float 4s ease-in-out 0.5s infinite" }}>
-                            <div className="text-xl font-black text-[#0797d5]" style={{ animation: "electricPulse 2s ease-in-out infinite" }}>NORMA ITSE</div>
-                            <div className="text-xs text-slate-500 mt-0.5">CNE · CIP · NFPA</div>
-                        </div>
-                        <div className="absolute -bottom-4 -left-3" style={{ animation: "float 6s ease-in-out 1s infinite" }}><LiveVoltageWidget /></div>
-                        <div className="absolute top-0 -left-4 -translate-y-1/2 bg-gradient-to-r from-[#0797d5] to-[#05c4f7] text-white rounded-2xl px-3 py-2 shadow-lg shadow-[#0797d5]/30" style={{ animation: "floatReverse 5s ease-in-out 2s infinite" }}>
-                            <div className="flex items-center gap-1.5 text-xs font-bold"><Activity size={12} style={{ animation: "zap 1s ease-in-out infinite" }} />Dictamen CIP Aprobado</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
+        <div ref={heroCardRef} className="relative" style={{ opacity: heroCardVisible ? 1 : 0, transform: heroCardVisible ? "translateX(0)" : "translateX(40px)", transition: "opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s" }}>
+            <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl shadow-slate-200/80 hover:shadow-[#0797d5]/20 transition-shadow duration-500" style={{ animation: "float 5s ease-in-out infinite" }}>
+                <img src="/hero-technician2.webp" alt="Ingeniero realizando inspección eléctrica ITSE" className="rounded-3xl object-cover h-[520px] w-full" />
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-[#0797d5]/10 via-transparent to-transparent pointer-events-none" />
+            </div>
+        </div>
+    </div>
+</section>
 
             {/* ── STRIP FOTOS ─────────────────────────────────────────────── */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

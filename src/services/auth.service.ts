@@ -10,6 +10,11 @@ export interface RegisterData {
     lastname: string;
     email: string;
     password: string;
+    company: string;
+    ruc: string;
+    cargo: string;
+    phone: string;
+    referralSource: string;
     companyPublicCode?: string;
 }
 

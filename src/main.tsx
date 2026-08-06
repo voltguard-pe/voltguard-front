@@ -6,8 +6,6 @@ import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3'
 
 const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
 
-console.log("Key cargada:", import.meta.env.VITE_RECAPTCHA_SITE_KEY);
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <GoogleReCaptchaProvider reCaptchaKey={recaptchaKey}>

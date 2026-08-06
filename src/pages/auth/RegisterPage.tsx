@@ -186,20 +186,18 @@ const RegisterPage = () => {
           ].map((s, idx) => (
             <div key={s.num} className="flex items-center gap-2">
               <div
-                className={`flex size-7 items-center justify-center rounded-full text-xs font-bold transition-all ${
-                  step === s.num
+                className={`flex size-7 items-center justify-center rounded-full text-xs font-bold transition-all ${step === s.num
                     ? "bg-[#0797d5] text-white shadow-md shadow-[#0797d5]/30"
                     : step > s.num
-                    ? "bg-emerald-500 text-white"
-                    : "bg-slate-100 text-slate-400"
-                }`}
+                      ? "bg-emerald-500 text-white"
+                      : "bg-slate-100 text-slate-400"
+                  }`}
               >
                 {step > s.num ? "✓" : s.num}
               </div>
               <span
-                className={`text-xs font-semibold ${
-                  step === s.num ? "text-slate-900" : "text-slate-400"
-                }`}
+                className={`text-xs font-semibold ${step === s.num ? "text-slate-900" : "text-slate-400"
+                  }`}
               >
                 {s.label}
               </span>

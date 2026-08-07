@@ -106,11 +106,18 @@ const BoardDetailPage = () => {
   const [rawChartData, setRawChartData] = useState<any[]>([]);
   const [seriesKeys, setSeriesKeys] = useState<string[]>([]);
   const [selectedReactiveDay, setSelectedReactiveDay] = useState<string | null>(null); // ← AÑADIR ESTA LÍNEA
-  const [visibleSeries, setVisibleSeries] = useState<{ [key: string]: boolean }>({
+  // ── ESTADOS DE VISIBILIDAD POR SECCIÓN (INDEPENDIENTES) ──
+  const [visibleDemandSeries, setVisibleDemandSeries] = useState<{ [key: string]: boolean }>({
     "Promedio_General": true,
-    "kvar_inductivo": true,
-    "kvar_capacitivo": true
   });
+  const [visibleReactiveSeries, setVisibleReactiveSeries] = useState<{ [key: string]: boolean }>({
+    "kvar_inductivo": true,
+    "kvar_capacitivo": true,
+  });
+  const [visibleEnergySeries, setVisibleEnergySeries] = useState<{ [key: string]: boolean }>({});
+  const [visibleCarbonSeries, setVisibleCarbonSeries] = useState<{ [key: string]: boolean }>({});
+  const [visibleCostSeries, setVisibleCostSeries] = useState<{ [key: string]: boolean }>({});
+  const [visibleSolarSeries, setVisibleSolarSeries] = useState<{ [key: string]: boolean }>({});
   const [importing, setImporting] = useState(false);
 
   // ── ESTADOS DE FILTROS TEMPORALES Y LÍMITES ──
@@ -125,8 +132,8 @@ const BoardDetailPage = () => {
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
   // ── ESTADOS DE TARIFAS Y ANÁLISIS ENERGÉTICO ──
-  const [tarifaContratada, setTarifaContratada] = useState<number>(350);
-  const [costokW_HP, setCostokW_HP] = useState<number>(48.50);
+  const [tarifaContratada] = useState<number>(350);
+  const [costokW_HP] = useState<number>(48.50);
   const [costokW_HFP] = useState<number>(22.10);
   const [horaPicoMaximo, setHoraPicoMaximo] = useState<string | null>(null);
   const [analisisPotencia, setAnalisisPotencia] = useState<{
@@ -134,9 +141,6 @@ const BoardDetailPage = () => {
     maxHFP: { valor: number; hora: string; fecha: string } | null;
     ahorroEstimado: number;
   } | null>(null);
-
-  console.log(setTarifaContratada)
-  console.log(setCostokW_HP)
 
   const [energiaPorDiaData, setEnergiaPorDiaData] = useState<any[]>([]);
 
@@ -235,12 +239,16 @@ const BoardDetailPage = () => {
       // ← AÑADIR ESTA LÍNEA: Asigna el primer día disponible al cargar los datos
       setSelectedReactiveDay(prev => (prev && sortedCleanKeys.includes(prev) ? prev : sortedCleanKeys[0] || null));
 
-      // Inicializar todos los días visibles por defecto
-      setVisibleSeries(prev => {
+      // Inicializar visibilidad en la carga de datos
+      const initialVisibility: { [key: string]: boolean } = {};
+      sortedCleanKeys.forEach((k) => {
+        initialVisibility[k] = true;
+      });
+
+      // 1. Visibilidad para Cuadro de Demanda (Promedio + Días)
+      setVisibleDemandSeries(prev => {
         const visibility: any = {
-          "Promedio_General": prev["Promedio_General"] ?? true,
-          "kvar_inductivo": prev["kvar_inductivo"] ?? true,
-          "kvar_capacitivo": prev["kvar_capacitivo"] ?? true
+          "Promedio_General": prev["Promedio_General"] ?? true
         };
         sortedCleanKeys.forEach((k) => {
           visibility[k] = prev[k] !== undefined ? prev[k] : true;
@@ -248,9 +256,44 @@ const BoardDetailPage = () => {
         return visibility;
       });
 
+      // 2. Visibilidad para Potencia Reactiva (Capacitiva e Inductiva)
+      setVisibleReactiveSeries(prev => ({
+        "kvar_inductivo": prev["kvar_inductivo"] ?? true,
+        "kvar_capacitivo": prev["kvar_capacitivo"] ?? true
+      }));
+
+      // 3. Inicializar el resto de secciones por separado
+      setVisibleEnergySeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
+      setVisibleCarbonSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
+      setVisibleCostSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
+      setVisibleSolarSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
     } catch (err) {
       console.error("Error cargando curvas de demanda en Recharts:", err);
     }
+  };
+
+  const toggleDemandDay = (key: string) => {
+    setVisibleDemandSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleReactiveDay = (key: string) => {
+    setVisibleReactiveSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleEnergyDay = (key: string) => {
+    setVisibleEnergySeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleCarbonDay = (key: string) => {
+    setVisibleCarbonSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleCostDay = (key: string) => {
+    setVisibleCostSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const toggleSolarDay = (key: string) => {
+    setVisibleSolarSeries(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   // ── EFECTO PARA PASIVE LISTENERS EN SCROLL WHEEL DEL GRÁFICO ──
@@ -359,10 +402,6 @@ const BoardDetailPage = () => {
     setZoomRange({ startIdx: 0, endIdx: 287 });
   };
 
-  const toggleSerieVisibility = (key: string) => {
-    setVisibleSeries(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
   const handleApplyDateFilter = () => {
     if (board?._id) {
       handleResetZoom();
@@ -372,27 +411,37 @@ const BoardDetailPage = () => {
 
   const dataFiltradaZoom = rawChartData.slice(zoomRange.startIdx, zoomRange.endIdx + 1);
 
-  // ── LÓGICA TARIFARIA LUZ DEL SUR ──
+// ── LÓGICA TARIFARIA LUZ DEL SUR (CORREGIDA) ──
   const calcularMetricasLuzDelSur = (data: any[]) => {
     if (!data || data.length === 0) return;
 
     let maxHP = { valor: 0, hora: "", fecha: "" };
     let maxHFP = { valor: 0, hora: "", fecha: "" };
-    let valorPicoAbsoluto = 0;
+    let valorPicoAbsoluto = -1;
     let horaPicoAbsoluto = "";
 
     data.forEach((row) => {
       const horaStr = row.horaMinuto;
+      if (!horaStr) return;
+
       const [horas, minutos] = horaStr.split(":").map(Number);
       const totalMinutos = horas * 60 + minutos;
 
+      // Hora Punta: 18:00 a 23:00 (1080 min a 1380 min)
       const esHoraPunta = totalMinutos >= 18 * 60 && totalMinutos < 23 * 60;
 
       Object.keys(row).forEach((key) => {
-        if (key === "horaMinuto" || key === "Promedio_General") return;
+        // Ignorar horas y series auxiliares de kvar (inductiva_/capacitiva_)
+        if (
+          key === "horaMinuto" || 
+          key === "Promedio_General" || 
+          key.startsWith("inductiva_") || 
+          key.startsWith("capacitiva_") || 
+          key.startsWith("kvar_")
+        ) return;
 
-        const valor = row[key];
-        if (valor !== null && valor !== undefined) {
+        const valor = Number(row[key]);
+        if (!isNaN(valor) && valor !== null && valor !== undefined) {
           if (valor > valorPicoAbsoluto) {
             valorPicoAbsoluto = valor;
             horaPicoAbsoluto = horaStr;
@@ -439,8 +488,8 @@ const BoardDetailPage = () => {
       const valCap = rowData[`capacitiva_${activeDay}`];
       const valInd = rowData[`inductiva_${activeDay}`];
 
-      const mostrarCapacitiva = visibleSeries["kvar_capacitivo"] !== false;
-      const mostrarInductiva = visibleSeries["kvar_inductivo"] !== false;
+      const mostrarCapacitiva = visibleReactiveSeries["kvar_capacitivo"] !== false;
+      const mostrarInductiva = visibleReactiveSeries["kvar_inductivo"] !== false;
 
       return (
         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl font-sans text-xs min-w-[220px]">
@@ -633,8 +682,8 @@ const BoardDetailPage = () => {
             <div className="flex gap-1.5 overflow-x-auto pb-2 sm:pb-0 sm:flex-wrap rounded-2xl bg-slate-100 p-2 border border-slate-200/40 scrollbar-none">
               <button
                 type="button"
-                onClick={() => toggleSerieVisibility("Promedio_General")}
-                className={`flex shrink-0 items-center gap-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["Promedio_General"] ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white border-slate-200 text-slate-600'
+                onClick={() => toggleDemandDay("Promedio_General")}
+                className={`flex shrink-0 items-center gap-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleDemandSeries["Promedio_General"] ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white border-slate-200 text-slate-600'
                   }`}
               >
                 <ChartNoAxesCombined size={14} /> Promedio General
@@ -643,8 +692,8 @@ const BoardDetailPage = () => {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => toggleSerieVisibility(key)}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-600'
+                  onClick={() => toggleDemandDay(key)}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleDemandSeries[key] ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-600'
                     }`}
                 >
                   {key}
@@ -671,19 +720,41 @@ const BoardDetailPage = () => {
                     onMouseLeave={handleMouseUp}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <ReferenceArea x1="00:00" x2="18:00" fill="#f8fafc" fillOpacity={0.55}>
-                      <Label value="HORA FUERA DE PUNTA (HFP)" position="top" offset={10} fill="#0284c7" style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }} />
-                    </ReferenceArea>
-                    <ReferenceArea x1="18:00" x2="23:00" fill="#fff1f2" fillOpacity={0.65}>
-                      <Label value="HORA PUNTA (HP)" position="top" offset={10} fill="#f43f5e" style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }} />
-                    </ReferenceArea>
-                    <ReferenceArea x1="23:00" x2="23:55" fill="#f8fafc" fillOpacity={0.55} />
+                    
+                    {/* Búsqueda dinámica de marcas existentes dentro del zoom actual */}
+                    {(() => {
+                      const horasVisibles = dataFiltradaZoom.map(d => d.horaMinuto);
+                      const primerHora = horasVisibles[0];
+                      const ultimaHora = horasVisibles[horasVisibles.length - 1];
 
-                    {horaPicoMaximo && (
-                      <ReferenceLine x={horaPicoMaximo} stroke="#be123c" strokeWidth={2} strokeDasharray="4 4">
-                        <Label value="PICO MÁXIMO DEL PERIODO" position="top" offset={10} fill="#be123c" style={{ fontSize: '8px', fontWeight: '900' }} />
-                      </ReferenceLine>
-                    )}
+                      // Puntos límite estándar
+                      const hora18 = horasVisibles.find(h => h >= "18:00") || "18:00";
+                      const hora23 = horasVisibles.find(h => h >= "23:00") || "23:00";
+
+                      return (
+                        <>
+                          {/* Franja HFP de 00:00 a 18:00 */}
+                          <ReferenceArea x1={primerHora} x2={hora18} fill="#f8fafc" fillOpacity={0.55}>
+                            <Label value="HORA FUERA DE PUNTA (HFP)" position="top" offset={10} fill="#0284c7" style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }} />
+                          </ReferenceArea>
+
+                          {/* Franja HP de 18:00 a 23:00 */}
+                          <ReferenceArea x1={hora18} x2={hora23} fill="#fff1f2" fillOpacity={0.65}>
+                            <Label value="HORA PUNTA (HP)" position="top" offset={10} fill="#f43f5e" style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }} />
+                          </ReferenceArea>
+
+                          {/* Franja HFP nocturna de 23:00 a 23:55 */}
+                          <ReferenceArea x1={hora23} x2={ultimaHora} fill="#f8fafc" fillOpacity={0.55} />
+
+                          {/* Línea de Pico Máximo (Solo si el pico está dentro del rango con Zoom) */}
+                          {horaPicoMaximo && horasVisibles.includes(horaPicoMaximo) && (
+                            <ReferenceLine x={horaPicoMaximo} stroke="#be123c" strokeWidth={2} strokeDasharray="4 4">
+                              <Label value="PICO MÁXIMO DEL PERIODO" position="top" offset={10} fill="#be123c" style={{ fontSize: '8px', fontWeight: '900' }} />
+                            </ReferenceLine>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     <XAxis
                       dataKey="horaMinuto"
@@ -704,12 +775,12 @@ const BoardDetailPage = () => {
 
                     <Tooltip content={<CustomTooltip />} shared={true} />
 
-                    {visibleSeries["Promedio_General"] && (
+                    {visibleDemandSeries["Promedio_General"] && (
                       <Line type="monotone" name="Promedio General" dataKey="Promedio_General" stroke="#ff5722" strokeWidth={2.5} dot={false} connectNulls animationDuration={150} />
                     )}
 
                     {seriesKeys.map((key, idx) =>
-                      visibleSeries[key] ? (
+                      visibleDemandSeries[key] ? (
                         <Line key={key} type="monotone" name={key} dataKey={key} stroke={MAIN_COLORS[idx % MAIN_COLORS.length]} strokeWidth={1.5} dot={false} connectNulls animationDuration={150} />
                       ) : null
                     )}
@@ -744,27 +815,6 @@ const BoardDetailPage = () => {
                   </div>
                   <span className="mt-2.5 inline-block rounded-lg bg-blue-100 px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-blue-700">Horario Base: 23:00 a 18:00 hrs</span>
                 </div>
-
-                {/* <div className="rounded-2xl border border-emerald-100 bg-emerald-50/30 p-4 sm:p-5 flex flex-col justify-between col-span-1 sm:col-span-2 md:col-span-1 font-sans">
-                  <div>
-                    <div className="flex items-center gap-2 text-emerald-700">
-                      <TrendingDown size={16} />
-                      <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Simulador de Ahorro Estimado</h3>
-                    </div>
-                    <p className="mt-2 text-2xl sm:text-3xl font-black text-emerald-950">S/. {analisisPotencia.ahorroEstimado.toLocaleString("es-PE")}<span className="text-xs sm:text-sm font-bold text-emerald-600">/ mes</span></p>
-                    <p className="mt-1 text-[10px] sm:text-[11px] text-slate-500 leading-relaxed">Estimación de reducción reduciendo picos en un 15% comparado con tu límite contratado de ({tarifaContratada} kW).</p>
-                  </div>
-                  <div className="mt-4 flex gap-x-2 border-t border-emerald-100/60 pt-3">
-                    <div className="flex-1">
-                      <label className="text-[9px] font-bold text-slate-400 block mb-1">Contratada (kW)</label>
-                      <input type="number" value={tarifaContratada} onChange={(e) => setTarifaContratada(Number(e.target.value))} className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-[9px] font-bold text-slate-400 block mb-1">Costo kW HP (S/.)</label>
-                      <input type="number" value={costokW_HP} onChange={(e) => setCostokW_HP(Number(e.target.value))} className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-bold text-slate-700 focus:outline-none" />
-                    </div>
-                  </div>
-                </div> */}
               </div>
             )}
           </div>
@@ -821,20 +871,20 @@ const BoardDetailPage = () => {
           <div className="flex gap-2 overflow-x-auto pb-1 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
             <button
               type="button"
-              onClick={() => toggleSerieVisibility("kvar_capacitivo")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_capacitivo"] !== false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'
+              onClick={() => toggleReactiveDay("kvar_capacitivo")}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'
                 }`}
             >
-              <span className={`size-2.5 rounded-full inline-block ${visibleSeries["kvar_capacitivo"] !== false ? 'bg-white' : 'bg-red-600'}`}></span>
+              <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-white' : 'bg-red-600'}`}></span>
               kvar c (Capacitiva)
             </button>
             <button
               type="button"
-              onClick={() => toggleSerieVisibility("kvar_inductivo")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleSeries["kvar_inductivo"] !== false ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-200'
+              onClick={() => toggleReactiveDay("kvar_inductivo")}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-blue-700 text-white border-blue-700' : 'bg-white text-slate-600 border-slate-200'
                 }`}
             >
-              <span className={`size-2.5 rounded-full inline-block ${visibleSeries["kvar_inductivo"] !== false ? 'bg-white' : 'bg-blue-700'}`}></span>
+              <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-white' : 'bg-blue-700'}`}></span>
               kvar i (Inductiva)
             </button>
           </div>
@@ -867,7 +917,7 @@ const BoardDetailPage = () => {
                 <Tooltip content={<ReactiveTooltip />} shared={true} />
 
                 {/* Línea Capacitiva Real (Rojo) */}
-                {visibleSeries["kvar_capacitivo"] !== false && activeDay && (
+                {visibleReactiveSeries["kvar_capacitivo"] !== false && activeDay && (
                   <Line
                     type="linear"
                     name={`Ntotcap+ - ${activeDay}`}
@@ -881,7 +931,7 @@ const BoardDetailPage = () => {
                 )}
 
                 {/* Línea Inductiva Real (Azul) */}
-                {visibleSeries["kvar_inductivo"] !== false && activeDay && (
+                {visibleReactiveSeries["kvar_inductivo"] !== false && activeDay && (
                   <Line
                     type="linear"
                     name={`Ntotind+ - ${activeDay}`}
@@ -901,13 +951,10 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── SECCIÓN MODULAR 3: ENERGÍA CONSUMIDA POR DÍA (CON TARJETAS RESUMEN) ──
+  // ── SECCIÓN MODULAR 3: ENERGÍA CONSUMIDA POR DÍA ──
   const renderEnergyBarSection = () => {
-    const barrasVisibles = energiaPorDiaData.filter(d => visibleSeries[d.name] !== false);
+    const barrasVisibles = energiaPorDiaData.filter(d => visibleEnergySeries[d.name] !== false);
 
-    if (barrasVisibles.length === 0) return null;
-
-    // ── CÁLCULOS PARA LAS TARJETAS RESUMEN ──
     const totalKWhSemana = barrasVisibles.reduce((acc, curr) => acc + (curr.kWh || 0), 0);
     const promedioKWhDiario = barrasVisibles.length > 0 ? totalKWhSemana / barrasVisibles.length : 0;
     const proyeccionKWhMes = promedioKWhDiario * 30;
@@ -927,9 +974,8 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* ── TARJETAS DE RESUMEN EN TONOS AZULES ── */}
+        {/* TARJETAS DE RESUMEN EN TONOS AZULES */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {/* Tarjeta 1: Promedio Diario */}
           <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Consumo Diario Promedio</p>
             <p className="mt-1 text-2xl font-black text-blue-950">
@@ -938,7 +984,6 @@ const BoardDetailPage = () => {
             <p className="mt-1 text-[10px] text-blue-500">Promedio sobre los días seleccionados</p>
           </div>
 
-          {/* Tarjeta 2: Proyección Mensual */}
           <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Proyección Mensual (30 días)</p>
             <p className="mt-1 text-2xl font-black text-blue-950">
@@ -947,7 +992,6 @@ const BoardDetailPage = () => {
             <p className="mt-1 text-[10px] text-blue-500">Estimación a 30 días de operación</p>
           </div>
 
-          {/* Tarjeta 3: Proyección Anual */}
           <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Proyección Anual (365 días)</p>
             <p className="mt-1 text-2xl font-black text-blue-950">
@@ -957,17 +1001,17 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Botones de Selección de Días */}
+        {/* BOTONES DE SELECCIÓN DE DÍAS */}
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
           {seriesKeys.map((key) => (
             <button
               key={key}
               type="button"
-              onClick={() => toggleSerieVisibility(key)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
-                  ? 'bg-blue-700 border-blue-700 text-white shadow-sm'
-                  : 'bg-white border-slate-200 text-slate-400'
+              onClick={() => toggleEnergyDay(key)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleEnergySeries[key] !== false
+                ? 'bg-blue-700 border-blue-700 text-white shadow-sm'
+                : 'bg-white border-slate-200 text-slate-400'
                 }`}
             >
               {key}
@@ -975,40 +1019,40 @@ const BoardDetailPage = () => {
           ))}
         </div>
 
-        {/* Gráfico de Barras */}
+        {/* GRÁFICO DE BARRAS */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barrasVisibles} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  stroke="#94a3b8"
-                  dy={8}
-                  tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}
-                >
-                  <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                </XAxis>
-                <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
-                  <Label value="Energía Activa (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                </YAxis>
-                <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(value: any) => [`${Number(value).toFixed(1)} kWh`, 'Consumo Total']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                <Bar dataKey="kWh" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={50} />
-              </BarChart>
-            </ResponsiveContainer>
+            {barrasVisibles.length === 0 ? (
+              <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
+                Selecciona al menos un día para visualizar los datos del gráfico.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barrasVisibles} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
+                    <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                  </XAxis>
+                  <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
+                    <Label value="Energía Activa (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                  </YAxis>
+                  <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(value: any) => [`${Number(value).toFixed(1)} kWh`, 'Consumo Total']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                  <Bar dataKey="kWh" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </section>
     );
   };
 
-  // ── SECCIÓN MODULAR 4: HUELLA DE CARBONO Y EMISIONES DE CO₂ (PERÚ) ──
+  // ── SECCIÓN MODULAR 4: HUELLA DE CARBONO Y EMISIONES DE CO₂ ──
   const renderCarbonEmissionsSection = () => {
     const FACTOR_EMISION_PERU = 0.00021;
 
     const emisionesData = energiaPorDiaData
-      .filter(d => visibleSeries[d.name] !== false)
+      .filter(d => visibleCarbonSeries[d.name] !== false)
       .map(item => {
         const tCO2_dia = (item.kWh || 0) * FACTOR_EMISION_PERU;
         return {
@@ -1017,8 +1061,6 @@ const BoardDetailPage = () => {
           kgCO2: Number((tCO2_dia * 1000).toFixed(2))
         };
       });
-
-    if (emisionesData.length === 0) return null;
 
     const totalTCO2Semana = emisionesData.reduce((acc, curr) => acc + curr.tCO2, 0);
     const promedioTCO2Diario = emisionesData.length > 0 ? totalTCO2Semana / emisionesData.length : 0;
@@ -1029,7 +1071,6 @@ const BoardDetailPage = () => {
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
-            {/* Ícono actualizado a GRIS (Slate 500) */}
             <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-slate-500/10 text-slate-600">
               <Zap size={20} className="sm:size-[22px]" />
             </div>
@@ -1040,9 +1081,7 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Tarjetas de Resumen - Actualizadas todas a variantes de GRIS (Slate) */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {/* Tarjeta 1 */}
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">Emisión Diaria Promedio</p>
             <p className="mt-1 text-2xl font-black text-slate-950">
@@ -1056,7 +1095,6 @@ const BoardDetailPage = () => {
             <p className="mt-1 text-[10px] text-slate-500">Equivalencia del periodo filtrado</p>
           </div>
 
-          {/* Tarjeta 2 */}
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">Proyección Mensual (30 días)</p>
             <p className="mt-1 text-2xl font-black text-slate-950">
@@ -1065,7 +1103,6 @@ const BoardDetailPage = () => {
             <p className="mt-1 text-[10px] text-slate-500">Estimación a 30 días de operación</p>
           </div>
 
-          {/* Tarjeta 3 */}
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">Proyección Anual (365 días)</p>
             <p className="mt-1 text-2xl font-black text-slate-950">
@@ -1075,16 +1112,14 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Seleccionador de Días - Actualizado a GRIS OSCURO (Slate 700/800) */}
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
           {seriesKeys.map((key) => (
             <button
               key={key}
               type="button"
-              onClick={() => toggleSerieVisibility(key)}
-              // Clases actualizadas: bg-slate-700, border-slate-700
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
+              onClick={() => toggleCarbonDay(key)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleCarbonSeries[key] !== false
                 ? 'bg-slate-700 border-slate-700 text-white shadow-sm'
                 : 'bg-white border-slate-200 text-slate-400'
                 }`}
@@ -1096,20 +1131,25 @@ const BoardDetailPage = () => {
 
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={emisionesData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
-                  <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                </XAxis>
-                <YAxis tickLine={false} stroke="#94a3b8" width={65} tick={{ fontSize: '10px' }} tickFormatter={(val) => val.toFixed(3)}>
-                  <Label value="Emisiones (tCO₂)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                </YAxis>
-                <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(val: any) => [`${Number(val).toFixed(4)} tCO₂ (${(Number(val) * 1000).toFixed(1)} kg CO₂)`, 'Huella de Carbono']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                {/* Relleno de Barra actualizado a GRIS (Slate 500) */}
-                <Bar dataKey="tCO2" fill="#64748b" radius={[6, 6, 0, 0]} maxBarSize={50} />
-              </BarChart>
-            </ResponsiveContainer>
+            {emisionesData.length === 0 ? (
+              <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
+                Selecciona al menos un día para visualizar los datos del gráfico.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={emisionesData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
+                    <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                  </XAxis>
+                  <YAxis tickLine={false} stroke="#94a3b8" width={65} tick={{ fontSize: '10px' }} tickFormatter={(val) => val.toFixed(3)}>
+                    <Label value="Emisiones (tCO₂)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                  </YAxis>
+                  <Tooltip cursor={{ fill: '#f1f5f9', opacity: 0.6 }} formatter={(val: any) => [`${Number(val).toFixed(4)} tCO₂ (${(Number(val) * 1000).toFixed(1)} kg CO₂)`, 'Huella de Carbono']} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                  <Bar dataKey="tCO2" fill="#64748b" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </section>
@@ -1117,16 +1157,13 @@ const BoardDetailPage = () => {
   };
 
   // ── ESTADO Y TARIFAS PARA COSTO DE ENERGÍA Y ENERGÍA SOLAR ──
-  // Precio promedio referencial de la energía en Perú: ~S/. 0.45 por kWh
   const TARIFO_KWH_PEN = 0.45;
-
-  // Rendimiento estimado de generación solar referencial (kWh/kWp al día)
   const FACTOR_GENERACION_SOLAR_DIARIO = 0.15;
 
   // ── SECCIÓN MODULAR 5: COSTO DE ENERGÍA ESTIMADO (S/.) ──
   const renderEnergyCostSection = () => {
     const costoData = energiaPorDiaData
-      .filter(d => visibleSeries[d.name] !== false)
+      .filter(d => visibleCostSeries[d.name] !== false)
       .map(item => {
         const costoSoles = (item.kWh || 0) * TARIFO_KWH_PEN;
         return {
@@ -1136,8 +1173,6 @@ const BoardDetailPage = () => {
         };
       });
 
-    if (costoData.length === 0) return null;
-
     const totalCostoSemana = costoData.reduce((acc, curr) => acc + curr.costo, 0);
     const promedioCostoDiario = costoData.length > 0 ? totalCostoSemana / costoData.length : 0;
 
@@ -1145,7 +1180,6 @@ const BoardDetailPage = () => {
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
-            {/* Ícono Ámbar/Amarillo */}
             <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-600">
               <Coins size={20} className="sm:size-[22px]" />
             </div>
@@ -1156,7 +1190,6 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Tarjeta de Resumen en Tono Ámbar */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Costo Total del Periodo</p>
@@ -1175,15 +1208,14 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Botones de Días en Tono Ámbar */}
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
           {seriesKeys.map((key) => (
             <button
               key={key}
               type="button"
-              onClick={() => toggleSerieVisibility(key)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
+              onClick={() => toggleCostDay(key)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleCostSeries[key] !== false
                 ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
                 : 'bg-white border-slate-200 text-slate-400'
                 }`}
@@ -1195,24 +1227,29 @@ const BoardDetailPage = () => {
 
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={costoData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
-                  <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                </XAxis>
-                <YAxis tickLine={false} stroke="#94a3b8" width={60} tick={{ fontSize: '10px' }} tickFormatter={(val) => `S/. ${val}`}>
-                  <Label value="Costo (S/.)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                </YAxis>
-                <Tooltip
-                  cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
-                  formatter={(val: any) => [`S/. ${Number(val).toFixed(2)}`, 'Costo Estimado']}
-                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                />
-                {/* Relleno de Barra en Ámbar/Amarillo (Amber 500) */}
-                <Bar dataKey="costo" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={50} />
-              </BarChart>
-            </ResponsiveContainer>
+            {costoData.length === 0 ? (
+              <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
+                Selecciona al menos un día para visualizar los datos del gráfico.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={costoData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
+                    <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                  </XAxis>
+                  <YAxis tickLine={false} stroke="#94a3b8" width={60} tick={{ fontSize: '10px' }} tickFormatter={(val) => `S/. ${val}`}>
+                    <Label value="Costo (S/.)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                  </YAxis>
+                  <Tooltip
+                    cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
+                    formatter={(val: any) => [`S/. ${Number(val).toFixed(2)}`, 'Costo Estimado']}
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                  />
+                  <Bar dataKey="costo" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </section>
@@ -1222,9 +1259,8 @@ const BoardDetailPage = () => {
   // ── SECCIÓN MODULAR 6: GENERACIÓN / POTENCIAL DE ENERGÍA SOLAR (kWh) ──
   const renderSolarEnergySection = () => {
     const solarData = energiaPorDiaData
-      .filter(d => visibleSeries[d.name] !== false)
+      .filter(d => visibleSolarSeries[d.name] !== false)
       .map(item => {
-        // Estimación de potencial/generación solar offset por consumo
         const solarKWh = (item.kWh || 0) * FACTOR_GENERACION_SOLAR_DIARIO;
         return {
           name: item.name,
@@ -1233,15 +1269,12 @@ const BoardDetailPage = () => {
         };
       });
 
-    if (solarData.length === 0) return null;
-
     const totalSolar = solarData.reduce((acc, curr) => acc + curr.solarKWh, 0);
 
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
-            {/* Ícono Verde Solar */}
             <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600">
               <Sun size={20} className="sm:size-[22px]" />
             </div>
@@ -1252,7 +1285,6 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Tarjeta de Resumen Verde */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Generación Solar Estimada Total</p>
@@ -1271,15 +1303,14 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Botones de Días en Tono Verde */}
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
           {seriesKeys.map((key) => (
             <button
               key={key}
               type="button"
-              onClick={() => toggleSerieVisibility(key)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSeries[key] !== false
+              onClick={() => toggleSolarDay(key)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSolarSeries[key] !== false
                 ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
                 : 'bg-white border-slate-200 text-slate-400'
                 }`}
@@ -1291,24 +1322,29 @@ const BoardDetailPage = () => {
 
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={solarData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
-                  <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                </XAxis>
-                <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
-                  <Label value="Energía Solar (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                </YAxis>
-                <Tooltip
-                  cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
-                  formatter={(val: any) => [`${Number(val).toFixed(1)} kWh`, 'Energía Solar']}
-                  contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                />
-                {/* Relleno de Barra en Verde (Emerald 600) */}
-                <Bar dataKey="solarKWh" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={50} />
-              </BarChart>
-            </ResponsiveContainer>
+            {solarData.length === 0 ? (
+              <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
+                Selecciona al menos un día para visualizar los datos del gráfico.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={solarData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
+                    <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                  </XAxis>
+                  <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
+                    <Label value="Energía Solar (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                  </YAxis>
+                  <Tooltip
+                    cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
+                    formatter={(val: any) => [`${Number(val).toFixed(1)} kWh`, 'Energía Solar']}
+                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                  />
+                  <Bar dataKey="solarKWh" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </section>

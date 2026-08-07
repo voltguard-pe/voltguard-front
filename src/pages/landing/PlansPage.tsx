@@ -74,7 +74,7 @@ const plans: Plan[] = [
     },
     {
         id: "pyme",
-        name: "Plan Intermedio", badge: "Recomendado PYME", priceLabel: "S/ 250.00 + IGV",
+        name: "Plan Intermedio", badge: "Recomendado PYME", priceLabel: "S/ 350.00 + IGV",
         subLabel: "Comercial / Servicios (01 a 04 tableros)",
         description: "Optimizado para pymes y comercios que necesitan regularizar licencias ITSE y obtener firma CIP.",
         color: "blue", featured: true, cta: "Adquirir Plan Intermedio", path: "/contact-sales?plan=pyme",

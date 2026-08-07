@@ -62,7 +62,7 @@ const plans: Plan[] = [
         limits: { empresas: 1, tableros: 1, usuarios: 1, docs: 3 }
     },
     {
-        name: "Plan Intermedio", badge: "Recomendado PYME", priceLabel: "S/ 250.00 + IGV",
+        name: "Plan Intermedio", badge: "Recomendado PYME", priceLabel: "S/ 350.00 + IGV",
         subLabel: "Comercial / Servicios (01 a 04 tableros)",
         description: "Ideal para pymes que requieren regularizar licencias ITSE y diagramas unifilares exigidos por ley.",
         color: "blue", featured: true, cta: "Adquirir Plan Intermedio", path: "/contact-sales?plan=pyme",

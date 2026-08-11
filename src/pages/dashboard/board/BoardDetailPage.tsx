@@ -47,6 +47,7 @@ import { getDemandChartData, uploadMetrelCsv } from "../../../services/measureme
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import QRCode from "react-qr-code";
+import { useAuth } from "../../../shared/hooks/useAuth";
 
 // ── OBJETOS HARDCODEADOS PARA LA PRESENTACIÓN ──
 const documentosHardcodeados = [
@@ -95,6 +96,14 @@ const formatMeasurementWithUnit = (
 };
 
 const BoardDetailPage = () => {
+  // ── OBTENER PLAN DEL USUARIO AUTENTICADO ──
+  const { auth } = useAuth();
+  const userPlan = auth?.plan || "basico";
+
+  // Banderas de permisos
+  const isIntermedioOrSuperior = ["intermedio", "empresarial"].includes(userPlan);
+  const isEmpresarial = userPlan === "empresarial";
+
   const navigate = useNavigate();
   const { publicCode, code } = useParams();
 
@@ -145,6 +154,17 @@ const BoardDetailPage = () => {
   } | null>(null);
 
   const [energiaPorDiaData, setEnergiaPorDiaData] = useState<any[]>([]);
+
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // ── PROCESAMIENTO Y SOLICITUD DE DATOS ──
   const fetchChartData = async (boardId: string, start?: string, end?: string) => {
@@ -691,8 +711,8 @@ const BoardDetailPage = () => {
                 type="button"
                 onClick={() => toggleDemandDay("Promedio_General")}
                 className={`flex shrink-0 items-center gap-x-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleDemandSeries["Promedio_General"]
-                    ? 'bg-orange-600 border-orange-600 text-white shadow-sm'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  ? 'bg-orange-600 border-orange-600 text-white shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
               >
                 <ChartNoAxesCombined size={14} /> Promedio General
@@ -707,8 +727,8 @@ const BoardDetailPage = () => {
                     type="button"
                     onClick={() => toggleDemandDay(key)}
                     className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
-                        ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                   >
                     {key}
@@ -2266,31 +2286,85 @@ const BoardDetailPage = () => {
           Volver
         </button>
 
-        {/* ── SECCIÓN IDENTIFICACIÓN GENERAL ── */}
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-6 text-white relative">
+        {/* ── SECCIÓN IDENTIFICACIÓN GENERAL (STICKY Y COMPACTO AL SCROLL) ── */}
+        <section
+          className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled
+            ? "rounded-2xl border border-slate-200/80 bg-white/90 shadow-md backdrop-blur-md"
+            : "rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+            }`}
+        >
+          <div
+            className={`bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white relative transition-all duration-300 ${isScrolled ? "p-3.5 px-6 rounded-2xl" : "p-6 rounded-t-3xl"
+              }`}
+          >
             <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent pointer-events-none" />
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center relative z-10">
-              <div>
-                <div className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
-                  <Zap size={12} />
-                  Tablero eléctrico
+            <div className="flex flex-row items-center justify-between gap-4 relative z-10">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Botón Volver rápido que aparece solo al scroll */}
+                {isScrolled && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-white/20 p-2 text-white hover:bg-white/30 transition-all cursor-pointer backdrop-blur-sm"
+                    title="Volver"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                )}
+
+                <div className="min-w-0">
+                  {!isScrolled && (
+                    <div className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
+                      <Zap size={12} />
+                      Tablero eléctrico
+                    </div>
+                  )}
+                  <h1 className={`font-black tracking-tight truncate transition-all duration-300 ${isScrolled ? "text-lg md:text-xl" : "text-2xl md:text-3xl"
+                    }`}>
+                    {board.name}
+                  </h1>
+                  <p className={`flex items-center gap-1.5 font-medium text-white/95 transition-all duration-300 ${isScrolled ? "text-xs" : "mt-2 text-sm"
+                    }`}>
+                    <Building2 size={isScrolled ? 13 : 15} />
+                    {companyName}
+                  </p>
                 </div>
-                <h1 className="text-2xl font-black md:text-3xl tracking-tight">{board.name}</h1>
-                <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-white/95">
-                  <Building2 size={15} />
-                  {companyName}
-                </p>
               </div>
 
-              <div className="rounded-2xl bg-white/15 px-5 py-3.5 backdrop-blur border border-white/10">
+              <div className={`shrink-0 rounded-2xl bg-white/15 backdrop-blur border border-white/10 transition-all duration-300 ${isScrolled ? "px-3.5 py-1.5" : "px-5 py-3.5"
+                }`}>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">Código</p>
-                <p className="mt-0.5 text-xl font-black tracking-tight">{value(board.boardCode)}</p>
+                <p className={`font-black tracking-tight ${isScrolled ? "text-sm" : "mt-0.5 text-xl"}`}>
+                  {value(board.boardCode)}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4">
+          {/* Ocultar tarjetas informativas en modo scroll para no estorbar el viewport */}
+          {!isScrolled && (
+            <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4">
+              {[
+                { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+                { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+                { l: "Sistema", v: board.sistema, icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+                { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
+              ].map((item, i) => {
+                const CardIcon = item.icon;
+                return (
+                  <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/50 transition-colors">
+                    <CardIcon className={item.iconCls} size={20} />
+                    <p className="mt-2.5 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{item.l}</p>
+                    <p className={`mt-0.5 text-xs sm:text-sm font-bold truncate ${item.textCls}`}>{value(item.v)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {isScrolled && (
+          <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             {[
               { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
               { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
@@ -2307,28 +2381,40 @@ const BoardDetailPage = () => {
               );
             })}
           </div>
-        </section>
-
-        {/* Renderizado de bloques modulares */}
-        {renderNfpaSection()}
-        {/* 3. 🛡️ SECCIÓN SUPERIOR: PROTOCOLOS Y CERTIFICADOS SPAT (POZO A TIERRA) */}
-        {renderSpatQuinquennialSection()}
-        {renderPdfSection(
-          "Certificados de Puesta a Tierra (SPAT)",
-          "Protocolos de medición de resistencia (Ω), corriente de fuga y salud del pozo",
-          certificadosSpat
         )}
+
+        {isEmpresarial && (
+          // {/* Renderizado de bloques modulares */ }
+          renderNfpaSection()
+        )}
+
+        {isIntermedioOrSuperior && (
+          <>
+            {/* 3. 🛡️ SECCIÓN SUPERIOR: PROTOCOLOS Y CERTIFICADOS SPAT (POZO A TIERRA) */}
+            {renderSpatQuinquennialSection()}
+            {renderPdfSection(
+              "Certificados de Puesta a Tierra (SPAT)",
+              "Protocolos de medición de resistencia (Ω), corriente de fuga y salud del pozo",
+              certificadosSpat
+            )}
+          </>
+        )}
+
         {/* {renderGroundingSection()}
         {renderLoadPanelSection()} */}
 
-        {/* PANEL DE CONTROL DE GRÁFICOS INYECTADO AUTOMÁTICAMENTE AQUÍ */}
-        {renderDemandSection()}
-        {renderReactivePowerSection()}
-        {renderCombinedDemandAndReactiveSection()}
-        {renderEnergyBarSection()}
-        {renderCarbonEmissionsSection()}
-        {renderEnergyCostSection()}   {/* ← Gráfico de Costo (S/.) en Ámbar */}
-        {renderSolarEnergySection()}  {/* ← Gráfico de Energía Solar en Verde */}
+        {isEmpresarial && (
+          <>
+            {/* PANEL DE CONTROL DE GRÁFICOS INYECTADO AUTOMÁTICAMENTE AQUÍ */}
+            {renderDemandSection()}
+            {renderReactivePowerSection()}
+            {renderCombinedDemandAndReactiveSection()}
+            {renderEnergyBarSection()}
+            {renderCarbonEmissionsSection()}
+            {renderEnergyCostSection()}   {/* ← Gráfico de Costo (S/.) en Ámbar */}
+            {renderSolarEnergySection()}  {/* ← Gráfico de Energía Solar en Verde */}
+          </>
+        )}
 
         {/* ── ESPECIFICACIONES TÉCNICAS (CASCADA COMPACTA) ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -2405,20 +2491,28 @@ const BoardDetailPage = () => {
         {/* Secciones de imágenes fijas */}
         {renderInsulationMeasurements()}
         {renderImageSection("Imágenes del tablero", "Fotografías generales del tablero eléctrico", board.images?.tablero)}
-        {renderImageSection("Diagrama unifilar", "Imágenes del diagrama unifilar registrado", board.images?.unifilar)}
-        {renderImageSection("Termografía", "Imágenes termográficas asociadas al tablero", board.images?.termografia)}
-
-        {/* ── 📄 CONECTADO: SECCIONES DE CERTIFICADOS ASIGNADOS REALES DE CLOUDINARY ── */}
-        {renderPdfSection(
-          "Certificados de mantenimiento",
-          "Documentos PDF asignados de mantenimiento técnico",
-          certificadosMantenimiento
+        {isIntermedioOrSuperior && (
+          renderImageSection("Diagrama unifilar", "Imágenes del diagrama unifilar registrado", board.images?.unifilar)
+        )}
+        {isEmpresarial && (
+          renderImageSection("Termografía", "Imágenes termográficas asociadas al tablero", board.images?.termografia)
         )}
 
-        {renderPdfSection(
-          "Certificados de operatividad",
-          "Documentos PDF asignados del nivel de operatividad estructural",
-          certificadosOperatividad
+        {isIntermedioOrSuperior && (
+          <>
+            {/* ── 📄 CONECTADO: SECCIONES DE CERTIFICADOS ASIGNADOS REALES DE CLOUDINARY ── */}
+            {renderPdfSection(
+              "Certificados de mantenimiento",
+              "Documentos PDF asignados de mantenimiento técnico",
+              certificadosMantenimiento
+            )}
+
+            {renderPdfSection(
+              "Certificados de operatividad",
+              "Documentos PDF asignados del nivel de operatividad estructural",
+              certificadosOperatividad
+            )}
+          </>
         )}
 
       </section>

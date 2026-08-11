@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 // 1. Reemplazamos Link por NavLink
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../shared/hooks/useAuth";
 
 const NavbarComponent = () => {
@@ -51,13 +51,13 @@ const NavbarComponent = () => {
     }, []);
 
     // 2. Definimos una función estilizadora reutilizable para los enlaces activos
-    const navLinkStyles = ({ isActive }: { isActive: boolean }) => `
-        px-4 py-1.5 rounded-full text-sm font-semibold relative group transition-all duration-200
-        ${isActive
-            ? "text-[#0797d5] bg-[#0797d5]/6"
-            : "text-slate-600 hover:text-[#0797d5] hover:bg-[#0797d5]/6"
-        }
-    `;
+    // const navLinkStyles = ({ isActive }: { isActive: boolean }) => `
+    //     px-4 py-1.5 rounded-full text-sm font-semibold relative group transition-all duration-200
+    //     ${isActive
+    //         ? "text-[#0797d5] bg-[#0797d5]/6"
+    //         : "text-slate-600 hover:text-[#0797d5] hover:bg-[#0797d5]/6"
+    //     }
+    // `;
 
     return (
         <header

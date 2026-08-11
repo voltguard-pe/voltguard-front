@@ -1,32 +1,60 @@
 import {
     Activity,
+    ArrowLeft,
     ArrowRight,
+    Award,
+    Building2,
     Check,
     CheckCircle2,
     ChevronDown,
     Cpu,
     FileCheck,
+    FileCode,
     FileText,
+    GraduationCap,
+    HeartPulse,
     HelpCircle,
+    Layers,
+    Quote,
+    Shield,
+    ShieldAlert,
     ShieldCheck,
+    Star,
     TrendingUp,
+    Truck,
+    Users,
+    X,
     Zap
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-/* ─── Types ─────────────────────────────────────────────────────────────── */
+/* Logos de Empresas */
+import inenLogo from "/companies_logo/inen.webp";
+import recoletaLogo from "/companies_logo/recoleta.webp";
+import safeplaceLogo from "/companies_logo/safeplace.webp";
+import sikaLogo from "/companies_logo/sika.webp";
+import volvoLogo from "/companies_logo/volvo.webp";
+
+/* ─── Interfaces ─────────────────────────────────────────────────────────── */
 
 interface Feature { title: string; description: string; icon: React.ElementType; }
 interface Stat { id: string; target: number; suffix: string; label: string; }
 interface Plan {
+    id: "basic" | "pyme" | "enterprise";
     name: string; badge?: string; priceLabel: string; subLabel: string;
-    description: string; color: string; featured: boolean; features: string[];
-    cta: string; path: string;
+    description: string; color: string; featured: boolean; features: string[]; cta: string; path: string;
     limits: { empresas: number | string; tableros: number | string; usuarios: number | string; docs: number | string; };
 }
+interface Metric { label: string; value: string; icon: React.ElementType; }
+interface Story {
+    id: string; company: string; logo: string; sector: string; sectorIcon: React.ElementType;
+    sectorColor: string; tagline: string; challenge: string; solution: string; quote: string;
+    quoteAuthor: string; quoteRole: string; metrics: Metric[]; accentColor: string; bgAccent: string; year: string;
+}
+interface FAQItem { q: string; a: string; }
 
-/* ─── Data ───────────────────────────────────────────────────────────────── */
+/* ─── Datos Consolidados ─────────────────────────────────────────────────── */
 
 const features: Feature[] = [
     { title: "Cumplimiento ITSE y CNE", description: "Certifica y prepara tu infraestructura eléctrica para levantar observaciones de Defensa Civil sin multas.", icon: FileCheck },
@@ -50,24 +78,26 @@ const bannerStats: Stat[] = [
 
 const plans: Plan[] = [
     {
+        id: "basic",
         name: "Plan Básico", priceLabel: "Gratis", subLabel: "Pequeño Comercio (Esencial: 01 tablero)",
         description: "Mapeo y rotulación inicial para pequeños negocios que buscan ordenar sus tableros.",
         color: "slate", featured: false, cta: "Comenzar gratis", path: "/auth?plan=basic",
         features: [
             "01 Tablero Eléctrico",
             "Rotulación (Leyenda) en PDF",
-            "Visor digital en plataforma web",
-            "Soporte técnico inicial por email"
+            "Visor digital en plataforma web Voltguard",
+            "Soporte técnico por email"
         ],
         limits: { empresas: 1, tableros: 1, usuarios: 1, docs: 3 }
     },
     {
+        id: "pyme",
         name: "Plan Intermedio", badge: "Recomendado PYME", priceLabel: "S/ 350.00 + IGV",
         subLabel: "Comercial / Servicios (01 a 04 tableros)",
         description: "Ideal para pymes que requieren regularizar licencias ITSE y diagramas unifilares exigidos por ley.",
         color: "blue", featured: true, cta: "Adquirir Plan Intermedio", path: "/contact-sales?plan=pyme",
         features: [
-            "De 01 a 04 Tableros Eléctricos",
+            "01 a 04 Tableros Eléctricos",
             "Rotulación (Leyenda) en PDF",
             "Diagrama Unifilar en CAD y Leyenda Normativa CNE",
             "Gestión de Seguridad y Licencias ITSE",
@@ -78,51 +108,160 @@ const plans: Plan[] = [
         limits: { empresas: 1, tableros: 4, usuarios: 5, docs: "Ilimitados" }
     },
     {
+        id: "enterprise",
         name: "Plan Empresarial", badge: "Alta Exigencia", priceLabel: "Contáctenos",
         subLabel: "Industria y Multi-tablero (Más de 05 tableros)",
         description: "Solución integral de monitoreo energético, termografía y gestión de seguridad para grandes plantas.",
         color: "slate", featured: false, cta: "Contactar ventas", path: "/contact-sales?plan=enterprise",
         features: [
             "Más de 05 Tableros Eléctricos",
-            "Incluye todo lo del Plan Intermedio",
+            "Incluye todas las características del Plan Intermedio",
             "Evaluación de Sistemas de Puesta a Tierra",
             "Etiquetado e Inspección Termográfica (NFPA 70E / 70B)",
             "Monitoreo de Consumo, CO2 y Demandas Máximas",
             "Análisis de Calidad de Energía (Power Quality)",
-            "Asesoría en Seguridad Ocupacional y Control de Potencia"
+            "Asesoría en Seguridad Ocupacional"
         ],
         limits: { empresas: "Multi-sede", tableros: "Ilimitados", usuarios: "Ilimitados", docs: "Ilimitados" }
     }
 ];
 
-/* ─── Keyframes ─────────────────────────────────────────────────────────── */
+const tableRows: {
+    category?: string; label?: string; icon?: React.ElementType;
+    basic: boolean | string | null; pyme: boolean | string | null; enterprise: boolean | string | null;
+}[] = [
+    { category: "Acceso y Funcionalidades Básicas", basic: null, pyme: null, enterprise: null },
+    { label: "Acceso Inicial y Visualización de Datos", icon: Layers, basic: true, pyme: true, enterprise: true },
+    { label: "Diagrama Unifilar Base PDF", icon: FileText, basic: true, pyme: true, enterprise: true },
+    { label: "Licencia Anual de Plataforma", icon: ShieldCheck, basic: true, pyme: true, enterprise: true },
+    { label: "Rotulación (Leyenda) en PDF", icon: FileText, basic: true, pyme: true, enterprise: true },
+
+    { category: "Entregables Normativos y Documentales", basic: null, pyme: null, enterprise: null },
+    { label: "Diagrama Unifilar en CAD y Leyenda Normativa CNE", icon: FileCode, basic: false, pyme: true, enterprise: true },
+    { label: "Gestión de Seguridad y Licencias ITSE", icon: FileCheck, basic: false, pyme: true, enterprise: true },
+    { label: "Firma de Ingeniero Colegiado (CIP)", icon: Award, basic: false, pyme: true, enterprise: true },
+    { label: "Servicio de Mantenimiento Preventivo", icon: Shield, basic: false, pyme: true, enterprise: true },
+    { label: "Gestión Documental y Emisión de Certificados", icon: FileText, basic: false, pyme: true, enterprise: true },
+
+    { category: "Ingeniería Avanzada, NFPA y Monitoreo (Plan Empresarial)", basic: null, pyme: null, enterprise: null },
+    { label: "Etiquetado de Seguridad Eléctrica (NFPA 70E)", icon: Shield, basic: false, pyme: false, enterprise: true },
+    { label: "Monitoreo Diario de Emisiones de CO2", icon: Activity, basic: false, pyme: false, enterprise: true },
+    { label: "Análisis Diario de Costos de Energía (S/)", icon: Zap, basic: false, pyme: false, enterprise: true },
+    { label: "Muestreo de Consumo Energético Diario", icon: Activity, basic: false, pyme: false, enterprise: true },
+    { label: "Muestreo Diario de Potencia Reactiva", icon: Zap, basic: false, pyme: false, enterprise: true },
+    { label: "Registro de Demanda Máxima Diaria (kW) FP / HP", icon: Activity, basic: false, pyme: false, enterprise: true },
+    { label: "Revisión de recibo de energía", icon: FileText, basic: false, pyme: false, enterprise: true },
+    { label: "Inspección Termográfica Infrarroja (NFPA 70B)", icon: ShieldAlert, basic: false, pyme: false, enterprise: true },
+    { label: "Análisis de Calidad de Energía (Power Quality)", icon: Zap, basic: false, pyme: false, enterprise: true },
+    { label: "Asesoría en Seguridad Ocupacional (NFPA 70E)", icon: Users, basic: false, pyme: false, enterprise: true },
+    { label: "Mantenimiento de Sistemas de Puesta a Tierra", icon: Activity, basic: false, pyme: false, enterprise: true },
+    { label: "Mantenimiento de Banco de condensadores", icon: Zap, basic: false, pyme: false, enterprise: true },
+    { label: "Mantenimiento de Sub Estación y Celdas", icon: Shield, basic: false, pyme: false, enterprise: true },
+    { label: "Mantenimiento: Filtros / Variadores / Inverters / PV / SVG", icon: Zap, basic: false, pyme: false, enterprise: true },
+];
+
+const stories: Story[] = [
+    {
+        id: "sika", company: "SIKA Perú", logo: sikaLogo, sector: "Industria", sectorIcon: Building2,
+        sectorColor: "text-orange-600", tagline: "Inspección y evaluación técnica de tableros eléctricos industriales",
+        challenge: "SIKA requería conocer el estado actual de sus tableros eléctricos en áreas de producción para identificar posibles riesgos y oportunidades de mejora.",
+        solution: "Se realizó la inspección técnica de los tableros, verificando componentes, protecciones, condiciones de operación y levantando observaciones para su posterior corrección.",
+        quote: "El informe nos permitió identificar puntos críticos y priorizar las mejoras necesarias para nuestras instalaciones.",
+        quoteAuthor: "Equipo de Mantenimiento", quoteRole: "SIKA Perú", year: "2024", accentColor: "#f97316", bgAccent: "bg-orange-50",
+        metrics: [
+            { label: "Tableros inspeccionados", value: "73", icon: Zap },
+            { label: "Observaciones registradas", value: "18", icon: FileText },
+            { label: "Informe técnico", value: "1", icon: CheckCircle2 },
+            { label: "Servicio", value: "Completado", icon: Award },
+        ],
+    },
+    {
+        id: "recoleta", company: "Colegio SS.CC. Recoleta", logo: recoletaLogo, sector: "Educación", sectorIcon: GraduationCap,
+        sectorColor: "text-violet-600", tagline: "Evaluación de tableros eléctricos en infraestructura educativa",
+        challenge: "El colegio buscaba verificar las condiciones de seguridad y operación de los tableros eléctricos distribuidos en sus diferentes ambientes.",
+        solution: "Se inspeccionaron los tableros eléctricos y se documentaron observaciones relacionadas con seguridad, identificación y mantenimiento.",
+        quote: "Contar con un diagnóstico técnico nos ayudó a planificar las mejoras necesarias de manera ordenada.",
+        quoteAuthor: "Administración", quoteRole: "Colegio SS.CC. Recoleta", year: "2024", accentColor: "#7c3aed", bgAccent: "bg-violet-50",
+        metrics: [
+            { label: "Tableros inspeccionados", value: "109", icon: Zap },
+            { label: "Observaciones registradas", value: "17", icon: FileText },
+            { label: "Informe técnico", value: "1", icon: CheckCircle2 },
+            { label: "Servicio", value: "Completado", icon: Award },
+        ],
+    },
+    {
+        id: "inen", company: "INEN", logo: inenLogo, sector: "Salud", sectorIcon: HeartPulse,
+        sectorColor: "text-sky-600", tagline: "Inspección eléctrica en instalaciones críticas de salud",
+        challenge: "Era necesario verificar las condiciones de operación de tableros eléctricos que alimentan áreas críticas y de soporte.",
+        solution: "Se desarrolló una inspección técnica documentada, registrando hallazgos y recomendaciones para mejorar la confiabilidad de las instalaciones.",
+        quote: "La evaluación nos permitió tener una visión más clara del estado de nuestros tableros eléctricos.",
+        quoteAuthor: "Área de Mantenimiento", quoteRole: "INEN", year: "2024", accentColor: "#0284c7", bgAccent: "bg-sky-50",
+        metrics: [
+            { label: "Tableros inspeccionados", value: "12", icon: Zap },
+            { label: "Observaciones registradas", value: "14", icon: FileText },
+            { label: "Informe técnico", value: "1", icon: CheckCircle2 },
+            { label: "Servicio", value: "Completado", icon: Award },
+        ],
+    },
+    {
+        id: "safeplace", company: "Safeplace", logo: safeplaceLogo, sector: "Arquitectura", sectorIcon: Building2,
+        sectorColor: "text-rose-600", tagline: "Inspección y mantenimiento de tableros eléctricos para una clínica",
+        challenge: "La instalación requería evaluar el estado de sus tableros eléctricos y ejecutar mantenimiento preventivo para garantizar su correcto funcionamiento.",
+        solution: "Se realizó la inspección técnica, limpieza, ajuste de conexiones y documentación de observaciones para futuras acciones de mejora.",
+        quote: "El servicio fue ejecutado de manera ordenada y con información clara para el seguimiento posterior.",
+        quoteAuthor: "Coordinación de Proyecto", quoteRole: "Safeplace", year: "2024", accentColor: "#e11d48", bgAccent: "bg-rose-50",
+        metrics: [
+            { label: "Tableros atendidos", value: "5", icon: Zap },
+            { label: "Mantenimientos realizados", value: "12", icon: CheckCircle2 },
+            { label: "Observaciones registradas", value: "8", icon: FileText },
+            { label: "Servicio", value: "Completado", icon: Award },
+        ],
+    },
+    {
+        id: "volvo", company: "Volvo Perú", logo: volvoLogo, sector: "Transporte", sectorIcon: Truck,
+        sectorColor: "text-blue-700", tagline: "Evaluación técnica de tableros eléctricos en instalaciones de servicio",
+        challenge: "Se requería conocer el estado de los tableros eléctricos que alimentan las áreas operativas y talleres.",
+        solution: "Se realizó una inspección completa de los tableros eléctricos, verificando componentes, protecciones y condiciones generales de operación.",
+        quote: "La inspección nos ayudó a identificar mejoras que ahora forman parte de nuestro plan de mantenimiento.",
+        quoteAuthor: "Área de Infraestructura", quoteRole: "Volvo Perú", year: "2024", accentColor: "#1d4ed8", bgAccent: "bg-blue-50",
+        metrics: [
+            { label: "Tableros inspeccionados", value: "171", icon: Zap },
+            { label: "Observaciones registradas", value: "13", icon: FileText },
+            { label: "Informe técnico", value: "1", icon: CheckCircle2 },
+            { label: "Servicio", value: "Completado", icon: Award },
+        ],
+    },
+];
+
+const faqs: FAQItem[] = [
+    { q: "¿Cómo ayuda Voltguard a aprobar las Inspecciones ITSE de Defensa Civil?", a: "Voltguard organiza y mantiene actualizados los diagramas unifilares en CAD, certificados de operatividad firmados por un Ingeniero Colegiado (CIP) y la rotulación normativa CNE para que tu establecimiento supere cualquier auditoría de ITSE sin riesgo de clausura." },
+    { q: "¿Qué tipo de documentación técnica puedo centralizar en cada tablero?", a: "Voltguard almacena certificados de operatividad, diagramas unifilares (PDF/DWG), leyendas de circuitos CNE, protocolos de puesta a tierra y reportes de mantenimiento preventivo o termografía infrarroja." },
+    { q: "¿Puedo cambiar de plan si mi negocio amplía la cantidad de tableros?", a: "Sí. Puedes empezar con el Plan Básico para 1 tablero y escalar al Plan Intermedio (hasta 4 tableros) o Plan Empresarial (más de 5 tableros) a medida que tus instalaciones crezcan o requieras mayor exigencia técnica." },
+    { q: "¿Los certificados expedidos cuentan con firma de Ingeniero Colegiado?", a: "A partir del Plan Intermedio y Empresarial, la gestión documental incluye la validación y firma de un Ingeniero Colegiado y Habilitado (CIP) especialista en instalaciones eléctricas." },
+    { q: "¿Quién realiza el trabajo técnico en campo y sube los documentos?", a: "El equipo especializado de Voltguard realiza la inspección presencial, pruebas de pozo a tierra y medición termográfica. Posteriormente, todos los planos, reportes y certificados quedan disponibles en tu panel de usuario para descarga inmediata." }
+];
+
+/* ─── Styles & Animations ────────────────────────────────────────────────── */
 
 const STYLE = `
 @keyframes fadeUp { from{opacity:0;transform:translateY(28px)} to{opacity:1;transform:translateY(0)} }
 @keyframes gradShift { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
 @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-@keyframes floatReverse { 0%,100%{transform:translateY(0) rotate(-2deg)} 50%{transform:translateY(-8px) rotate(2deg)} }
-@keyframes pulseRing { 0%{transform:scale(1);opacity:0.6} 100%{transform:scale(2.4);opacity:0} }
-@keyframes scanLine { 0%{transform:translateY(-100%)} 100%{transform:translateY(100vh)} }
-@keyframes spinSlow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-@keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
-@keyframes blobMove { 0%,100%{border-radius:60% 40% 30% 70%/60% 30% 70% 40%} 50%{border-radius:30% 60% 70% 40%/50% 60% 30% 60%} }
-@keyframes electricPulse { 0%,100%{opacity:1;filter:drop-shadow(0 0 4px #0797d5)} 50%{opacity:0.5;filter:drop-shadow(0 0 12px #0797d5) drop-shadow(0 0 24px #0797d5)} }
-@keyframes countBounce { 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
+@keyframes tickerScroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 @keyframes gridFade { 0%,100%{opacity:0.03} 50%{opacity:0.07} }
 @keyframes particleDrift { 0%{transform:translateY(0) translateX(0) scale(1);opacity:0.7} 100%{transform:translateY(-120px) translateX(20px) scale(0);opacity:0} }
-@keyframes glowPulse { 0%,100%{box-shadow:0 0 20px rgba(7,151,213,0.2),0 0 40px rgba(7,151,213,0.1)} 50%{box-shadow:0 0 40px rgba(7,151,213,0.4),0 0 80px rgba(7,151,213,0.2)} }
+@keyframes blobMove { 0%,100%{border-radius:60% 40% 30% 70%/60% 30% 70% 40%} 50%{border-radius:30% 60% 70% 40%/50% 60% 30% 60%} }
+@keyframes countBounce { 0%{transform:scale(1)} 50%{transform:scale(1.08)} 100%{transform:scale(1)} }
 @keyframes zap { 0%,100%{opacity:1} 25%{opacity:0.2} 75%{opacity:0.7} }
 @keyframes kenBurns { 0%{transform:scale(1) translate(0,0)} 50%{transform:scale(1.06) translate(-1%,-1%)} 100%{transform:scale(1) translate(0,0)} }
+@keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
 
-.optimize-animated-img {
-    will-change: transform;
-}
+.optimize-animated-img { will-change: transform; }
 `;
 
 function InjectStyles() {
     useEffect(() => {
-        const id = "voltguard-styles";
+        const id = "voltguard-unified-styles";
         if (document.getElementById(id)) return;
         const el = document.createElement("style");
         el.id = id; el.textContent = STYLE;
@@ -134,7 +273,7 @@ function InjectStyles() {
 
 /* ─── Hooks ──────────────────────────────────────────────────────────────── */
 
-function useInViewRepeatable(threshold = 0.15) {
+function useInViewRepeatable(threshold = 0.12) {
     const ref = useRef<HTMLDivElement>(null);
     const [inView, setInView] = useState(false);
     useEffect(() => {
@@ -163,13 +302,12 @@ function useCountUp(target: number, suffix: string, active: boolean, duration = 
     return display;
 }
 
-/* ─── Decorative helpers ─────────────────────────────────────────────────── */
+/* ─── Elementos Decorativos ──────────────────────────────────────────────── */
 
 function BackgroundGrid() {
     return (
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"
-                style={{ animation: "gridFade 4s ease-in-out infinite" }}>
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ animation: "gridFade 4s ease-in-out infinite" }}>
                 <defs>
                     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
                         <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#0797d5" strokeWidth="0.5" />
@@ -196,7 +334,15 @@ function FloatingParticles({ count = 8 }: { count?: number }) {
     );
 }
 
-/* ─── Stat sub-components ────────────────────────────────────────────────── */
+function ScrollProgress() {
+    const [progress, setProgress] = useState(0);
+    useEffect(() => {
+        const h = () => { const t = document.documentElement.scrollHeight - window.innerHeight; setProgress(t > 0 ? (window.scrollY / t) * 100 : 0); };
+        window.addEventListener("scroll", h, { passive: true });
+        return () => window.removeEventListener("scroll", h);
+    }, []);
+    return <div className="fixed top-0 left-0 right-0 z-50 h-0.5"><div className="h-full bg-gradient-to-r from-[#0797d5] via-[#05c4f7] to-[#8ccf2f]" style={{ width: `${progress}%`, transition: "width 0.1s linear" }} /></div>;
+}
 
 function AnimatedStat({ target, suffix, label, active, duration }: Stat & { active: boolean; duration?: number }) {
     const display = useCountUp(target, suffix, active, duration);
@@ -218,7 +364,30 @@ function BannerStat({ target, suffix, label, active, duration }: Stat & { active
     );
 }
 
-/* ─── Feature Card ───────────────────────────────────────────────────────── */
+function LogoTicker() {
+    const logos = stories.map((s) => ({ name: s.company, color: s.accentColor, icon: s.sectorIcon }));
+    const doubled = [...logos, ...logos];
+
+    return (
+        <div className="overflow-hidden py-6 border-y border-slate-200 bg-white">
+            <div className="flex gap-12 items-center" style={{ animation: "tickerScroll 22s linear infinite", width: "max-content" }}>
+                {doubled.map((l, i) => {
+                    const Icon = l.icon;
+                    return (
+                        <div key={i} className="flex items-center gap-2.5 shrink-0 opacity-50 hover:opacity-100 transition-opacity duration-300">
+                            <div className="size-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${l.color}15`, color: l.color }}>
+                                <Icon size={16} />
+                            </div>
+                            <span className="text-sm font-black text-slate-700 tracking-wide">{l.name}</span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+/* ─── Sub-componentes ────────────────────────────────────────────────────── */
 
 function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
     const { ref, inView } = useInViewRepeatable(0.1);
@@ -242,75 +411,24 @@ function FeatureCard({ feature, index }: { feature: Feature; index: number }) {
     );
 }
 
-/* ─── FAQ ────────────────────────────────────────────────────────────────── */
-
-interface HomeFAQItem { q: string; a: string; }
-const homeFaqs: HomeFAQItem[] = [
-    { q: "¿Cómo ayuda Voltguard a aprobar las Inspecciones ITSE de Defensa Civil?", a: "Voltguard organiza y mantiene actualizados los diagramas unifilares en CAD, certificados de operatividad firmados por un Ingeniero Colegiado (CIP) y la rotulación normativa CNE para que tu establecimiento supere cualquier auditoría de ITSE sin riesgo de clausura." },
-    { q: "¿Qué tipo de documentación técnica puedo centralizar en cada tablero?", a: "Voltguard almacena certificados de operatividad, diagramas unifilares (PDF/DWG), leyendas de circuitos CNE, protocolos de puesta a tierra y reportes de mantenimiento preventivo o termografía infrarroja." },
-    { q: "¿Puedo cambiar de plan si mi negocio amplía la cantidad de tableros?", a: "Sí. Puedes empezar con el Plan Básico para 1 tablero y escalar al Plan Intermedio (hasta 4 tableros) o Plan Empresarial (más de 5 tableros) a medida que tus instalaciones crezcan o requieras mayor exigencia técnica." },
-    { q: "¿Los certificados expedidos cuentan con firma de Ingeniero Colegiado?", a: "A partir del Plan Intermedio y Empresarial, la gestión documental incluye la validación y firma de un Ingeniero Colegiado y Habilitado (CIP) especialista en instalaciones eléctricas." }
-];
-
-function HomeFAQRow({ q, a, index }: HomeFAQItem & { index: number }) {
-    const [isOpen, setIsOpen] = useState(false);
-    const { ref, inView } = useInViewRepeatable(0.1);
-    return (
-        <div ref={ref} className="border border-slate-200 bg-white rounded-2xl overflow-hidden hover:border-[#0797d5]/40 hover:shadow-md transition-all duration-300"
-            style={{ opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(24px)", transition: `opacity 0.6s ease ${index * 100}ms, transform 0.6s ease ${index * 100}ms, border-color 0.3s, box-shadow 0.3s` }}>
-            <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-5 text-left font-bold text-slate-950 hover:text-[#0797d5] transition-colors cursor-pointer group">
-                <span className="text-sm sm:text-base pr-4">{q}</span>
-                <div className={`shrink-0 size-7 rounded-full flex items-center justify-center transition-all duration-300 ${isOpen ? "bg-[#0797d5] text-white rotate-180" : "bg-slate-100 text-slate-400 group-hover:bg-[#0797d5]/10 group-hover:text-[#0797d5]"}`}>
-                    <ChevronDown size={15} />
-                </div>
-            </button>
-            <div className={`transition-all duration-400 ease-in-out overflow-hidden ${isOpen ? "max-h-48 border-t border-slate-100" : "max-h-0"}`}>
-                <p className="p-5 text-sm text-slate-500 leading-relaxed bg-slate-50/50">{a}</p>
-            </div>
-        </div>
-    );
-}
-
-/* ─── Plan Card ──────────────────────────────────────────────────────────── */
-
 function PlanCard({ plan, index, active }: { plan: Plan; index: number; active: boolean }) {
     const navigate = useNavigate();
-    const [, setHovered] = useState(false);
     const isFeatured = plan.featured;
 
     return (
-        <div
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-            style={{
-                opacity: active ? 1 : 0,
-                transform: active ? "translateY(0) scale(1)" : "translateY(32px) scale(0.97)",
-                transition: `opacity 0.6s ease ${index * 150}ms, transform 0.6s ease ${index * 150}ms`,
-            }}
+        <div style={{ opacity: active ? 1 : 0, transform: active ? "translateY(0) scale(1)" : "translateY(32px) scale(0.97)", transition: `opacity 0.6s ease ${index * 150}ms, transform 0.6s ease ${index * 150}ms` }}
             className={`relative rounded-3xl flex flex-col overflow-hidden transition-all duration-300 hover:-translate-y-2
-                ${!isFeatured
-                    ? "border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-[#0797d5]/10"
-                    : "border border-[#0797d5]/40 shadow-xl shadow-[#0797d5]/15 hover:shadow-2xl hover:shadow-[#0797d5]/25"
-                }`}
-        >
-            {/* ── HEADER BLOCK ───────────────────────────────────────── */}
-            <div className={`relative px-7 py-8 overflow-hidden
-                ${!isFeatured
-                    ? "bg-slate-100"
-                    : "bg-gradient-to-br from-[#0797d5] to-[#05c4f7]"
-                }`}>
-
+                ${!isFeatured ? "border border-slate-200 shadow-sm hover:shadow-xl hover:shadow-[#0797d5]/10" : "border border-[#0797d5]/40 shadow-xl shadow-[#0797d5]/15 hover:shadow-2xl hover:shadow-[#0797d5]/25"}`}>
+            <div className={`relative px-7 py-8 overflow-hidden ${!isFeatured ? "bg-slate-100" : "bg-gradient-to-br from-[#0797d5] to-[#05c4f7]"}`}>
                 {isFeatured && (
                     <>
                         <div className="absolute inset-0 pointer-events-none opacity-10">
-                            <svg width="100%" height="100%"><defs><pattern id="hgrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="0.5" /></pattern></defs><rect width="100%" height="100%" fill="url(#hgrid)" /></svg>
+                            <svg width="100%" height="100%"><defs><pattern id="hgp" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="white" strokeWidth="0.5" /></pattern></defs><rect width="100%" height="100%" fill="url(#hgp)" /></svg>
                         </div>
                         <div className="absolute -top-6 -right-6 size-24 rounded-full bg-white/10 blur-xl pointer-events-none" />
                         <div className="absolute -bottom-4 -left-4 size-16 rounded-full bg-[#8ccf2f]/20 blur-lg pointer-events-none" />
                     </>
                 )}
-
-                {/* Badge corner ribbon */}
                 {plan.badge && (
                     <div className="absolute top-0 right-0 overflow-hidden w-28 h-28 pointer-events-none">
                         <div className="absolute top-5 right-[-24px] rotate-45 bg-[#8ccf2f] text-white text-[9px] font-black px-8 py-1 shadow-md tracking-wide uppercase text-center">
@@ -318,58 +436,28 @@ function PlanCard({ plan, index, active }: { plan: Plan; index: number; active: 
                         </div>
                     </div>
                 )}
-
-                <span className={`relative z-10 block text-center text-2xl font-black tracking-tight
-                    ${!isFeatured ? "text-slate-800" : "text-white"}`}>
-                    {plan.name}
-                </span>
-
-                <p className={`relative z-10 text-center text-xs mt-1 font-medium ${!isFeatured ? "text-slate-500" : "text-white/80"}`}>
-                    {plan.subLabel}
-                </p>
+                <span className={`relative z-10 block text-center text-2xl font-black tracking-tight ${!isFeatured ? "text-slate-800" : "text-white"}`}>{plan.name}</span>
+                <p className={`relative z-10 text-center text-xs mt-1 font-medium ${!isFeatured ? "text-slate-500" : "text-white/80"}`}>{plan.subLabel}</p>
             </div>
 
-            {/* ── BODY ───────────────────────────────────────────────── */}
             <div className="bg-white flex flex-col flex-1 px-7 pt-7 pb-7 gap-6">
-
-                {/* Price */}
                 <div className="text-center py-2">
-                    <div className={`text-3xl font-black tracking-tight leading-none
-                        ${!isFeatured ? "text-slate-900" : "text-[#0797d5]"}`}>
-                        {plan.priceLabel}
-                    </div>
+                    <div className={`text-3xl font-black tracking-tight leading-none ${!isFeatured ? "text-slate-900" : "text-[#0797d5]"}`}>{plan.priceLabel}</div>
                     <p className="text-xs text-slate-500 mt-3 leading-relaxed max-w-sm mx-auto">{plan.description}</p>
                 </div>
-
                 <div className="h-px w-full bg-slate-100" />
-
-                {/* Feature list */}
                 <ul className="space-y-3 flex-1">
                     {plan.features.map((f) => (
                         <li key={f} className="flex items-start gap-2.5 text-sm group/item">
-                            <span className={`mt-0.5 shrink-0 size-4 rounded-full flex items-center justify-center transition-all duration-300 group-hover/item:scale-110
-                                ${!isFeatured ? "bg-slate-100 text-slate-600" : "bg-[#0797d5]/10 text-[#0797d5]"}`}>
+                            <span className={`mt-0.5 shrink-0 size-4 rounded-full flex items-center justify-center transition-all duration-300 group-hover/item:scale-110 ${!isFeatured ? "bg-slate-100 text-slate-600" : "bg-[#0797d5]/10 text-[#0797d5]"}`}>
                                 <Check size={10} strokeWidth={3} />
                             </span>
-                            <span className="text-slate-700 text-xs sm:text-sm font-medium leading-snug">
-                                {f}
-                            </span>
+                            <span className="text-slate-700 text-xs sm:text-sm font-medium leading-snug">{f}</span>
                         </li>
                     ))}
                 </ul>
-
-                {/* CTA */}
-                <button
-                    onClick={() => navigate(plan.path)}
-                    className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all duration-300
-                        hover:-translate-y-0.5 cursor-pointer relative overflow-hidden group/btn
-                        ${!isFeatured
-                            ? "border-2 border-slate-300 hover:border-[#0797d5] bg-white text-slate-800 hover:text-[#0797d5] hover:shadow-md"
-                            : "bg-gradient-to-r from-[#0797d5] to-[#05c4f7] hover:from-[#087fb3] hover:to-[#0797d5] text-white hover:shadow-xl hover:shadow-[#0797d5]/40"
-                        }`}
-                >
-                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent
-                        -translate-x-full group-hover/btn:translate-x-full transition-transform duration-500 pointer-events-none" />
+                <button onClick={() => navigate(plan.path)} className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all duration-300 hover:-translate-y-0.5 cursor-pointer relative overflow-hidden group/btn ${!isFeatured ? "border-2 border-slate-300 hover:border-[#0797d5] bg-white text-slate-800 hover:text-[#0797d5] hover:shadow-md" : "bg-gradient-to-r from-[#0797d5] to-[#05c4f7] hover:from-[#087fb3] hover:to-[#0797d5] text-white hover:shadow-xl hover:shadow-[#0797d5]/40"}`}>
+                    <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-500 pointer-events-none" />
                     {plan.cta}
                 </button>
             </div>
@@ -377,19 +465,214 @@ function PlanCard({ plan, index, active }: { plan: Plan; index: number; active: 
     );
 }
 
-/* ─── Scroll Progress ────────────────────────────────────────────────────── */
-
-function ScrollProgress() {
-    const [progress, setProgress] = useState(0);
-    useEffect(() => {
-        const h = () => { const t = document.documentElement.scrollHeight - window.innerHeight; setProgress(t > 0 ? (window.scrollY / t) * 100 : 0); };
-        window.addEventListener("scroll", h, { passive: true });
-        return () => window.removeEventListener("scroll", h);
-    }, []);
-    return <div className="fixed top-0 left-0 right-0 z-50 h-0.5"><div className="h-full bg-gradient-to-r from-[#0797d5] via-[#05c4f7] to-[#8ccf2f]" style={{ width: `${progress}%`, transition: "width 0.1s linear" }} /></div>;
+function CellValue({ val }: { val: boolean | string | null }) {
+    if (val === null) return null;
+    if (typeof val === "boolean") return val
+        ? <Check size={17} className="text-[#0797d5] mx-auto" strokeWidth={3} />
+        : <X size={16} className="text-slate-300 mx-auto" strokeWidth={2} />;
+    return <span className="text-slate-700 font-bold text-xs sm:text-sm">{val}</span>;
 }
 
-/* ─── Main ───────────────────────────────────────────────────────────────── */
+function MetricCard({ metric, accentColor }: { metric: Metric; accentColor: string; }) {
+    const Icon = metric.icon;
+    return (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col gap-2 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200">
+            <div className="size-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${accentColor}15`, color: accentColor }}>
+                <Icon size={18} />
+            </div>
+            <span className="text-2xl font-black text-slate-950 tracking-tight">{metric.value}</span>
+            <span className="text-xs text-slate-500 leading-tight">{metric.label}</span>
+        </div>
+    );
+}
+
+function StoryCard({ story }: { story: Story }) {
+    const SectorIcon = story.sectorIcon;
+    return (
+        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:shadow-slate-200/80 transition-shadow duration-300">
+            <div className="grid lg:grid-cols-2">
+                <div className="p-8 lg:p-10 flex flex-col gap-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1 rounded-full border ${story.sectorColor}`} style={{ borderColor: `${story.accentColor}30`, backgroundColor: `${story.accentColor}08` }}>
+                                    <SectorIcon size={12} />
+                                    {story.sector}
+                                </span>
+                                <span className="text-xs text-slate-400 font-medium">{story.year}</span>
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-950 tracking-tight">{story.company}</h3>
+                            <p className="mt-1 text-sm font-semibold" style={{ color: story.accentColor }}>{story.tagline}</p>
+                        </div>
+                        <div className="shrink-0 flex items-center justify-center">
+                            <img src={story.logo} alt={story.company} className="h-14 w-auto object-contain" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Desafío</p>
+                            <p className="text-sm text-slate-600 leading-relaxed">{story.challenge}</p>
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Solución</p>
+                            <p className="text-sm text-slate-600 leading-relaxed">{story.solution}</p>
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl p-5 border-l-4" style={{ backgroundColor: `${story.accentColor}06`, borderLeftColor: story.accentColor }}>
+                        <Quote size={18} className="mb-2 opacity-40" style={{ color: story.accentColor }} />
+                        <p className="text-sm text-slate-700 leading-relaxed italic">"{story.quote}"</p>
+                        <div className="mt-3 flex items-center gap-2">
+                            <div className="size-7 rounded-full flex items-center justify-center text-xs font-black text-white" style={{ background: `linear-gradient(135deg, ${story.accentColor}, #8ccf2f)` }}>
+                                {story.quoteAuthor.charAt(0)}
+                            </div>
+                            <div>
+                                <p className="text-xs font-bold text-slate-800">{story.quoteAuthor}</p>
+                                <p className="text-xs text-slate-400">{story.quoteRole}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-8 lg:p-10 flex flex-col justify-center gap-6" style={{ backgroundColor: `${story.accentColor}04` }}>
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: story.accentColor }}>Resultados</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            {story.metrics.map((metric) => (
+                                <MetricCard key={metric.label} metric={metric} accentColor={story.accentColor} />
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2 border-t border-slate-100">
+                        <div className="flex gap-0.5">
+                            {Array.from({ length: 5 }).map((_, i) => (
+                                <Star key={i} size={14} className="fill-amber-400 text-amber-400" />
+                            ))}
+                        </div>
+                        <span className="text-xs text-slate-500 font-medium">Valoración del cliente</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Sub-componente con transición suave para el carrusel ─────────────── */
+
+function StoriesCarousel() {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isAnimating, setIsAnimating] = useState(false);
+    const [displayIndex, setDisplayIndex] = useState(0);
+
+    const changeStory = useCallback((newIndex: number) => {
+        if (isAnimating || newIndex === displayIndex) return;
+        setIsAnimating(true);
+        
+        // Inicia el desvanecimiento (fade out)
+        setTimeout(() => {
+            setDisplayIndex(newIndex);
+            setCurrentIndex(newIndex);
+            // Inicia la reaparición (fade in)
+            setTimeout(() => {
+                setIsAnimating(false);
+            }, 50);
+        }, 300); // Duración del fade out
+    }, [isAnimating, displayIndex]);
+
+    const prevStory = () => {
+        const target = displayIndex === 0 ? stories.length - 1 : displayIndex - 1;
+        changeStory(target);
+    };
+
+    const nextStory = useCallback(() => {
+        const target = displayIndex === stories.length - 1 ? 0 : displayIndex + 1;
+        changeStory(target);
+    }, [displayIndex, changeStory]);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            nextStory();
+        }, 7000);
+        return () => clearInterval(timer);
+    }, [nextStory]);
+
+    return (
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#0797d5]/20 bg-[#0797d5]/5 text-xs font-semibold text-[#0797d5] mb-2">
+                        <Award size={13} /> Casos de éxito
+                    </div>
+                    <h2 className="text-3xl font-black text-slate-950 tracking-tight">Empresas que confían en Voltguard</h2>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={prevStory} 
+                        disabled={isAnimating}
+                        className="size-11 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:border-[#0797d5] hover:text-[#0797d5] hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+                    >
+                        <ArrowLeft size={18} />
+                    </button>
+                    <button 
+                        onClick={nextStory} 
+                        disabled={isAnimating}
+                        className="size-11 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:border-[#0797d5] hover:text-[#0797d5] hover:shadow-md transition-all cursor-pointer disabled:opacity-50"
+                    >
+                        <ArrowRight size={18} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Contenedor del Carrusel con animación fluida */}
+            <div className="overflow-hidden relative min-h-[420px]">
+                <div 
+                    className="transition-all duration-500 ease-out will-change-transform"
+                    style={{
+                        opacity: isAnimating ? 0 : 1,
+                        transform: isAnimating ? "translateY(12px) scale(0.99)" : "translateY(0) scale(1)",
+                        filter: isAnimating ? "blur(4px)" : "blur(0px)",
+                    }}
+                >
+                    <StoryCard story={stories[displayIndex]} />
+                </div>
+            </div>
+
+            {/* Navegación por puntos (Dots) */}
+            <div className="flex justify-center items-center gap-2 mt-6">
+                {stories.map((_, idx) => (
+                    <button 
+                        key={idx} 
+                        onClick={() => changeStory(idx)} 
+                        className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${currentIndex === idx ? "w-8 bg-[#0797d5]" : "w-2.5 bg-slate-200 hover:bg-slate-300"}`} 
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function FAQRow({ q, a, index }: FAQItem & { index: number }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const { ref, inView } = useInViewRepeatable(0.1);
+    return (
+        <div ref={ref} className="border border-slate-200 bg-white rounded-2xl overflow-hidden hover:border-[#0797d5]/40 hover:shadow-md transition-all duration-300"
+            style={{ opacity: inView ? 1 : 0, transform: inView ? "translateY(0)" : "translateY(24px)", transition: `opacity 0.6s ease ${index * 80}ms, transform 0.6s ease ${index * 80}ms` }}>
+            <button onClick={() => setIsOpen(!isOpen)} className="w-full flex items-center justify-between p-5 text-left font-bold text-slate-950 hover:text-[#0797d5] transition-colors cursor-pointer group">
+                <span className="text-sm sm:text-base pr-4">{q}</span>
+                <div className={`shrink-0 size-7 rounded-full flex items-center justify-center transition-all duration-300 ${isOpen ? "bg-[#0797d5] text-white rotate-180" : "bg-slate-100 text-slate-400 group-hover:bg-[#0797d5]/10 group-hover:text-[#0797d5]"}`}>
+                    <ChevronDown size={15} />
+                </div>
+            </button>
+            <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isOpen ? "max-h-48 border-t border-slate-100" : "max-h-0"}`}>
+                <p className="p-5 text-sm text-slate-500 leading-relaxed bg-slate-50/50">{a}</p>
+            </div>
+        </div>
+    );
+}
+
+/* ─── Main Component ─────────────────────────────────────────────────────── */
 
 export default function HomePage() {
     const navigate = useNavigate();
@@ -404,6 +687,7 @@ export default function HomePage() {
     const { ref: homeFaqHeadRef, inView: homeFaqHeadVisible } = useInViewRepeatable(0.15);
     const { ref: normHeadRef, inView: normHeadVisible } = useInViewRepeatable(0.15);
     const { ref: testimonialRef, inView: testimonialVisible } = useInViewRepeatable(0.15);
+    const { ref: tableRef, inView: tableVisible } = useInViewRepeatable(0.05);
 
     const scrollToFeatures = useCallback(() => {
         document.getElementById("features")?.scrollIntoView({ behavior: "smooth" });
@@ -415,46 +699,48 @@ export default function HomePage() {
             <ScrollProgress />
 
             {/* ── HERO ─────────────────────────────────────────────────────── */}
-            {/* ── HERO ─────────────────────────────────────────────────────── */}
-<section className="relative overflow-hidden pt-10">
-    <BackgroundGrid />
-    <FloatingParticles count={10} />
-    <div className="absolute -top-32 -left-32 size-96 rounded-full bg-[#0797d5]/12 blur-3xl pointer-events-none" style={{ animation: "blobMove 8s ease-in-out infinite" }} />
-    <div className="absolute top-10 -right-32 size-80 rounded-full bg-[#8ccf2f]/10 blur-3xl pointer-events-none" style={{ animation: "blobMove 10s ease-in-out 2s infinite reverse" }} />
+            <section className="relative overflow-hidden pt-10">
+                <BackgroundGrid />
+                <FloatingParticles count={10} />
+                <div className="absolute -top-32 -left-32 size-96 rounded-full bg-[#0797d5]/12 blur-3xl pointer-events-none" style={{ animation: "blobMove 8s ease-in-out infinite" }} />
+                <div className="absolute top-10 -right-32 size-80 rounded-full bg-[#8ccf2f]/10 blur-3xl pointer-events-none" style={{ animation: "blobMove 10s ease-in-out 2s infinite reverse" }} />
 
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 items-center relative z-10">
-        <div style={{ animation: "fadeUp 0.6s ease both" }}>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-950 leading-[1.06]" style={{ animation: "fadeUp 0.6s ease 0.15s both" }}>
-                Garantiza tu Licencia e Inspección ITSE con{" "}
-                <span className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] bg-clip-text text-transparent" style={{ backgroundSize: "200% 200%", animation: "gradShift 4s ease infinite" }}>Voltguard</span>
-            </h1>
-            <p className="mt-5 text-lg text-slate-600 leading-8 max-w-xl" style={{ animation: "fadeUp 0.6s ease 0.25s both" }}>
-                Simplifica el levantamiento de observaciones en tableros eléctricos. Obtén diagramas unifilares CAD, rotulado bajo CNE y certificados respaldados por Ingeniero Colegiado (CIP).
-            </p>
-            <div className="mt-8 flex flex-col sm:flex-row gap-3" style={{ animation: "fadeUp 0.6s ease 0.35s both" }}>
-                <button onClick={scrollToFeatures} className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white border border-slate-200 hover:border-[#0797d5]/50 text-slate-700 hover:text-[#0797d5] font-bold text-sm rounded-2xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:shadow-[#0797d5]/10 cursor-pointer">
-                    <TrendingUp size={16} className="group-hover:text-[#0797d5] transition-colors" />
-                    Alcance y Funcionalidades
-                </button>
-            </div>
-            <div ref={heroStatsRef} className="mt-8 flex items-center gap-6" style={{ animation: "fadeUp 0.6s ease 0.45s both" }}>
-                {heroStats.map((s, i) => (
-                    <div key={s.id} className="flex items-center gap-6">
-                        <AnimatedStat {...s} active={heroStatsVisible} duration={900 + i * 200} />
-                        {i < heroStats.length - 1 && <div className="w-px h-8 bg-gradient-to-b from-transparent via-slate-200 to-transparent" />}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 grid lg:grid-cols-2 gap-12 items-center relative z-10">
+                    <div style={{ animation: "fadeUp 0.6s ease both" }}>
+                        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-slate-950 leading-[1.06]" style={{ animation: "fadeUp 0.6s ease 0.15s both" }}>
+                            Garantiza tu Licencia e Inspección ITSE con{" "}
+                            <span className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] bg-clip-text text-transparent" style={{ backgroundSize: "200% 200%", animation: "gradShift 4s ease infinite" }}>Voltguard</span>
+                        </h1>
+                        <p className="mt-5 text-lg text-slate-600 leading-8 max-w-xl" style={{ animation: "fadeUp 0.6s ease 0.25s both" }}>
+                            Simplifica el levantamiento de observaciones en tableros eléctricos. Obtén diagramas unifilares CAD, rotulado bajo CNE y certificados respaldados por Ingeniero Colegiado (CIP).
+                        </p>
+                        <div className="mt-8 flex flex-col sm:flex-row gap-3" style={{ animation: "fadeUp 0.6s ease 0.35s both" }}>
+                            <button onClick={scrollToFeatures} className="group inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-white border border-slate-200 hover:border-[#0797d5]/50 text-slate-700 hover:text-[#0797d5] font-bold text-sm rounded-2xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:shadow-[#0797d5]/10 cursor-pointer">
+                                <TrendingUp size={16} className="group-hover:text-[#0797d5] transition-colors" />
+                                Alcance y Funcionalidades
+                            </button>
+                        </div>
+                        <div ref={heroStatsRef} className="mt-8 flex items-center gap-6" style={{ animation: "fadeUp 0.6s ease 0.45s both" }}>
+                            {heroStats.map((s, i) => (
+                                <div key={s.id} className="flex items-center gap-6">
+                                    <AnimatedStat {...s} active={heroStatsVisible} duration={900 + i * 200} />
+                                    {i < heroStats.length - 1 && <div className="w-px h-8 bg-gradient-to-b from-transparent via-slate-200 to-transparent" />}
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                ))}
-            </div>
-        </div>
 
-        <div ref={heroCardRef} className="relative" style={{ opacity: heroCardVisible ? 1 : 0, transform: heroCardVisible ? "translateX(0)" : "translateX(40px)", transition: "opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s" }}>
-            <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl shadow-slate-200/80 hover:shadow-[#0797d5]/20 transition-shadow duration-500" style={{ animation: "float 5s ease-in-out infinite" }}>
-                <img src="/hero-technician2.webp" alt="Ingeniero realizando inspección eléctrica ITSE" className="rounded-3xl object-cover h-[520px] w-full" />
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-[#0797d5]/10 via-transparent to-transparent pointer-events-none" />
-            </div>
-        </div>
-    </div>
-</section>
+                    <div ref={heroCardRef} className="relative" style={{ opacity: heroCardVisible ? 1 : 0, transform: heroCardVisible ? "translateX(0)" : "translateX(40px)", transition: "opacity 0.8s ease 0.2s, transform 0.8s ease 0.2s" }}>
+                        <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl shadow-slate-200/80 hover:shadow-[#0797d5]/20 transition-shadow duration-500" style={{ animation: "float 5s ease-in-out infinite" }}>
+                            <img src="/hero-technician2.webp" alt="Ingeniero realizando inspección eléctrica ITSE" className="rounded-3xl object-cover h-[520px] w-full" />
+                            <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-[#0797d5]/10 via-transparent to-transparent pointer-events-none" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* ── TICKER DE LOGOS ─────────────────────────────────────────── */}
+            <LogoTicker />
 
             {/* ── STRIP FOTOS ─────────────────────────────────────────────── */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -464,11 +750,8 @@ export default function HomePage() {
                         { src: "/thermography_home.webp", label: "Análisis Termográfico (NFPA 70B)", sub: "Cámara infrarroja de precisión" },
                         { src: "/certification_nfpa_home.jpeg", label: "Certificación y Firma CIP", sub: "Documentación para Defensa Civil" },
                     ].map((item, i) => (
-                        <div key={i} className="relative rounded-2xl overflow-hidden group cursor-default"
-                            style={{ height: 200, opacity: 0, animation: `fadeUp 0.6s ease ${0.15 + i * 0.15}s forwards` }}>
-                            <img src={item.src} alt={item.label}
-                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                style={{ animation: "kenBurns 12s ease-in-out infinite" }} />
+                        <div key={i} className="relative rounded-2xl overflow-hidden group cursor-default" style={{ height: 200, opacity: 0, animation: `fadeUp 0.6s ease ${0.15 + i * 0.15}s forwards` }}>
+                            <img src={item.src} alt={item.label} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" style={{ animation: "kenBurns 12s ease-in-out infinite" }} />
                             <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
                             <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#0797d5] to-[#8ccf2f]" />
                             <div className="absolute bottom-0 left-0 right-0 p-4">
@@ -483,9 +766,7 @@ export default function HomePage() {
             {/* ── CUMPLIMIENTO NORMATIVO ──────────────────────────────────── */}
             <section id="standards" className="relative overflow-hidden py-24">
                 <div className="absolute inset-0 pointer-events-none">
-                    <img src="/standards-bg.jpg" alt=""
-                        className="w-full h-full object-cover object-center"
-                        style={{ animation: "kenBurns 18s ease-in-out infinite" }} />
+                    <img src="/standards-bg.jpg" alt="" className="w-full h-full object-cover object-center" style={{ animation: "kenBurns 18s ease-in-out infinite" }} />
                     <div className="absolute inset-0 bg-slate-50/92" />
                 </div>
 
@@ -517,7 +798,7 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ── FEATURES ─────────────────────────────────────────────────── */}
+            {/* ── MÓDULOS Y FUNCIONALIDADES ───────────────────────────────── */}
             <section id="features" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 relative">
                 <div ref={featHeadRef} style={{ opacity: featHeadVisible ? 1 : 0, transform: featHeadVisible ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.65s ease, transform 0.65s ease" }} className="text-center mb-14 relative z-10">
                     <p className="text-xs font-bold uppercase tracking-widest text-[#0797d5] mb-3">Módulos Voltguard</p>
@@ -529,15 +810,11 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ── TEAM IN ACTION ───────────────────────────────────────────── */}
+            {/* ── EQUIPO Y CAMPO ───────────────────────────────────────────── */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-20">
                 <div className="grid lg:grid-cols-2 gap-0 rounded-3xl overflow-hidden shadow-2xl shadow-slate-200/80">
                     <div className="relative min-h-[380px]">
-                        <img src="/inspection_home.webp" alt="Ingenieros levantando observaciones ITSE en campo"
-                            decoding="async"
-                            loading="lazy"
-                            className="absolute inset-0 w-full h-full object-cover optimize-animated-img"
-                            style={{ animation: "kenBurns 15s ease-in-out infinite" }} />
+                        <img src="/inspection_home.webp" alt="Ingenieros levantando observaciones ITSE en campo" decoding="async" loading="lazy" className="absolute inset-0 w-full h-full object-cover optimize-animated-img" style={{ animation: "kenBurns 15s ease-in-out infinite" }} />
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent to-slate-900/60" />
                         <div className="absolute bottom-6 left-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl px-5 py-3" style={{ animation: "float 5s ease-in-out infinite" }}>
                             <p className="text-white/70 text-xs font-semibold">Certificados ITSE Emitidos</p>
@@ -572,25 +849,74 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ── PRICING SECTION (Basada en la matriz de la imagen adjunta) ─ */}
+            {/* ── PLANES Y MATRIZ DETALLADA ────────────────────────────────── */}
             <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 relative">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 size-96 rounded-full bg-[#0797d5]/5 blur-3xl pointer-events-none" style={{ animation: "blobMove 10s ease-in-out infinite" }} />
+                
                 <div ref={pricingHeadRef} style={{ opacity: pricingHeadVisible ? 1 : 0, transform: pricingHeadVisible ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.65s ease, transform 0.65s ease" }} className="text-center mb-12 relative z-10">
                     <p className="text-xs font-bold uppercase tracking-widest text-[#0797d5] mb-3">Planes y Licencias Voltguard</p>
                     <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">Elige el plan adecuado según tus tableros y requisitos ITSE</h2>
                     <p className="mt-4 text-slate-500 max-w-2xl mx-auto leading-7 text-sm sm:text-base">Adquiere tu suscripción a Voltguard para habilitar la generación de planos CAD, dictámenes CIP y mantenimiento normativo para tu negocio.</p>
                 </div>
-                <div ref={pricingRef} className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto relative z-10">
+
+                {/* Tarjetas de planes */}
+                <div ref={pricingRef} className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto relative z-10 mb-12">
                     {plans.map((plan, i) => <PlanCard key={plan.name} plan={plan} index={i} active={pricingVisible} />)}
                 </div>
+
+                {/* Matriz comparativa detallada */}
+                <div ref={tableRef} className="mt-16 relative z-10" style={{ opacity: tableVisible ? 1 : 0, transform: tableVisible ? "translateY(0)" : "translateY(28px)", transition: "opacity 0.7s ease, transform 0.7s ease" }}>
+                    <div className="text-center mb-8">
+                        <h3 className="text-2xl font-black text-slate-950 tracking-tight">Matriz comparativa de características y alcance</h3>
+                        <p className="text-sm text-slate-500 mt-1">Revisa detalladamente las opciones del sistema Voltguard de acuerdo con la exigencia técnica de tu negocio.</p>
+                    </div>
+                    <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-100 bg-slate-50/70">
+                                        <th className="p-5 text-sm font-bold text-slate-500 uppercase tracking-wider w-2/5">Características y Alcance</th>
+                                        <th className="p-5 text-sm font-black text-slate-600 text-center">Plan Básico</th>
+                                        <th className="p-5 text-sm font-black text-[#0797d5] text-center bg-[#0797d5]/5">Plan Intermedio</th>
+                                        <th className="p-5 text-sm font-black text-slate-800 text-center">Plan Empresarial</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-sm">
+                                    {tableRows.map((row, i) => {
+                                        if (row.category) {
+                                            return (
+                                                <tr key={i} className="bg-slate-50/80">
+                                                    <td className="px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-400" colSpan={4}>{row.category}</td>
+                                                </tr>
+                                            );
+                                        }
+                                        const Icon = row.icon;
+                                        return (
+                                            <tr key={i} className="hover:bg-slate-50/40 transition-colors duration-150">
+                                                <td className="p-4 sm:p-5">
+                                                    <div className="flex items-center gap-2 text-slate-600 font-medium text-xs sm:text-sm">
+                                                        {Icon && <Icon size={14} className="text-slate-400 shrink-0" />}
+                                                        {row.label}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 sm:p-5 text-center bg-slate-50/30"><CellValue val={row.basic} /></td>
+                                                <td className="p-4 sm:p-5 text-center bg-[#0797d5]/3"><CellValue val={row.pyme} /></td>
+                                                <td className="p-4 sm:p-5 text-center bg-slate-50/20"><CellValue val={row.enterprise} /></td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <p className="text-center text-xs text-slate-400 mt-8 relative z-10">La emisión de certificados con firma CIP y archivos CAD (.DWG) está condicionada a los planes Intermedio y Empresarial.</p>
             </section>
 
-            {/* ── STATS BANNER ─────────────────────────────────────────────── */}
+            {/* ── BANNER DE ESTADÍSTICAS ──────────────────────────────────── */}
             <div ref={bannerRef} className="relative overflow-hidden">
-                <img src="/stats-bg-staff.jpg" alt=""
-                    className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
-                    style={{ animation: "kenBurns 20s ease-in-out infinite" }} />
+                <img src="/stats-bg-staff.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none" style={{ animation: "kenBurns 20s ease-in-out infinite" }} />
                 <div className="absolute inset-0 bg-gradient-to-r from-[#0797d5]/92 to-[#05c4f7]/92" />
                 <FloatingParticles count={8} />
                 <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 grid grid-cols-2 lg:grid-cols-4 gap-8">
@@ -598,25 +924,23 @@ export default function HomePage() {
                 </div>
             </div>
 
-            {/* ── TESTIMONIAL ──────────────────────────────────────────────── */}
+            {/* ── CASOS DE ÉXITO (CARRUSEL INTERACTIVO) ────────────────────── */}
+            <StoriesCarousel />
+
+            {/* ── TESTIMONIAL DESTACADO ───────────────────────────────────── */}
             <section ref={testimonialRef} className="relative overflow-hidden py-28">
-                <img src="/section_caso_uso_home2.webp" alt=""
-                    className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
-                    style={{ animation: "kenBurns 22s ease-in-out infinite" }} />
+                <img src="/section_caso_uso_home2.webp" alt="" className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none" style={{ animation: "kenBurns 22s ease-in-out infinite" }} />
                 <div className="absolute inset-0 bg-slate-950/75" />
-                <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center"
-                    style={{ opacity: testimonialVisible ? 1 : 0, transform: testimonialVisible ? "translateY(0)" : "translateY(32px)", transition: "opacity 0.8s ease, transform 0.8s ease" }}>
+                <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 text-center" style={{ opacity: testimonialVisible ? 1 : 0, transform: testimonialVisible ? "translateY(0)" : "translateY(32px)", transition: "opacity 0.8s ease, transform 0.8s ease" }}>
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0797d5]/20 border border-[#0797d5]/40 text-[#05c4f7] text-xs font-bold mb-8">
                         <Activity size={12} style={{ animation: "zap 1.5s ease-in-out infinite" }} />
                         Caso de éxito ITSE
                     </div>
                     <blockquote className="text-2xl sm:text-3xl font-black text-white leading-snug">
-                        {/* "Teníamos observaciones pendientes por la falta de diagramas unifilares en nuestros tableros. Con el Plan Intermedio de Voltguard obtuvimos la firma CIP y aprobamos la inspección ITSE de inmediato." */}
                         "Antes tardábamos días en ubicar los certificados de un tablero. Con Voltguard lo hacemos en segundos desde el celular."
                     </blockquote>
                     <div className="mt-8 flex items-center justify-center gap-4">
-                        <img src="/avatar-engineer.png" alt="Administrador de Local Comercial"
-                            className="size-12 rounded-full object-cover border-2 border-[#0797d5] shadow-lg shadow-[#0797d5]/40" />
+                        <img src="/avatar-engineer.png" alt="Administrador de Local Comercial" className="size-12 rounded-full object-cover border-2 border-[#0797d5] shadow-lg shadow-[#0797d5]/40" />
                         <div className="text-left">
                             <p className="text-white font-bold text-sm">Gerente de Operaciones</p>
                             <p className="text-white/50 text-xs mt-0.5">Cadena Comercial — Lima, Perú</p>
@@ -625,7 +949,7 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ── FAQs ─────────────────────────────────────────────────────── */}
+            {/* ── PREGUNTAS FRECUENTES (FAQS) ─────────────────────────────── */}
             <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
                 <div ref={homeFaqHeadRef} className="text-center mb-10" style={{ opacity: homeFaqHeadVisible ? 1 : 0, transform: homeFaqHeadVisible ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.65s ease, transform 0.65s ease" }}>
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#0797d5]/8 border border-[#0797d5]/20 text-[#0797d5] text-xs font-bold mb-4">
@@ -636,17 +960,14 @@ export default function HomePage() {
                     <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto leading-relaxed">Aclara tus dudas sobre cómo Voltguard te ayuda a cumplir con las inspecciones y licenciamiento de Defensa Civil.</p>
                 </div>
                 <div className="space-y-3">
-                    {homeFaqs.map((faq, i) => <HomeFAQRow key={i} {...faq} index={i} />)}
+                    {faqs.map((faq, i) => <FAQRow key={i} {...faq} index={i} />)}
                 </div>
             </section>
 
-            {/* ── CTA ──────────────────────────────────────────────────────── */}
+            {/* ── CTA FINAL ────────────────────────────────────────────────── */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24">
-                <div ref={ctaRef} style={{ opacity: ctaVisible ? 1 : 0, transform: ctaVisible ? "translateY(0)" : "translateY(32px)", transition: "opacity 0.7s ease, transform 0.7s ease" }}
-                    className="relative rounded-3xl overflow-hidden">
-                    <img src="/cta-staff-bg.jpg" alt=""
-                        className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
-                        style={{ animation: "kenBurns 18s ease-in-out infinite" }} />
+                <div ref={ctaRef} style={{ opacity: ctaVisible ? 1 : 0, transform: ctaVisible ? "translateY(0)" : "translateY(32px)", transition: "opacity 0.7s ease, transform 0.7s ease" }} className="relative rounded-3xl overflow-hidden">
+                    <img src="/cta-staff-bg.jpg" alt="" className="absolute inset-0 w-full h-full object-cover object-center pointer-events-none" style={{ animation: "kenBurns 18s ease-in-out infinite" }} />
                     <div className="absolute inset-0 bg-gradient-to-r from-slate-900/96 via-slate-900/90 to-slate-800/80" />
                     <BackgroundGrid />
                     <FloatingParticles count={6} />

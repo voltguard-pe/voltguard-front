@@ -102,7 +102,7 @@ const NavbarComponent = () => {
                 </Link>
 
                 {/* ── NAV LINKS ──────────────────────────────────────────── */}
-                <nav
+                {/* <nav
                     className="hidden md:flex flex-2 items-center justify-center gap-1"
                     style={{
                         opacity: mounted ? 1 : 0,
@@ -142,7 +142,7 @@ const NavbarComponent = () => {
                             </>
                         )}
                     </NavLink>
-                </nav>
+                </nav> */}
 
                 {/* ── RIGHT ─────────────────────────────────────────────── */}
                 <div

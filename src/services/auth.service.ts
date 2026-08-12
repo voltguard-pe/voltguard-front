@@ -15,7 +15,6 @@ export interface RegisterData {
     cargo: string;
     phone: string;
     referralSource: string;
-    companyPublicCode?: string;
 }
 
 export const registerUser = async (data: RegisterData) => {

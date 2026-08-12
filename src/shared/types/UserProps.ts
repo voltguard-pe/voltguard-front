@@ -1,5 +1,7 @@
 import type { Role } from "./AuthProps";
 
+export type PlanType = "basico" | "intermedio" | "empresarial";
+
 export interface CompanySummaryDTO {
   name: string;
   publicCode: string;
@@ -10,7 +12,16 @@ export type UserProps = {
   firstname: string;
   lastname: string;
   email: string;
+  // ── CAMPOS ADICIONALES DEL MODELO ──
+  company?: string;
+  ruc?: string;
+  cargo?: string;
+  phone?: string;
+  referralSource?: string;
+  // ── PLAN Y ESTADOS ──
+  plan: PlanType; // ← Agregado aquí
   isActive: boolean;
+  verified?: boolean;
   role: Role;
   companyPublicCode: string | CompanySummaryDTO | null;
   createdAt: string;
@@ -23,6 +34,7 @@ export interface CreateUserDTO {
   email: string;
   password: string;
   companyPublicCode: string;
+  plan?: PlanType;
 }
 
 export interface UpdateUserDTO {
@@ -32,4 +44,5 @@ export interface UpdateUserDTO {
   password?: string;
   isActive?: boolean;
   companyPublicCode?: string;
+  plan?: PlanType;
 }

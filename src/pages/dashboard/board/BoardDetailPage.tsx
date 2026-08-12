@@ -16,9 +16,11 @@ import {
   Hand,
   ImageIcon,
   Info,
+  Layers,
   MapPin,
   RefreshCw,
   Shield,
+  ShieldAlert,
   Sun,
   // ShieldCheck,
   UploadCloud,
@@ -45,6 +47,7 @@ import { getDemandChartData, uploadMetrelCsv } from "../../../services/measureme
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import QRCode from "react-qr-code";
+import { useAuth } from "../../../shared/hooks/useAuth";
 
 // ── OBJETOS HARDCODEADOS PARA LA PRESENTACIÓN ──
 const documentosHardcodeados = [
@@ -93,6 +96,14 @@ const formatMeasurementWithUnit = (
 };
 
 const BoardDetailPage = () => {
+  // ── OBTENER PLAN DEL USUARIO AUTENTICADO ──
+  const { auth } = useAuth();
+  const userPlan = auth?.plan || "basico";
+
+  // Banderas de permisos
+  const isIntermedioOrSuperior = ["intermedio", "empresarial"].includes(userPlan);
+  const isEmpresarial = userPlan === "empresarial";
+
   const navigate = useNavigate();
   const { publicCode, code } = useParams();
 
@@ -143,6 +154,17 @@ const BoardDetailPage = () => {
   } | null>(null);
 
   const [energiaPorDiaData, setEnergiaPorDiaData] = useState<any[]>([]);
+
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // ── PROCESAMIENTO Y SOLICITUD DE DATOS ──
   const fetchChartData = async (boardId: string, start?: string, end?: string) => {
@@ -411,7 +433,7 @@ const BoardDetailPage = () => {
 
   const dataFiltradaZoom = rawChartData.slice(zoomRange.startIdx, zoomRange.endIdx + 1);
 
-// ── LÓGICA TARIFARIA LUZ DEL SUR (CORREGIDA) ──
+  // ── LÓGICA TARIFARIA LUZ DEL SUR (CORREGIDA) ──
   const calcularMetricasLuzDelSur = (data: any[]) => {
     if (!data || data.length === 0) return;
 
@@ -433,10 +455,10 @@ const BoardDetailPage = () => {
       Object.keys(row).forEach((key) => {
         // Ignorar horas y series auxiliares de kvar (inductiva_/capacitiva_)
         if (
-          key === "horaMinuto" || 
-          key === "Promedio_General" || 
-          key.startsWith("inductiva_") || 
-          key.startsWith("capacitiva_") || 
+          key === "horaMinuto" ||
+          key === "Promedio_General" ||
+          key.startsWith("inductiva_") ||
+          key.startsWith("capacitiva_") ||
           key.startsWith("kvar_")
         ) return;
 
@@ -679,26 +701,40 @@ const BoardDetailPage = () => {
           </div>
         ) : (
           <div className="space-y-5">
-            <div className="flex gap-1.5 overflow-x-auto pb-2 sm:pb-0 sm:flex-wrap rounded-2xl bg-slate-100 p-2 border border-slate-200/40 scrollbar-none">
+            <div className="flex items-center gap-2.5 overflow-x-auto p-2.5 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
+              <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1 shrink-0">
+                DÍAS:
+              </span>
+
+              {/* Botón Promedio General */}
               <button
                 type="button"
                 onClick={() => toggleDemandDay("Promedio_General")}
-                className={`flex shrink-0 items-center gap-x-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleDemandSeries["Promedio_General"] ? 'bg-orange-600 border-orange-600 text-white' : 'bg-white border-slate-200 text-slate-600'
+                className={`flex shrink-0 items-center gap-x-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleDemandSeries["Promedio_General"]
+                  ? 'bg-orange-600 border-orange-600 text-white shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
               >
                 <ChartNoAxesCombined size={14} /> Promedio General
               </button>
-              {seriesKeys.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => toggleDemandDay(key)}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleDemandSeries[key] ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-600'
-                    }`}
-                >
-                  {key}
-                </button>
-              ))}
+
+              {/* Botones por Día */}
+              {seriesKeys.map((key) => {
+                const isSelected = !!visibleDemandSeries[key];
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleDemandDay(key)}
+                    className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
+                      ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                      }`}
+                  >
+                    {key}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="flex items-center justify-between gap-2 px-1 sm:hidden">
@@ -720,7 +756,7 @@ const BoardDetailPage = () => {
                     onMouseLeave={handleMouseUp}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    
+
                     {/* Búsqueda dinámica de marcas existentes dentro del zoom actual */}
                     {(() => {
                       const horasVisibles = dataFiltradaZoom.map(d => d.horaMinuto);
@@ -933,6 +969,178 @@ const BoardDetailPage = () => {
                 {/* Línea Inductiva Real (Azul) */}
                 {visibleReactiveSeries["kvar_inductivo"] !== false && activeDay && (
                   <Line
+                    type="linear"
+                    name={`Ntotind+ - ${activeDay}`}
+                    dataKey={`inductiva_${activeDay}`}
+                    stroke={REACTIVE_COLOR_INDUCTIVE}
+                    strokeWidth={1.5}
+                    dot={false}
+                    connectNulls={true}
+                    isAnimationActive={false}
+                  />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+  // ── SECCIÓN MODULAR ADICIONAL: CUADRO COMBINADO (DEMANDA kW + REACTIVA kvar) ──
+  const renderCombinedDemandAndReactiveSection = () => {
+    if (rawChartData.length === 0) return null;
+
+    const activeDay = selectedReactiveDay || seriesKeys[0] || "";
+
+    return (
+      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
+        {/* Encabezado del Nuevo Cuadro */}
+        <div className="mb-5 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600">
+              <Layers size={22} />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-950 text-base">
+                Cuadro Integrado: Demanda (kW) y Potencia Reactiva (kvar)
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Superposición de curva de potencia activa y potencia reactiva capacitiva e inductiva por día
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Selector de Día Activo */}
+        <div className="space-y-3 mb-5">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
+            <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
+              SELECCIONAR DÍA:
+            </span>
+            {seriesKeys.map((key) => {
+              const isSelected = activeDay === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedReactiveDay(key)}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
+                    ? 'bg-slate-900 border-slate-900 text-white shadow-md scale-105'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                >
+                  {key}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Toggles para Alternar Visibilidad de Variables en el Gráfico Combinado */}
+          <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
+            <button
+              type="button"
+              onClick={() => toggleDemandDay(activeDay)}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleDemandSeries[activeDay] !== false
+                ? 'bg-orange-600 text-white border-orange-600'
+                : 'bg-white text-slate-600 border-slate-200'
+                }`}
+            >
+              <span className={`size-2.5 rounded-full inline-block ${visibleDemandSeries[activeDay] !== false ? 'bg-white' : 'bg-orange-600'}`}></span>
+              Demanda Activa ({activeDay}) [kW]
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toggleReactiveDay("kvar_capacitivo")}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'
+                }`}
+            >
+              <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-white' : 'bg-red-600'}`}></span>
+              kvar c (Capacitiva)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toggleReactiveDay("kvar_inductivo")}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-indigo-700 text-white border-indigo-700' : 'bg-white text-slate-600 border-slate-200'
+                }`}
+            >
+              <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-white' : 'bg-indigo-700'}`}></span>
+              kvar i (Inductiva)
+            </button>
+          </div>
+        </div>
+
+        {/* Gráfico Recharts Multi-Eje Integrado */}
+        <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
+          <div className="h-72 sm:h-80 md:h-[400px] w-[850px] sm:w-full text-xs select-none">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={dataFiltradaZoom} margin={{ top: 15, right: 25, left: 10, bottom: 25 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+
+                <XAxis
+                  dataKey="horaMinuto"
+                  tickLine={false}
+                  interval={11}
+                  stroke="#94a3b8"
+                  dy={5}
+                  tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
+                >
+                  <Label
+                    value="Hora del Día"
+                    position="insideBottom"
+                    offset={-15}
+                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
+                  />
+                </XAxis>
+
+                {/* Eje Y Izquierdo para kW */}
+                <YAxis yAxisId="left" tickLine={false} stroke="#f97316" width={45} domain={[0, 'auto']}>
+                  <Label value="Demanda [kW]" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#f97316', fontWeight: '800', fontSize: '9px' }} />
+                </YAxis>
+
+                {/* Eje Y Derecho para kvar */}
+                <YAxis yAxisId="right" orientation="right" tickLine={false} stroke="#dc2626" width={45} domain={[0, 'auto']}>
+                  <Label value="Reactiva [kvar]" angle={90} position="insideRight" style={{ textAnchor: 'middle', fill: '#dc2626', fontWeight: '800', fontSize: '9px' }} />
+                </YAxis>
+
+                <Tooltip content={<CustomTooltip />} shared={true} />
+
+                {/* Línea Demanda Activa (kW) -> Eje Y Izquierdo */}
+                {visibleDemandSeries[activeDay] !== false && activeDay && (
+                  <Line
+                    yAxisId="left"
+                    type="monotone"
+                    name={`Demanda kW - ${activeDay}`}
+                    dataKey={activeDay}
+                    stroke="#f97316" // ← Naranja Eléctrico
+                    strokeWidth={2.5}
+                    dot={false}
+                    connectNulls={true}
+                    animationDuration={150}
+                  />
+                )}
+
+                {/* Línea Capacitiva (kvar c) -> Eje Y Derecho */}
+                {visibleReactiveSeries["kvar_capacitivo"] !== false && activeDay && (
+                  <Line
+                    yAxisId="right"
+                    type="linear"
+                    name={`Ntotcap+ - ${activeDay}`}
+                    dataKey={`capacitiva_${activeDay}`}
+                    stroke={REACTIVE_COLOR_CAPACITIVE}
+                    strokeWidth={1.5}
+                    dot={false}
+                    connectNulls={true}
+                    isAnimationActive={false}
+                  />
+                )}
+
+                {/* Línea Inductiva (kvar i) -> Eje Y Derecho */}
+                {visibleReactiveSeries["kvar_inductivo"] !== false && activeDay && (
+                  <Line
+                    yAxisId="right"
                     type="linear"
                     name={`Ntotind+ - ${activeDay}`}
                     dataKey={`inductiva_${activeDay}`}
@@ -1351,6 +1559,231 @@ const BoardDetailPage = () => {
     );
   };
 
+  // ── DATOS HARDCODEADOS SEGÚN LA IMAGEN DE REFERENCIA ──
+  const SPAT_HISTORICAL_DATA = [
+    { año: '2022', resistencia: 2.12, fuga: 0.80, diametro: 15.80, ph: 7.40 },
+    { año: '2023', resistencia: 2.35, fuga: 0.90, diametro: 15.60, ph: 7.10 },
+    { año: '2024', resistencia: 2.58, fuga: 1.10, diametro: 15.30, ph: 6.80 },
+    { año: '2025', resistencia: 2.71, fuga: 1.20, diametro: 15.00, ph: 6.50 },
+    { año: '2026', resistencia: 2.98, fuga: 1.40, diametro: 14.60, ph: 6.10 },
+  ];
+
+  const renderSpatQuinquennialSection = () => {
+    return (
+      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
+        {/* Encabezado Principal */}
+        <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-5">
+          {/* Contenedor del Ícono Estilizado */}
+          <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-rose-500/10 text-rose-600">
+            <ShieldAlert size={20} className="sm:size-[22px]" />
+          </div>
+
+          {/* Textos de Título y Subtítulo */}
+          <div>
+            <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
+              Tendencia Histórica Quinquenal y Alerta Temprana (SPAT)
+            </h2>
+            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+              Evolución multianual de resistencia, corriente de fuga, deterioro y pH del terreno
+            </p>
+          </div>
+        </div>
+
+        {/* Grid de 2x2 para los 4 gráficos */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          {/* ── 1. Resistencia de Puesta a Tierra (Ω) ── */}
+          <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Resistencia de puesta a tierra (Ω)</h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Criterio ≤ 5.00 Ω &nbsp;·&nbsp; Tasa media +8.9 %/año
+                </p>
+              </div>
+              <span className="bg-[#d97706] text-white text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0">
+                VIGILANCIA
+              </span>
+            </div>
+
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={SPAT_HISTORICAL_DATA} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px', fill: '#64748b' }} />
+                  <YAxis domain={[1.8, 5.2]} ticks={[2, 3, 4, 5]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px' }} />
+                  <Tooltip formatter={(val: any) => [`${val} Ω`, 'Resistencia']} />
+
+                  {/* Línea de Criterio */}
+                  <ReferenceLine y={5.0} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={1.5}>
+                    <Label value="Criterio 5.00 Ω" position="insideTopRight" fill="#dc2626" style={{ fontSize: '10px', fontWeight: '700' }} />
+                  </ReferenceLine>
+
+                  <Line
+                    type="monotone"
+                    dataKey="resistencia"
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#2563eb' }}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* ── 2. Corriente de Fuga (mA) ── */}
+          <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Corriente de fuga (mA)</h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Criterio ≤ 5.00 mA &nbsp;·&nbsp; Tasa media +15.0 %/año
+                </p>
+              </div>
+              <span className="bg-[#16a34a] text-white text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0">
+                NORMAL
+              </span>
+            </div>
+
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={SPAT_HISTORICAL_DATA} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px', fill: '#64748b' }} />
+                  <YAxis domain={[0, 5.2]} ticks={[1, 2, 3, 4, 5]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px' }} />
+                  <Tooltip formatter={(val: any) => [`${val} mA`, 'Corriente de Fuga']} />
+
+                  {/* Línea de Criterio */}
+                  <ReferenceLine y={5.0} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={1.5}>
+                    <Label value="Criterio 5.00 mA" position="insideTopRight" fill="#dc2626" style={{ fontSize: '10px', fontWeight: '700' }} />
+                  </ReferenceLine>
+
+                  <Line
+                    type="monotone"
+                    dataKey="fuga"
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#2563eb' }}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* ── 3. Diámetro de Varilla (mm) ── */}
+          <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Diámetro de varilla (mm)</h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Nominal 16.0 mm &nbsp;·&nbsp; Corrosión −0.40 mm/año
+                </p>
+              </div>
+              <span className="bg-[#dc2626] text-white text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0">
+                ALERTA
+              </span>
+            </div>
+
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={SPAT_HISTORICAL_DATA} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px', fill: '#64748b' }} />
+                  <YAxis domain={[14.0, 16.2]} ticks={[14.0, 14.5, 15.0, 15.5, 16.0]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px' }} />
+                  <Tooltip formatter={(val: any) => [`${val} mm`, 'Diámetro']} />
+
+                  {/* Línea de Umbral */}
+                  <ReferenceLine y={14.4} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={1.5}>
+                    <Label value="Umbral observación 14.40 mm" position="insideBottomRight" fill="#dc2626" style={{ fontSize: '10px', fontWeight: '700' }} />
+                  </ReferenceLine>
+
+                  <Line
+                    type="monotone"
+                    dataKey="diametro"
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#2563eb' }}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* ── 4. pH del Terreno ── */}
+          <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">pH del terreno</h3>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Rango óptimo 6.5 − 8.0 &nbsp;·&nbsp; −0.33 /año
+                </p>
+              </div>
+              <span className="bg-[#d97706] text-white text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0">
+                VIGILANCIA
+              </span>
+            </div>
+
+            <div className="h-56 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={SPAT_HISTORICAL_DATA} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px', fill: '#64748b' }} />
+                  <YAxis domain={[5.0, 7.8]} ticks={[5.5, 6.0, 6.5, 7.0, 7.5]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px' }} />
+                  <Tooltip formatter={(val: any) => [`${val}`, 'pH']} />
+
+                  {/* Línea de Criterio Crítico */}
+                  <ReferenceLine y={5.5} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={1.5}>
+                    <Label value="Crítico 5.50" position="insideTopRight" fill="#dc2626" style={{ fontSize: '10px', fontWeight: '700' }} />
+                  </ReferenceLine>
+
+                  <Line
+                    type="monotone"
+                    dataKey="ph"
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#2563eb' }}
+                    isAnimationActive={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Leyenda y Pie de Página */}
+        <div className="mt-6 border-t border-slate-100 pt-3.5">
+          <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-2 text-xs font-semibold text-slate-600">
+            <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider mr-1">
+              Criterios:
+            </span>
+
+            {/* Verde */}
+            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-100">
+              <span className="size-2 rounded-full bg-emerald-600 inline-block"></span>
+              <span><strong>Verde:</strong> dentro de criterio</span>
+            </div>
+
+            {/* Ámbar */}
+            <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg border border-amber-100">
+              <span className="size-2 rounded-full bg-amber-600 inline-block"></span>
+              <span><strong>Ámbar:</strong> vigilancia por tendencia</span>
+            </div>
+
+            {/* Rojo */}
+            <div className="flex items-center gap-1.5 bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg border border-rose-100">
+              <span className="size-2 rounded-full bg-rose-600 inline-block"></span>
+              <span><strong>Rojo:</strong> alerta temprana</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
   // ── MANEJO Y RENDERIZADO DE DOCUMENTOS Y PDF ──
   // const certificadosSpat = board?.assignedDocuments?.filter(doc => doc.type as string === "POZO_A_TIERRA") || [];
   // const certificadosMantenimiento = board?.assignedDocuments?.filter(doc => doc.type === "MANTENIMIENTO") || [];
@@ -1491,7 +1924,7 @@ const BoardDetailPage = () => {
     // Construcción de la URL pública directa para el QR
     const qrUrl = `${window.location.origin}/dashboard/boards/${publicCode}/${board.code}`;
 
-    // Helper para separar valor numérico y unidad si vienen juntos en un string (ej: "3.13 cal/cm²" => { val: "3.13", unit: "cal/cm²" })
+    // Helper para separar valor numérico y unidad
     const parseValUnit = (strValue: string | number | null | undefined, defaultUnit: string = "") => {
       if (!strValue && strValue !== 0) return { val: "-", unit: defaultUnit };
       const str = String(strValue).trim();
@@ -1514,73 +1947,83 @@ const BoardDetailPage = () => {
           </button>
         </div>
 
-        {/* ETIQUETA ANSI Z535 / NFPA 70E */}
-        <div className="overflow-hidden rounded-[26px] bg-white shadow-2xl ring-1 ring-slate-300">
+        {/* ETIQUETA ANSI Z535 / NFPA 70E RESPONSIVA */}
+        <div className="overflow-hidden rounded-2xl sm:rounded-[26px] bg-white shadow-2xl ring-1 ring-slate-300 font-sans">
+
           {/* ENCABEZADO ANSI Z535 · PELIGRO */}
-          <header className="flex h-[142px] items-center justify-center gap-6 bg-gradient-to-b from-[#D81332] to-[#A50E24]">
-            <AlertTriangle className="h-[90px] w-[90px] text-white fill-white stroke-[#C8102E] stroke-[1.5]" />
-            <h1 className="text-[78px] font-black leading-none tracking-[0.08em] text-white">PELIGRO</h1>
+          <header className="flex min-h-[100px] sm:min-h-[142px] items-center justify-center gap-3 sm:gap-6 bg-gradient-to-b from-[#D81332] to-[#A50E24] px-4 py-4">
+            <AlertTriangle className="h-12 w-12 sm:h-20 sm:w-20 md:h-[90px] md:w-[90px] text-white fill-white stroke-[#C8102E] stroke-[1.5] shrink-0" />
+            <h1 className="text-4xl sm:text-6xl md:text-[78px] font-black leading-none tracking-[0.08em] text-white">
+              PELIGRO
+            </h1>
           </header>
 
           {/* TÍTULO Y NORMA */}
-          <div className="bg-slate-900 px-8 pb-5 pt-4 text-center">
-            <h2 className="text-[31px] font-extrabold leading-tight tracking-wide text-white">
+          <div className="bg-slate-900 px-4 sm:px-8 pb-5 pt-4 text-center">
+            <h2 className="text-lg sm:text-2xl md:text-[31px] font-extrabold leading-tight tracking-wide text-white">
               RIESGO DE ARCO ELÉCTRICO Y ELECTROCUCIÓN PRESENTE
             </h2>
-            <p className="mt-2 flex items-center justify-center gap-3 text-[14px] font-medium text-slate-400">
-              Se requiere EPP de acuerdo a categoría
-              <span className="rounded-full border border-slate-600 bg-slate-800 px-3 py-[3px] text-[12.5px] font-bold tracking-wide text-slate-100">
+            <p className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-[14px] font-medium text-slate-400">
+              <span>Se requiere EPP de acuerdo a categoría</span>
+              <span className="rounded-full border border-slate-600 bg-slate-800 px-3 py-1 text-[11px] sm:text-[12.5px] font-bold tracking-wide text-slate-100">
                 NORMA NFPA 70E · 2027
               </span>
             </p>
           </div>
 
-          {/* CUERPO */}
-          <div className="grid grid-cols-2 gap-6 bg-slate-50 px-[26px] py-5">
-            {/* ARCO ELÉCTRICO */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          {/* CUERPO - GRID RESPONSIVA DE 1 A 2 COLUMNAS */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 bg-slate-50 p-4 sm:p-[26px]">
+
+            {/* RIESGO DE ARCO ELÉCTRICO */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
               <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
-                <span className="h-[19px] w-[6px] rounded-full bg-[#C8102E]"></span>
-                <h3 className="text-[15.5px] font-extrabold tracking-wide text-slate-900">RIESGO DE ARCO ELÉCTRICO</h3>
+                <span className="h-[19px] w-[6px] rounded-full bg-[#C8102E] shrink-0"></span>
+                <h3 className="text-sm sm:text-[15.5px] font-extrabold tracking-wide text-slate-900">
+                  RIESGO DE ARCO ELÉCTRICO
+                </h3>
               </div>
-              <div className="mt-3 flex gap-5">
-                <div className="grid h-[126px] w-[146px] shrink-0 place-content-center rounded-2xl bg-gradient-to-br from-[#E01234] to-[#9B0C22] text-center">
-                  <p className="text-[10.5px] font-bold tracking-[0.12em] text-red-100">CATEGORÍA EPP</p>
-                  <p className="-mt-1 text-[92px] font-black leading-[1.05] text-white">
+
+              <div className="mt-3 flex flex-col sm:flex-row gap-4 sm:gap-5 items-center sm:items-stretch">
+                <div className="grid h-[110px] sm:h-[126px] w-full sm:w-[146px] shrink-0 place-content-center rounded-2xl bg-gradient-to-br from-[#E01234] to-[#9B0C22] text-center p-2">
+                  <p className="text-[10px] sm:text-[10.5px] font-bold tracking-[0.12em] text-red-100">CATEGORÍA EPP</p>
+                  <p className="-mt-1 text-6xl sm:text-[92px] font-black leading-[1.05] text-white">
                     {nfpa.categoriaRiesgo ?? 1}
                   </p>
-                  <span className="mx-auto -mt-2 block h-[4px] w-[78px] rounded-full bg-white/55"></span>
+                  <span className="mx-auto -mt-1 sm:-mt-2 block h-[4px] w-[60px] sm:w-[78px] rounded-full bg-white/55"></span>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-end justify-between border-b border-slate-100 py-[7px] last:border-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-slate-500">Energía incidente</span>
-                    <span className="flex items-baseline gap-1.5">
-                      <span className="text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
+
+                <div className="w-full flex-1 space-y-1">
+                  <div className="flex items-baseline justify-between border-b border-slate-100 py-2">
+                    <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-500">Energía incidente</span>
+                    <span className="flex items-baseline gap-1">
+                      <span className="text-xl sm:text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
                         {parseValUnit(nfpa.energiaIncidente, "cal/cm²").val}
                       </span>
-                      <span className="text-[13px] font-semibold text-slate-500">
+                      <span className="text-xs sm:text-[13px] font-semibold text-slate-500">
                         {parseValUnit(nfpa.energiaIncidente, "cal/cm²").unit}
                       </span>
                     </span>
                   </div>
-                  <div className="flex items-end justify-between border-b border-slate-100 py-[7px] last:border-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-slate-500">Distancia de arco</span>
-                    <span className="flex items-baseline gap-1.5">
-                      <span className="text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
+
+                  <div className="flex items-baseline justify-between border-b border-slate-100 py-2">
+                    <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-500">Distancia de arco</span>
+                    <span className="flex items-baseline gap-1">
+                      <span className="text-xl sm:text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
                         {parseValUnit(nfpa.distanciaArco, "m").val}
                       </span>
-                      <span className="text-[13px] font-semibold text-slate-500">
+                      <span className="text-xs sm:text-[13px] font-semibold text-slate-500">
                         {parseValUnit(nfpa.distanciaArco, "m").unit}
                       </span>
                     </span>
                   </div>
-                  <div className="flex items-end justify-between border-b border-slate-100 py-[7px] last:border-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-slate-500">Distancia de trabajo</span>
-                    <span className="flex items-baseline gap-1.5">
-                      <span className="text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
+
+                  <div className="flex items-baseline justify-between py-2">
+                    <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-500">Distancia de trabajo</span>
+                    <span className="flex items-baseline gap-1">
+                      <span className="text-xl sm:text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
                         {parseValUnit(nfpa.distanciaTrabajo, "cm (18 in)").val}
                       </span>
-                      <span className="text-[13px] font-semibold text-slate-500">
+                      <span className="text-xs sm:text-[13px] font-semibold text-slate-500">
                         {parseValUnit(nfpa.distanciaTrabajo, "cm (18 in)").unit}
                       </span>
                     </span>
@@ -1589,48 +2032,54 @@ const BoardDetailPage = () => {
               </div>
             </section>
 
-            {/* ELECTROCUCIÓN */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            {/* RIESGO DE ELECTROCUCIÓN */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
               <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
-                <span className="h-[19px] w-[6px] rounded-full bg-sky-500"></span>
-                <h3 className="text-[15.5px] font-extrabold tracking-wide text-slate-900">RIESGO DE ELECTROCUCIÓN</h3>
+                <span className="h-[19px] w-[6px] rounded-full bg-sky-500 shrink-0"></span>
+                <h3 className="text-sm sm:text-[15.5px] font-extrabold tracking-wide text-slate-900">
+                  RIESGO DE ELECTROCUCIÓN
+                </h3>
               </div>
-              <div className="mt-3 flex gap-5">
-                <div className="grid h-[126px] w-[146px] shrink-0 place-content-center rounded-2xl bg-gradient-to-br from-slate-800 to-[#0B1220] text-center">
-                  <p className="text-[10.5px] font-bold tracking-[0.12em] text-slate-400">TENSIÓN NOMINAL</p>
-                  <p className="text-[62px] font-black leading-tight tracking-tight text-white">
+
+              <div className="mt-3 flex flex-col sm:flex-row gap-4 sm:gap-5 items-center sm:items-stretch">
+                <div className="grid h-[110px] sm:h-[126px] w-full sm:w-[146px] shrink-0 place-content-center rounded-2xl bg-gradient-to-br from-slate-800 to-[#0B1220] text-center p-2">
+                  <p className="text-[10px] sm:text-[10.5px] font-bold tracking-[0.12em] text-slate-400">TENSIÓN NOMINAL</p>
+                  <p className="text-4xl sm:text-[62px] font-black leading-tight tracking-tight text-white">
                     {board.tensionNominal || 380}
                   </p>
-                  <p className="-mt-1 text-[12px] font-bold tracking-[0.14em] text-slate-400">VOLTIOS CA</p>
+                  <p className="-mt-1 text-[11px] sm:text-[12px] font-bold tracking-[0.14em] text-slate-400">VOLTIOS CA</p>
                 </div>
-                <div className="flex flex-1 flex-col">
-                  <div className="flex items-end justify-between border-b border-slate-100 py-[7px] last:border-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-slate-500">Límite de aproximación</span>
-                    <span className="flex items-baseline gap-1.5">
-                      <span className="text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
+
+                <div className="w-full flex-1 flex flex-col justify-between space-y-2 sm:space-y-0">
+                  <div className="flex items-baseline justify-between border-b border-slate-100 py-1.5">
+                    <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-500">Límite de aproximación</span>
+                    <span className="flex items-baseline gap-1">
+                      <span className="text-xl sm:text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
                         {parseValUnit(nfpa.limiteAproximacion, "m").val}
                       </span>
-                      <span className="text-[13px] font-semibold text-slate-500">
+                      <span className="text-xs sm:text-[13px] font-semibold text-slate-500">
                         {parseValUnit(nfpa.limiteAproximacion, "m").unit}
                       </span>
                     </span>
                   </div>
-                  <div className="flex items-end justify-between border-b border-slate-100 py-[7px] last:border-0">
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.09em] text-slate-500">Distancia restringida</span>
-                    <span className="flex items-baseline gap-1.5">
-                      <span className="text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
+
+                  <div className="flex items-baseline justify-between border-b border-slate-100 py-1.5">
+                    <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-slate-500">Distancia restringida</span>
+                    <span className="flex items-baseline gap-1">
+                      <span className="text-xl sm:text-[26px] font-extrabold leading-none tracking-tight text-slate-900">
                         {parseValUnit(nfpa.distanciaRestringida, "m").val}
                       </span>
-                      <span className="text-[13px] font-semibold text-slate-500">
+                      <span className="text-xs sm:text-[13px] font-semibold text-slate-500">
                         {parseValUnit(nfpa.distanciaRestringida, "m").unit}
                       </span>
                     </span>
                   </div>
-                  <div className="mt-auto flex items-center gap-3 rounded-xl border border-[#F0B429] bg-[#FEF6E0] px-3 py-2">
+
+                  <div className="mt-2 flex items-center gap-3 rounded-xl border border-[#F0B429] bg-[#FEF6E0] px-3 py-2">
                     <Hand className="h-5 w-5 shrink-0 text-[#7A4E0B]" />
                     <div>
-                      <p className="text-[10px] font-bold tracking-[0.11em] text-[#7A4E0B]">GUANTES DIELÉCTRICOS</p>
-                      <p className="text-[13px] font-semibold text-[#4A3007]">
+                      <p className="text-[9px] sm:text-[10px] font-bold tracking-[0.11em] text-[#7A4E0B]">GUANTES DIELÉCTRICOS</p>
+                      <p className="text-xs sm:text-[13px] font-semibold text-[#4A3007]">
                         {nfpa.guantesClase || "No especificados"}
                       </p>
                     </div>
@@ -1640,24 +2089,25 @@ const BoardDetailPage = () => {
             </section>
 
             {/* EPP REQUERIDO */}
-            <section className="col-span-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" style={{ gridColumn: "span 1" }}>
-              <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-2.5">
-                  <span className="h-[19px] w-[6px] rounded-full bg-[#C8102E]"></span>
-                  <h3 className="text-[15.5px] font-extrabold tracking-wide text-slate-900">EPP REQUERIDO</h3>
+                  <span className="h-[19px] w-[6px] rounded-full bg-[#C8102E] shrink-0"></span>
+                  <h3 className="text-sm sm:text-[15.5px] font-extrabold tracking-wide text-slate-900">EPP REQUERIDO</h3>
                 </div>
-                <span className="rounded-full border border-red-200 bg-red-50 px-3 py-[3px] text-[11.5px] font-bold text-[#9B0C22]">
+                <span className="rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[10.5px] sm:text-[11.5px] font-bold text-[#9B0C22]">
                   MÍNIMO {parseValUnit(nfpa.energiaIncidente, "cal/cm²").val !== "-" ? parseValUnit(nfpa.energiaIncidente, "cal/cm²").val + " cal/cm²" : "4 cal/cm²"}
                 </span>
               </div>
-              <ul className="mt-3 space-y-[7px]">
+
+              <ul className="mt-3 space-y-2">
                 {Array.isArray(nfpa.eppRequerido) && nfpa.eppRequerido.length > 0 ? (
                   nfpa.eppRequerido.map((item: string, index: number) => (
-                    <li key={index} className="flex items-center gap-3">
-                      <span className="grid h-[25px] w-[25px] shrink-0 place-items-center rounded-full bg-[#FDECEF]">
-                        <Shield className="h-4 w-4 text-[#9B0C22]" />
+                    <li key={index} className="flex items-center gap-2.5">
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#FDECEF]">
+                        <Shield className="h-3.5 w-3.5 text-[#9B0C22]" />
                       </span>
-                      <span className="text-[13.5px] font-medium leading-tight text-slate-800">{item}</span>
+                      <span className="text-xs sm:text-[13.5px] font-medium leading-tight text-slate-800">{item}</span>
                     </li>
                   ))
                 ) : (
@@ -1666,19 +2116,22 @@ const BoardDetailPage = () => {
               </ul>
             </section>
 
-            {/* QR */}
-            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            {/* ESCANEAR TABLERO (QR) */}
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm min-w-0">
               <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
-                <span className="h-[19px] w-[6px] rounded-full bg-sky-500"></span>
-                <h3 className="text-[15.5px] font-extrabold tracking-wide text-slate-900">ESCANEAR TABLERO</h3>
+                <span className="h-[19px] w-[6px] rounded-full bg-sky-500 shrink-0"></span>
+                <h3 className="text-sm sm:text-[15.5px] font-extrabold tracking-wide text-slate-900">
+                  ESCANEAR TABLERO
+                </h3>
               </div>
-              <div className="mt-4 flex items-center gap-5">
+
+              <div className="mt-4 flex flex-col sm:flex-row items-center gap-4 sm:gap-5 min-w-0">
                 <div className="relative rounded-xl border border-slate-200 bg-white p-2 shrink-0">
                   <QRCode
                     value={qrUrl}
-                    size={118}
+                    size={110}
                     level="H"
-                    style={{ height: "118px", width: "118px" }}
+                    style={{ height: "110px", width: "110px" }}
                   />
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-white p-0.5 rounded-md shadow-md border border-slate-100 size-6 flex items-center justify-center">
@@ -1686,40 +2139,47 @@ const BoardDetailPage = () => {
                     </div>
                   </div>
                 </div>
-                <div>
-                  <p className="text-[10.5px] font-bold tracking-[0.12em] text-slate-500">ACCESO RÁPIDO</p>
-                  <p className="mt-1 text-[13.5px] font-medium leading-snug text-slate-800">
+
+                {/* Contenedor del Texto con min-w-0 y break-all para evitar desbordamiento */}
+                <div className="text-center sm:text-left min-w-0 w-full flex-1">
+                  <p className="text-[10px] font-bold tracking-[0.12em] text-slate-500 uppercase">ACCESO RÁPIDO</p>
+                  <p className="mt-1 text-xs sm:text-[13.5px] font-medium leading-snug text-slate-800">
                     Datos técnicos, memoria de cálculo y curvas de protección del tablero.
                   </p>
-                  <p className="mt-2 inline-block rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-[12px] font-semibold text-slate-700">
-                    {qrUrl.replace(/^https?:\/\//, "")}
-                  </p>
+
+                  {/* URL de Acceso con Truncado y Rompimiento de Palabra Seguro */}
+                  <div className="mt-2.5 w-full overflow-hidden">
+                    <p className="w-full truncate rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 tracking-tight" title={qrUrl.replace(/^https?:\/\//, "")}>
+                      {qrUrl.replace(/^https?:\/\//, "")}
+                    </p>
+                  </div>
                 </div>
               </div>
             </section>
           </div>
 
           {/* PIE DE ETIQUETA */}
-          <footer className="flex h-[78px] items-center justify-between border-t-[3px] border-[#C8102E] bg-[#0B1220] px-[26px]">
+          <footer className="flex flex-col md:flex-row min-h-[78px] items-center justify-between gap-4 border-t-[3px] border-[#C8102E] bg-[#0B1220] px-4 sm:px-[26px] py-4 text-center md:text-left">
             <div>
-              <p className="text-[10.5px] font-bold tracking-[0.16em] text-slate-400">TABLERO</p>
-              <p className="text-[24px] font-black leading-tight text-white uppercase">
+              <p className="text-[9.5px] sm:text-[10.5px] font-bold tracking-[0.16em] text-slate-400">TABLERO</p>
+              <p className="text-xl sm:text-[24px] font-black leading-tight text-white uppercase">
                 {board?.boardCode || board?.name || "PRUEBA"}
               </p>
             </div>
-            <div className="text-center">
-              <p className="text-[9.5px] font-bold tracking-[0.16em] text-slate-400">CREADO POR</p>
-              <div className="mt-[2px] flex items-center justify-center gap-2">
-                {/* <ShieldCheck className="h-6 w-6 text-emerald-500 fill-emerald-500/20" /> */}
-                <div className="p-0.5 size-6 flex items-center justify-center">
+
+            <div>
+              <p className="text-[9px] sm:text-[9.5px] font-bold tracking-[0.16em] text-slate-400">CREADO POR</p>
+              <div className="mt-0.5 flex items-center justify-center gap-2">
+                <div className="p-0.5 size-5 sm:size-6 flex items-center justify-center">
                   <img src="/voltguard.png" alt="Voltguard" className="object-contain size-full" />
                 </div>
-                <span className="text-[22px] font-extrabold leading-none text-white">Voltguard</span>
+                <span className="text-lg sm:text-[22px] font-extrabold leading-none text-white">Voltguard</span>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-[10.5px] font-bold tracking-[0.16em] text-slate-400">FECHA DE CÁLCULO</p>
-              <p className="text-[24px] font-extrabold leading-tight text-white">
+
+            <div className="md:text-right">
+              <p className="text-[9.5px] sm:text-[10.5px] font-bold tracking-[0.16em] text-slate-400">FECHA DE CÁLCULO</p>
+              <p className="text-xl sm:text-[24px] font-extrabold leading-tight text-white">
                 {board?.createdAt ? new Date(board.createdAt).toLocaleDateString("es-ES") : "21/6/2026"}
               </p>
             </div>
@@ -1826,31 +2286,85 @@ const BoardDetailPage = () => {
           Volver
         </button>
 
-        {/* ── SECCIÓN IDENTIFICACIÓN GENERAL ── */}
-        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <div className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-6 text-white relative">
+        {/* ── SECCIÓN IDENTIFICACIÓN GENERAL (STICKY Y COMPACTO AL SCROLL) ── */}
+        <section
+          className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled
+            ? "rounded-2xl border border-slate-200/80 bg-white/90 shadow-md backdrop-blur-md"
+            : "rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+            }`}
+        >
+          <div
+            className={`bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white relative transition-all duration-300 ${isScrolled ? "p-3.5 px-6 rounded-2xl" : "p-6 rounded-t-3xl"
+              }`}
+          >
             <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent pointer-events-none" />
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center relative z-10">
-              <div>
-                <div className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
-                  <Zap size={12} />
-                  Tablero eléctrico
+            <div className="flex flex-row items-center justify-between gap-4 relative z-10">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Botón Volver rápido que aparece solo al scroll */}
+                {isScrolled && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(-1)}
+                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-white/20 p-2 text-white hover:bg-white/30 transition-all cursor-pointer backdrop-blur-sm"
+                    title="Volver"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                )}
+
+                <div className="min-w-0">
+                  {!isScrolled && (
+                    <div className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
+                      <Zap size={12} />
+                      Tablero eléctrico
+                    </div>
+                  )}
+                  <h1 className={`font-black tracking-tight truncate transition-all duration-300 ${isScrolled ? "text-lg md:text-xl" : "text-2xl md:text-3xl"
+                    }`}>
+                    {board.name}
+                  </h1>
+                  <p className={`flex items-center gap-1.5 font-medium text-white/95 transition-all duration-300 ${isScrolled ? "text-xs" : "mt-2 text-sm"
+                    }`}>
+                    <Building2 size={isScrolled ? 13 : 15} />
+                    {companyName}
+                  </p>
                 </div>
-                <h1 className="text-2xl font-black md:text-3xl tracking-tight">{board.name}</h1>
-                <p className="mt-2 flex items-center gap-1.5 text-sm font-medium text-white/95">
-                  <Building2 size={15} />
-                  {companyName}
-                </p>
               </div>
 
-              <div className="rounded-2xl bg-white/15 px-5 py-3.5 backdrop-blur border border-white/10">
+              <div className={`shrink-0 rounded-2xl bg-white/15 backdrop-blur border border-white/10 transition-all duration-300 ${isScrolled ? "px-3.5 py-1.5" : "px-5 py-3.5"
+                }`}>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">Código</p>
-                <p className="mt-0.5 text-xl font-black tracking-tight">{value(board.boardCode)}</p>
+                <p className={`font-black tracking-tight ${isScrolled ? "text-sm" : "mt-0.5 text-xl"}`}>
+                  {value(board.boardCode)}
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4">
+          {/* Ocultar tarjetas informativas en modo scroll para no estorbar el viewport */}
+          {!isScrolled && (
+            <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4">
+              {[
+                { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+                { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+                { l: "Sistema", v: board.sistema, icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+                { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
+              ].map((item, i) => {
+                const CardIcon = item.icon;
+                return (
+                  <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/50 transition-colors">
+                    <CardIcon className={item.iconCls} size={20} />
+                    <p className="mt-2.5 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{item.l}</p>
+                    <p className={`mt-0.5 text-xs sm:text-sm font-bold truncate ${item.textCls}`}>{value(item.v)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {isScrolled && (
+          <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             {[
               { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
               { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
@@ -1867,26 +2381,40 @@ const BoardDetailPage = () => {
               );
             })}
           </div>
-        </section>
-
-        {/* Renderizado de bloques modulares */}
-        {renderNfpaSection()}
-        {/* 3. 🛡️ SECCIÓN SUPERIOR: PROTOCOLOS Y CERTIFICADOS SPAT (POZO A TIERRA) */}
-        {renderPdfSection(
-          "Certificados de Puesta a Tierra (SPAT)",
-          "Protocolos de medición de resistencia (Ω), corriente de fuga y salud del pozo",
-          certificadosSpat
         )}
+
+        {isEmpresarial && (
+          // {/* Renderizado de bloques modulares */ }
+          renderNfpaSection()
+        )}
+
+        {isIntermedioOrSuperior && (
+          <>
+            {/* 3. 🛡️ SECCIÓN SUPERIOR: PROTOCOLOS Y CERTIFICADOS SPAT (POZO A TIERRA) */}
+            {renderSpatQuinquennialSection()}
+            {renderPdfSection(
+              "Certificados de Puesta a Tierra (SPAT)",
+              "Protocolos de medición de resistencia (Ω), corriente de fuga y salud del pozo",
+              certificadosSpat
+            )}
+          </>
+        )}
+
         {/* {renderGroundingSection()}
         {renderLoadPanelSection()} */}
 
-        {/* PANEL DE CONTROL DE GRÁFICOS INYECTADO AUTOMÁTICAMENTE AQUÍ */}
-        {renderDemandSection()}
-        {renderReactivePowerSection()}
-        {renderEnergyBarSection()}
-        {renderCarbonEmissionsSection()}
-        {renderEnergyCostSection()}   {/* ← Gráfico de Costo (S/.) en Ámbar */}
-        {renderSolarEnergySection()}  {/* ← Gráfico de Energía Solar en Verde */}
+        {isEmpresarial && (
+          <>
+            {/* PANEL DE CONTROL DE GRÁFICOS INYECTADO AUTOMÁTICAMENTE AQUÍ */}
+            {renderDemandSection()}
+            {renderReactivePowerSection()}
+            {renderCombinedDemandAndReactiveSection()}
+            {renderEnergyBarSection()}
+            {renderCarbonEmissionsSection()}
+            {renderEnergyCostSection()}   {/* ← Gráfico de Costo (S/.) en Ámbar */}
+            {renderSolarEnergySection()}  {/* ← Gráfico de Energía Solar en Verde */}
+          </>
+        )}
 
         {/* ── ESPECIFICACIONES TÉCNICAS (CASCADA COMPACTA) ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -1963,20 +2491,28 @@ const BoardDetailPage = () => {
         {/* Secciones de imágenes fijas */}
         {renderInsulationMeasurements()}
         {renderImageSection("Imágenes del tablero", "Fotografías generales del tablero eléctrico", board.images?.tablero)}
-        {renderImageSection("Diagrama unifilar", "Imágenes del diagrama unifilar registrado", board.images?.unifilar)}
-        {renderImageSection("Termografía", "Imágenes termográficas asociadas al tablero", board.images?.termografia)}
-
-        {/* ── 📄 CONECTADO: SECCIONES DE CERTIFICADOS ASIGNADOS REALES DE CLOUDINARY ── */}
-        {renderPdfSection(
-          "Certificados de mantenimiento",
-          "Documentos PDF asignados de mantenimiento técnico",
-          certificadosMantenimiento
+        {isIntermedioOrSuperior && (
+          renderImageSection("Diagrama unifilar", "Imágenes del diagrama unifilar registrado", board.images?.unifilar)
+        )}
+        {isEmpresarial && (
+          renderImageSection("Termografía", "Imágenes termográficas asociadas al tablero", board.images?.termografia)
         )}
 
-        {renderPdfSection(
-          "Certificados de operatividad",
-          "Documentos PDF asignados del nivel de operatividad estructural",
-          certificadosOperatividad
+        {isIntermedioOrSuperior && (
+          <>
+            {/* ── 📄 CONECTADO: SECCIONES DE CERTIFICADOS ASIGNADOS REALES DE CLOUDINARY ── */}
+            {renderPdfSection(
+              "Certificados de mantenimiento",
+              "Documentos PDF asignados de mantenimiento técnico",
+              certificadosMantenimiento
+            )}
+
+            {renderPdfSection(
+              "Certificados de operatividad",
+              "Documentos PDF asignados del nivel de operatividad estructural",
+              certificadosOperatividad
+            )}
+          </>
         )}
 
       </section>

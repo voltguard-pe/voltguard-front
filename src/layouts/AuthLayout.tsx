@@ -8,23 +8,17 @@ const AuthLayout = () => {
       {/* Contenedor principal a pantalla completa con grilla 60% - 40% */}
       <div className="relative z-10 grid h-full w-full lg:grid-cols-[60%_40%]">
         
-        {/* LADO IZQUIERDO (60%): IMAGEN DE FONDO FULL-BLEED */}
-        <aside className="relative hidden overflow-hidden p-8 lg:flex lg:flex-col lg:justify-between h-full">
-          {/* Imagen de fondo adaptada al 60% de la pantalla */}
-          <img
-            src="/hero-technician4.webp" 
-            alt="VoltGuard Inspección Eléctrica"
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
+        {/* LADO IZQUIERDO (60%): FONDO CORPORATIVO #1f3864 */}
+        <aside className="relative hidden overflow-hidden bg-[#1f3864] p-8 lg:flex lg:flex-col lg:justify-between h-full">
 
-          {/* Overlay de marca con gradiente oscuro para contraste */}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-900/60 to-[#0797d5]/40 backdrop-blur-[2px]" />
+          {/* Sutil overlay para darle profundidad al azul #1f3864 */}
+          <div className="absolute inset-0 bg-gradient-to-br from-[#1f3864] via-[#1f3864]/90 to-slate-950/80" />
 
           {/* Contenido superior */}
           <div className="relative z-10">
             <Link
               to="/"
-              className="inline-flex items-center gap-2 rounded-2xl bg-white/15 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition-all hover:bg-white/25 hover:shadow-lg"
+              className="inline-flex items-center gap-2 rounded-2xl bg-white/10 border border-white/10 px-4 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition-all hover:bg-white/20 hover:shadow-lg"
             >
               <ArrowLeft size={18} />
               Regresar a la web

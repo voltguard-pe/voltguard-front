@@ -9,20 +9,13 @@ import {
     CheckCircle2,
     ChevronDown,
     Cpu,
-    FileCheck,
-    FileCode,
     FileText,
     FolderCheck,
     GraduationCap,
     HeartPulse,
     HelpCircle,
-    Layers,
-    Shield,
-    ShieldAlert,
     ShieldCheck,
     Truck,
-    Users,
-    X,
     Zap,
     type LucideIcon
 } from "lucide-react";
@@ -414,15 +407,15 @@ function AnimatedStat({ target, suffix, label, active, duration }: Stat & { acti
     );
 }
 
-function BannerStat({ target, suffix, label, active, duration }: Stat & { active: boolean; duration?: number }) {
-    const display = useCountUp(target, suffix, active, duration);
-    return (
-        <div className="text-center group">
-            <span className="block text-4xl font-black text-white tracking-tight tabular-nums group-hover:scale-110 transition-transform duration-300">{display}</span>
-            <span className="text-sm text-white/75 mt-1 block">{label}</span>
-        </div>
-    );
-}
+// function BannerStat({ target, suffix, label, active, duration }: Stat & { active: boolean; duration?: number }) {
+//     const display = useCountUp(target, suffix, active, duration);
+//     return (
+//         <div className="text-center group">
+//             <span className="block text-4xl font-black text-white tracking-tight tabular-nums group-hover:scale-110 transition-transform duration-300">{display}</span>
+//             <span className="text-sm text-white/75 mt-1 block">{label}</span>
+//         </div>
+//     );
+// }
 
 /* ─── Sub-componentes ────────────────────────────────────────────────────── */
 
@@ -536,7 +529,6 @@ function PlanCard({ plan, index, active }: { plan: Plan; index: number; active: 
 
 function StoryCardMinimal({ story }: { story: Story & { image?: string } }) {
     const SectorIcon = story.sectorIcon;
-    const mainMetric = story.metrics[0];
 
     return (
         <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-300 h-auto lg:h-[460px]">

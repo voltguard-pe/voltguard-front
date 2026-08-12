@@ -1,6 +1,5 @@
+import { ArrowLeft } from "lucide-react";
 import { Link, Outlet } from "react-router-dom";
-import { motion } from "motion/react";
-import { ArrowLeft, Zap, ShieldCheck } from "lucide-react";
 
 const AuthLayout = () => {
   return (

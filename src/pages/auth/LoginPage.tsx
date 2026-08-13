@@ -88,7 +88,7 @@ const LoginPage = () => {
         </h1>
 
         <p className="mt-2 text-sm text-slate-500">
-          Ingresa tus credenciales para acceder a Voltguard.
+          Ingresa tus credenciales para acceder a VoltGuard.
         </p>
       </div>
 

@@ -1,26 +1,30 @@
+import { useEffect, useMemo, useState, useRef } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
   Building2,
+  ChevronDown,
   Download,
   Eye,
   FileDown,
   Import,
-  MapPin,
   Pencil,
   Plus,
   QrCode,
   Search,
   Trash2,
   Zap,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
 } from "lucide-react";
-
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 
 import ImportBoardsModal from "../../../components/dashboard/modals/ImportBoardsModal";
 import ImportInsulationsModal from "../../../components/dashboard/modals/ImportInsulationsModal";
+import ImportUnifilarBoardModal from "../../../components/dashboard/modals/ImportUnifilarBoardModal";
+import ImportNfpa70eBoardModal from "../../../components/dashboard/modals/ImportNfpa70eBoardModal";
 import QRModal from "../../../components/dashboard/modals/ViewQRModal";
 
 import {
@@ -28,7 +32,6 @@ import {
   publicGetCompanyBoardByCode,
   publicGetCompanyBoards,
 } from "../../../services/board.service";
-
 import { getCompanies } from "../../../services/company.service";
 import { useAuth } from "../../../shared/hooks/useAuth";
 
@@ -36,12 +39,8 @@ import type { PublicCompanyBoardsItemDTO } from "../../../shared/types/BoardProp
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
-import ImportUnifilarBoardModal from "../../../components/dashboard/modals/ImportUnifilarBoardModal";
-import Select from "../../../shared/components/Select";
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
-// IMPORTAMOS LA NUEVA UTILIDAD DE QR MASIVO
 import { generateQrPdf } from "../../../shared/utils/generateQrPdf";
-import ImportNfpa70eBoardModal from "../../../components/dashboard/modals/ImportNfpa70eBoardModal";
 
 type SortConfig = {
   key: "name" | "boardCode" | "location" | "nfpa";
@@ -54,26 +53,24 @@ const BoardDashboardPage = () => {
   const { publicCode } = useParams();
 
   const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
-  const [selectedCompany, setSelectedCompany] =
-    useState<CompanyResponseDTO | null>(null);
-
+  const [selectedCompany, setSelectedCompany] = useState<CompanyResponseDTO | null>(null);
   const [boards, setBoards] = useState<PublicCompanyBoardsItemDTO[]>([]);
   const [search, setSearch] = useState("");
 
-  const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [loadingBoards, setLoadingBoards] = useState(false);
-
-  // NUEVO ESTADO: Maneja el objeto completo del tablero asignado para ver en el Modal QR individual
   const [selectedBoardForQR, setSelectedBoardForQR] = useState<PublicCompanyBoardsItemDTO | null>(null);
 
+  // Modales
   const [showImportModal, setShowImportModal] = useState(false);
-  const [showImportInsulationsModal, setShowImportInsulationsModal] =
-    useState(false);
+  const [showImportInsulationsModal, setShowImportInsulationsModal] = useState(false);
   const [showImportUnifilarModal, setShowImportUnifilarModal] = useState(false);
   const [showNfpa70eModal, setShowNfpa70eModal] = useState(false);
 
-  const [selectedBoardCodes, setSelectedBoardCodes] = useState<string[]>([]);
+  // Menú desplegable de importación
+  const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
+  const importMenuRef = useRef<HTMLDivElement | null>(null);
 
+  const [selectedBoardCodes, setSelectedBoardCodes] = useState<string[]>([]);
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
 
   const effectivePublicCode =
@@ -83,29 +80,33 @@ const BoardDashboardPage = () => {
         : auth.companyPublicCode?.publicCode
       : publicCode;
 
+  // Cerrar menú al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (importMenuRef.current && !importMenuRef.current.contains(event.target as Node)) {
+        setIsImportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
-        setLoadingCompanies(true);
         const data = await getCompanies();
         setCompanies(data);
-
         if (publicCode) {
-          const companyFound =
-            data.find((company) => company.publicCode === publicCode) || null;
+          const companyFound = data.find((c) => c.publicCode === publicCode) || null;
           setSelectedCompany(companyFound);
         }
       } catch (error) {
         console.error("Error cargando empresas", error);
-      } finally {
-        setLoadingCompanies(false);
       }
     };
 
     if (auth?.role === "SUPERADMIN") {
       fetchCompanies();
-    } else {
-      setLoadingCompanies(false);
     }
   }, [auth, publicCode]);
 
@@ -132,7 +133,6 @@ const BoardDashboardPage = () => {
   }, [effectivePublicCode]);
 
   const filteredBoards = useMemo(() => {
-    // 1. Filtrado por búsqueda estándar
     let result = boards.filter((board) => {
       const searchValue = search.toLowerCase();
       return (
@@ -142,7 +142,6 @@ const BoardDashboardPage = () => {
       );
     });
 
-    // 2. Aplicar ordenamiento cíclico (asc -> desc -> default)
     if (sortConfig && sortConfig.direction !== "default") {
       result = [...result].sort((a, b) => {
         const aValue = (a[sortConfig.key] ?? "").toString().toLowerCase();
@@ -157,7 +156,6 @@ const BoardDashboardPage = () => {
     return result;
   }, [boards, search, sortConfig]);
 
-  // Función auxiliar para manejar el ciclo del click (colócala justo abajo del useMemo)
   const handleSort = (key: "name" | "boardCode" | "location" | "nfpa") => {
     let direction: "asc" | "desc" | "default" = "asc";
 
@@ -193,63 +191,35 @@ const BoardDashboardPage = () => {
     }
   };
 
-  const handleSelectCompany = (selectedPublicCode: string) => {
-    setSelectedBoardCodes([]);
-    if (!selectedPublicCode) {
-      setSelectedCompany(null);
-      navigate("/dashboard/boards");
-      return;
-    }
-
-    const companyFound =
-      companies.find((company) => company.publicCode === selectedPublicCode) ||
-      null;
-
-    setSelectedCompany(companyFound);
-    navigate(`/dashboard/boards/${selectedPublicCode}`);
-  };
-
   const handleDelete = async (code: string) => {
     if (!effectivePublicCode) return;
-
-    const confirmDelete = confirm("¿Eliminar este tablero?");
-    if (!confirmDelete) return;
+    if (!confirm("¿Deseas eliminar permanentemente este tablero?")) return;
 
     try {
       await deleteBoard(effectivePublicCode, code);
       setBoards((prev) => prev.filter((board) => board.code !== code));
     } catch (error) {
       console.error("Error al eliminar tablero", error);
-      alert("Error al eliminar tablero");
+      alert("Error al eliminar el tablero.");
     }
   };
 
   const handleBulkDelete = async () => {
     if (!effectivePublicCode || selectedBoardCodes.length === 0) return;
+    if (!confirm(`¿Eliminar los ${selectedBoardCodes.length} tableros seleccionados?`)) return;
 
-    const confirmDelete = confirm(`¿Estás seguro de que deseas eliminar los ${selectedBoardCodes.length} tableros seleccionados?`);
-    if (!confirmDelete) return;
-
-    // Guardamos una copia de respaldo del estado actual por si la API falla
     const previousBoards = [...boards];
     const codesToRemove = [...selectedBoardCodes];
 
     try {
-      // 1. Eliminación visual instantánea (Optimistic Update)
-      // Removemos los tableros del estado de inmediato para que el usuario vea el cambio sin parpadeos
       setBoards((prev) => prev.filter((board) => !codesToRemove.includes(board.code)));
       setSelectedBoardCodes([]);
 
-      // 2. Ejecutar las peticiones de borrado en segundo plano (sin bloquear la interfaz)
       await Promise.all(
         codesToRemove.map((code) => deleteBoard(effectivePublicCode, code))
       );
-
     } catch (error) {
       console.error("Error al eliminar tableros en lote", error);
-      alert("Hubo un error al intentar eliminar algunos tableros en el servidor.");
-
-      // Si la API falla, revertimos el cambio y regresamos los tableros a la tabla
       setBoards(previousBoards);
       setSelectedBoardCodes(codesToRemove);
     }
@@ -258,10 +228,7 @@ const BoardDashboardPage = () => {
   const handleGeneratePDF = async (boardCode: string) => {
     if (!effectivePublicCode) return;
     try {
-      const fullBoard = await publicGetCompanyBoardByCode(
-        effectivePublicCode,
-        boardCode
-      );
+      const fullBoard = await publicGetCompanyBoardByCode(effectivePublicCode, boardCode);
       generateBoardPDF(fullBoard);
     } catch (error) {
       console.error("Error generando PDF", error);
@@ -274,293 +241,210 @@ const BoardDashboardPage = () => {
     setBoards(data.boards);
   };
 
-  const showEmptyCompanyState =
-    auth?.role === "SUPERADMIN" && !effectivePublicCode;
-
-  const showNoBoardsState =
-    !loadingBoards && Boolean(effectivePublicCode) && filteredBoards.length === 0;
-
-  // Renderiza la URL individual para el código QR de un tablero específico
   const getIndividualQrUrl = (boardCode: string) => {
     return `${window.location.origin}/dashboard/boards/${effectivePublicCode}/${boardCode}`;
   };
 
   const renderSortIcon = (key: "name" | "boardCode" | "location" | "nfpa") => {
     if (!sortConfig || sortConfig.key !== key || sortConfig.direction === "default") {
-      return <ArrowUpDown size={14} className="opacity-40" />;
+      return <ArrowUpDown size={13} className="opacity-40" />;
     }
     return sortConfig.direction === "asc" ? (
-      <ArrowUp size={14} className="text-[#0797d5]" />
+      <ArrowUp size={13} className="text-[#0797d5]" />
     ) : (
-      <ArrowDown size={14} className="text-[#0797d5]" />
+      <ArrowDown size={13} className="text-[#0797d5]" />
     );
   };
 
+  const showEmptyCompanyState = auth?.role === "SUPERADMIN" && !effectivePublicCode;
+  const showNoBoardsState = !loadingBoards && Boolean(effectivePublicCode) && filteredBoards.length === 0;
+
   return (
-    <section className="space-y-6">
-      {/* ── ENCABEZADO GENERAL ── */}
+    <section className="space-y-6 pb-20">
+      {/* ── 1. CABECERA PREMIUM ── */}
       <div
         style={{ animation: "fadeUp 0.4s ease both" }}
-        className="flex flex-col justify-between gap-4 xl:flex-row xl:items-center"
+        className="relative z-10 flex flex-col justify-between gap-4 lg:flex-row lg:items-center"
       >
         <div>
-          <h1 className="text-2xl font-black text-slate-950 tracking-tight">
-            Gestionar tableros
-          </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
-            {auth?.role === "ADMIN"
-              ? "Visualiza los tableros eléctricos asociados a tu empresa."
-              : "Selecciona una empresa para administrar sus tableros eléctricos."}
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black text-slate-950 tracking-tight">
+              Gestión de Tableros
+            </h1>
+            {selectedCompany && (
+              <span className="rounded-full bg-[#0797d5]/10 px-3 py-0.5 text-xs font-bold text-[#0797d5]">
+                {selectedCompany.name}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            Administra los equipos eléctricos, emite certificados NFPA 70E e importa registros.
           </p>
         </div>
 
         {auth?.role === "SUPERADMIN" && (
-          <div className="flex flex-col gap-2.5 md:flex-row md:items-center">
-            <button
-              type="button"
-              onClick={() => setShowImportInsulationsModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
-            >
-              <Import size={15} />
-              Importar mediciones de aislamiento
-            </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Dropdown de Acciones Masivas */}
+            <div ref={importMenuRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsImportMenuOpen((prev) => !prev)}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 shadow-xs transition hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
+              >
+                <Import size={15} className="text-slate-500" />
+                Acciones masivas
+                <ChevronDown
+                  size={14}
+                  className={`text-slate-400 transition-transform ${isImportMenuOpen ? "rotate-180" : ""}`}
+                />
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setShowImportUnifilarModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
-            >
-              <Import size={15} />
-              Crear tablero desde unifilar
-            </button>
+              {isImportMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 z-20 w-64 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                  <button
+                    onClick={() => {
+                      setIsImportMenuOpen(false);
+                      setShowImportInsulationsModal(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <Zap size={15} className="text-[#0797d5]" />
+                    Importar aislamiento (MΩ)
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsImportMenuOpen(false);
+                      setShowImportUnifilarModal(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <Sparkles size={15} className="text-[#8ccf2f]" />
+                    Crear desde unifilar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsImportMenuOpen(false);
+                      setShowImportModal(true);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  >
+                    <Import size={15} className="text-slate-500" />
+                    Importar lista de tableros
+                  </button>
+                </div>
+              )}
+            </div>
 
+            {/* Certificar NFPA */}
             <button
               type="button"
               onClick={() => setShowNfpa70eModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-bold text-amber-700 transition-all duration-200 hover:bg-amber-100/70 cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-2.5 text-xs font-bold text-amber-700 transition hover:bg-amber-100/80 cursor-pointer"
             >
               <Zap size={15} className="text-amber-600" />
-              Certificar NFPA 70E (Foto ITM)
+              Certificar NFPA 70E
             </button>
 
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all duration-200 hover:bg-slate-50 hover:border-slate-300 cursor-pointer"
-            >
-              <Import size={15} />
-              Importar tableros
-            </button>
-
+            {/* Nuevo Tablero */}
             <button
               onClick={() => navigate("/dashboard/boards/create")}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-4 py-2.5 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer"
+              className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-[#0797d5]/20 transition hover:bg-[#0684ba] active:scale-95 cursor-pointer"
             >
-              <Plus size={15} />
+              <Plus size={16} />
               Nuevo tablero
             </button>
           </div>
         )}
       </div>
 
-      {/* ── METRICAS INDICADORAS ── */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { title: "Total tableros", value: boards.length, icon: Zap, bg: "bg-[#0797d5]/10 text-[#0797d5]", delay: "40ms" },
-          // { title: "Con ubicación", value: boards.filter(b => b.location).length, icon: MapPin, bg: "bg-[#8ccf2f]/15 text-[#3aaa35]", delay: "80ms" },
-          { title: "Con NFPA 70E", value: boards.filter(b => b.nfpa).length, icon: Zap, bg: "bg-[#8ccf2f]/15 text-[#3aaa35]", delay: "80ms" },
-          { title: "Resultados visibles", value: filteredBoards.length, icon: Search, bg: "bg-slate-100 text-slate-700", delay: "120ms" },
-          {
-            title: "Empresa actual",
-            value: selectedCompany?.name || (auth?.role === "ADMIN" ? "Mi empresa" : "No seleccionada"),
-            icon: Building2,
-            bg: "bg-slate-100 text-slate-700",
-            delay: "160ms",
-            isTruncate: true
-          }
-        ].map((card, i) => {
-          const CardIcon = card.icon;
-          return (
-            <div
-              key={i}
-              style={{ animation: "fadeUp 0.4s ease both", animationDelay: card.delay }}
-              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-slate-500">{card.title}</p>
-                  <h3 className={`mt-1.5 font-black text-slate-950 tracking-tight ${card.isTruncate ? "text-base truncate" : "text-2xl"}`}>
-                    {card.value}
-                  </h3>
-                </div>
-                <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${card.bg}`}>
-                  <CardIcon size={20} />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── FILTROS SUPERADMIN ── */}
-      {auth?.role === "SUPERADMIN" && (
+      {/* ── 2. METRICAS Y BUSCADOR INTEGRADOS ── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div
-          style={{ animation: "fadeUp 0.4s ease 200ms both" }}
-          className="relative z-20 flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:flex-row lg:items-end lg:justify-between"
+          style={{ animation: "fadeUp 0.4s ease 40ms both" }}
+          className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-slate-300"
         >
-          <div className="w-full lg:max-w-md">
-            <Select
-              label="Empresa"
-              value={selectedCompany?.publicCode || ""}
-              onChange={(value) => handleSelectCompany(value)}
-              disabled={loadingCompanies}
-              placeholder={loadingCompanies ? "Cargando empresas..." : "Seleccionar empresa"}
-              options={companies.map((company) => ({
-                label: company.name,
-                value: company.publicCode,
-              }))}
-            />
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Equipos</p>
+              <h3 className="mt-1 text-2xl font-black text-slate-950 tracking-tight">
+                {boards.length}
+              </h3>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+              <Zap size={22} />
+            </div>
           </div>
+        </div>
 
-          <div className="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 md:max-w-md">
-            <Search size={18} className="text-slate-400" />
+        <div
+          style={{ animation: "fadeUp 0.4s ease 80ms both" }}
+          className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs transition hover:border-slate-300"
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Certificados NFPA 70E</p>
+              <h3 className="mt-1 text-2xl font-black text-slate-950 tracking-tight">
+                {boards.filter((b) => b.nfpa).length}
+              </h3>
+            </div>
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
+              <CheckCircle2 size={22} />
+            </div>
+          </div>
+        </div>
+
+        {/* Buscador Integrado */}
+        <div
+          style={{ animation: "fadeUp 0.4s ease 120ms both" }}
+          className="rounded-3xl border border-slate-200 bg-white p-4 shadow-xs flex items-center"
+        >
+          <div className="flex w-full items-center gap-3 rounded-2xl bg-slate-50 px-4 py-2.5">
+            <Search size={18} className="text-slate-400 shrink-0" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar por nombre, código o ubicación..."
-              className="w-full bg-transparent text-sm text-slate-950 outline-none placeholder:text-slate-400"
+              className="w-full bg-transparent text-xs font-semibold text-slate-900 outline-none placeholder:text-slate-400"
             />
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ── ACCIONES EN LOTE PARA SELECCIONADOS ── */}
-      {!showEmptyCompanyState && (
-        <div
-          style={{ animation: "fadeUp 0.4s ease 220ms both" }}
-          className="flex flex-wrap items-center justify-between gap-4 w-full"
-        >
-          {/* GRUPO IZQUIERDO: Botones de Extracción y Futuros Botones */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            {/* NUEVO BOTÓN MULTI-QR MÁSIVO */}
-            <button
-              type="button"
-              disabled={selectedBoardCodes.length === 0}
-              onClick={async () => {
-                if (!effectivePublicCode) return;
-                try {
-                  const selectedBoardsData = boards.filter(b => selectedBoardCodes.includes(b.code));
-                  const companyName = selectedCompany?.name || (auth?.role === "ADMIN" ? "Mi Empresa" : "Voltguard");
-
-                  await generateQrPdf(selectedBoardsData, companyName, effectivePublicCode);
-                } catch (error) {
-                  console.error("Error al extraer códigos QR en PDF:", error);
-                  alert("Hubo un error al generar el PDF de códigos QR.");
-                }
-              }}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${selectedBoardCodes.length > 0
-                ? "bg-[#0797d5] border-[#0797d5] text-white hover:bg-[#0684ba]"
-                : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
-                }`}
-            >
-              <QrCode size={15} />
-              Extraer Códigos QR
-              {selectedBoardCodes.length > 0 && (
-                <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-black text-white">
-                  {selectedBoardCodes.length}
-                </span>
-              )}
-            </button>
-
-            {auth?.role === "SUPERADMIN" && (
-              <button
-                type="button"
-                disabled={selectedBoardCodes.length === 0}
-                onClick={async () => {
-                  if (!effectivePublicCode) return;
-                  try {
-                    const selectedBoardsData = boards.filter(b => selectedBoardCodes.includes(b.code));
-                    const fullBoardsData = await Promise.all(
-                      selectedBoardsData.map((board) =>
-                        publicGetCompanyBoardByCode(effectivePublicCode, board.code)
-                      )
-                    );
-                    const companyName = selectedCompany?.name || (auth?.role === "ADMIN" ? "Mi Empresa" : "Voltguard");
-                    generateNfpaPDF(fullBoardsData, companyName);
-                  } catch (error) {
-                    console.error("Error al recopilar datos NFPA de tableros:", error);
-                    alert("Hubo un error al descargar las etiquetas NFPA 70E.");
-                  }
-                }}
-                className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${selectedBoardCodes.length > 0
-                  ? "bg-slate-900 border-slate-900 text-white hover:bg-slate-800"
-                  : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
-                  }`}
-              >
-                <Download size={15} />
-                Extraer NFPA70E
-                {selectedBoardCodes.length > 0 && (
-                  <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#0797d5] px-1 text-[10px] font-black text-white">
-                    {selectedBoardCodes.length > 99 ? "+99" : selectedBoardCodes.length}
-                  </span>
-                )}
-              </button>
-            )}
-
-            {/* 💡 AQUÍ PUEDES AGREGAR EL NUEVO BOTÓN EN EL FUTURO, QUEDARÁ AL LADITO A LA IZQUIERDA */}
-          </div>
-
-          {/* GRUPO DERECHO: Botón único de eliminación */}
-          {auth?.role === "SUPERADMIN" && (
-            <button
-              type="button"
-              disabled={selectedBoardCodes.length === 0}
-              onClick={handleBulkDelete}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:cursor-auto ${selectedBoardCodes.length > 0
-                ? "bg-red-600 border-red-600 text-white hover:bg-red-700 hover:shadow-lg hover:shadow-red-600/20"
-                : "bg-white border-slate-200 text-slate-400 opacity-60 cursor-not-allowed"
-                }`}
-            >
-              <Trash2 size={15} />
-              Eliminar Seleccionados
-              {selectedBoardCodes.length > 0 && (
-                <span className="ml-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-white/20 px-1 text-[10px] font-black text-white">
-                  {selectedBoardCodes.length}
-                </span>
-              )}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* ── CONTENEDOR PRINCIPAL / TABLA ── */}
+      {/* ── 3. CONTENEDOR DE TABLA / RESULTADOS ── */}
       <div
-        style={{ animation: "fadeUp 0.5s ease 240ms both" }}
-        className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+        style={{ animation: "fadeUp 0.5s ease 160ms both" }}
+        className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs"
       >
         {showEmptyCompanyState ? (
-          <div className="flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-up">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
-              <Building2 size={26} />
+          <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+            <div className="flex size-16 items-center justify-center rounded-3xl bg-[#0797d5]/10 text-[#0797d5]">
+              <Building2 size={30} />
             </div>
             <h3 className="mt-4 text-base font-bold text-slate-950">Selecciona una empresa</h3>
+            <p className="mt-1 text-xs text-slate-400 max-w-xs">
+              Usa el árbol navegable del sidebar para explorar los tableros de cada empresa.
+            </p>
           </div>
         ) : loadingBoards ? (
           <div className="space-y-3 p-6">
-            {[1, 2, 3, 4].map((i) => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="h-12 animate-pulse rounded-2xl bg-slate-50" />
             ))}
           </div>
         ) : showNoBoardsState ? (
-          <div className="flex flex-col items-center justify-center px-6 py-16 text-center animate-fade-up">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
-              <Zap size={26} />
+          <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
+            <div className="flex size-16 items-center justify-center rounded-3xl bg-slate-100 text-slate-400">
+              <AlertCircle size={30} />
             </div>
-            <h3 className="mt-4 text-base font-bold text-slate-950">No hay tableros registrados</h3>
+            <h3 className="mt-4 text-base font-bold text-slate-950">Sin tableros registrados</h3>
+            <p className="mt-1 text-xs text-slate-400 max-w-xs">
+              No hay registros asociados a los filtros ingresados.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-sm border-collapse">
-              <thead className="bg-slate-50/70 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <table className="w-full min-w-[760px] text-left text-xs border-collapse">
+              <thead className="bg-slate-50/80 border-b border-slate-100 font-bold text-slate-400 uppercase tracking-wider">
                 <tr>
                   <th className="w-12 px-6 py-4 text-center">
                     <input
@@ -588,14 +472,6 @@ const BoardDashboardPage = () => {
                   </th>
                   <th
                     className="px-6 py-4 cursor-pointer select-none hover:bg-slate-100/50 transition-colors"
-                    onClick={() => handleSort("location")}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      Ubicación {renderSortIcon("location")}
-                    </div>
-                  </th>
-                  <th
-                    className="px-6 py-4 cursor-pointer select-none hover:bg-slate-100/50 transition-colors"
                     onClick={() => handleSort("nfpa")}
                   >
                     <div className="flex items-center gap-1.5">
@@ -606,12 +482,15 @@ const BoardDashboardPage = () => {
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody className="divide-y divide-slate-100 text-xs font-semibold">
                 {filteredBoards.map((board, index) => (
                   <tr
                     key={board.code}
-                    style={{ animation: "fadeUp 0.35s ease both", animationDelay: `${index * 30}ms` }}
-                    className={`transition-colors duration-150 ${selectedBoardCodes.includes(board.code) ? "bg-[#0797d5]/5 hover:bg-[#0797d5]/10" : "hover:bg-slate-50/60"}`}
+                    style={{ animation: "fadeUp 0.35s ease both", animationDelay: `${index * 25}ms` }}
+                    className={`transition-colors duration-150 ${selectedBoardCodes.includes(board.code)
+                        ? "bg-[#0797d5]/5 hover:bg-[#0797d5]/10"
+                        : "hover:bg-slate-50/70"
+                      }`}
                   >
                     <td className="px-6 py-3.5 text-center">
                       <input
@@ -623,69 +502,62 @@ const BoardDashboardPage = () => {
                     </td>
                     <td className="px-6 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0797d5] to-[#8ccf2f] text-white shadow-sm">
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0797d5] to-[#8ccf2f] text-white shadow-xs">
                           <Zap size={16} />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-950">{board.name}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5">Tablero eléctrico</p>
+                          <p className="font-bold text-slate-950 text-xs">{board.name}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 font-normal">Tablero eléctrico</p>
                         </div>
                       </div>
                     </td>
 
                     <td className="px-6 py-3.5">
-                      <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 tracking-tight">
-                        {board.boardCode}
+                      <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-mono font-bold text-slate-600">
+                        {board.boardCode || "-"}
                       </span>
-                    </td>
-
-                    <td className="px-6 py-3.5 text-slate-600 font-medium">
-                      <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                        <MapPin size={14} className="text-slate-400 shrink-0" />
-                        <span className="truncate max-w-[200px]">{board.location || "Sin ubicación"}</span>
-                      </div>
                     </td>
 
                     <td className="px-6 py-3.5">
                       {board.nfpa ? (
-                        <span className="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700 border border-emerald-100">
+                          <CheckCircle2 size={12} />
                           Certificado
                         </span>
                       ) : (
-                        <span className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
-                          No Certificado
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">
+                          Sin certificación
                         </span>
                       )}
                     </td>
 
                     <td className="px-6 py-3.5">
                       <div className="flex justify-end gap-1">
-                        {/* NUEVO BOTÓN EN CADA FILA DE LA TABLA: Ver QR */}
                         <button
                           type="button"
                           onClick={() => setSelectedBoardForQR(board)}
-                          className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-[#0797d5]/10 hover:text-[#0797d5] cursor-pointer"
-                          title="Ver código QR del tablero"
+                          className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-[#0797d5]/10 hover:text-[#0797d5] transition-colors cursor-pointer"
+                          title="Ver QR individual"
                         >
-                          <QrCode size={16} />
+                          <QrCode size={15} />
                         </button>
 
                         <button
                           type="button"
                           onClick={() => handleGeneratePDF(board.code)}
-                          className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
-                          title="Generar PDF"
+                          className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+                          title="Descargar Ficha PDF"
                         >
-                          <FileDown size={16} />
+                          <FileDown size={15} />
                         </button>
 
                         <button
                           type="button"
                           onClick={() => navigate(`/dashboard/boards/${effectivePublicCode}/${board.code}`)}
-                          className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-[#0797d5]/10 hover:text-[#0797d5] cursor-pointer"
-                          title="Ver tablero"
+                          className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-[#0797d5]/10 hover:text-[#0797d5] transition-colors cursor-pointer"
+                          title="Ver detalle de lecturas"
                         >
-                          <Eye size={16} />
+                          <Eye size={15} />
                         </button>
 
                         {auth?.role === "SUPERADMIN" && (
@@ -693,19 +565,19 @@ const BoardDashboardPage = () => {
                             <button
                               type="button"
                               onClick={() => navigate(`/dashboard/boards/${effectivePublicCode}/${board.code}/edit`)}
-                              className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-[#8ccf2f]/15 hover:text-[#3aaa35] cursor-pointer"
-                              title="Editar tablero"
+                              className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-[#8ccf2f]/15 hover:text-[#3aaa35] transition-colors cursor-pointer"
+                              title="Editar registro"
                             >
-                              <Pencil size={16} />
+                              <Pencil size={15} />
                             </button>
 
                             <button
                               type="button"
                               onClick={() => handleDelete(board.code)}
-                              className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-600 cursor-pointer"
-                              title="Eliminar tablero"
+                              className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors cursor-pointer"
+                              title="Eliminar registro"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={15} />
                             </button>
                           </>
                         )}
@@ -719,13 +591,95 @@ const BoardDashboardPage = () => {
         )}
       </div>
 
-      {/* ── MODALES ADICIONALES ── */}
-      <ImportBoardsModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} companies={companies} onSuccess={refreshBoards} />
-      <ImportInsulationsModal isOpen={showImportInsulationsModal} onClose={() => setShowImportInsulationsModal(false)} companies={companies} onSuccess={refreshBoards} />
-      <ImportUnifilarBoardModal isOpen={showImportUnifilarModal} onClose={() => setShowImportUnifilarModal(false)} companies={companies} onSuccess={refreshBoards} />
-      <ImportNfpa70eBoardModal isOpen={showNfpa70eModal} onClose={() => setShowNfpa70eModal(false)} companies={companies} onSuccess={refreshBoards} />
+      {/* ── 4. BARRA FLOTANTE DE ACCIONES EN LOTE (MÁXIMA ELEGANCIA UX) ── */}
+      {selectedBoardCodes.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-full border border-slate-800 bg-slate-950/90 px-5 py-3 text-white shadow-2xl backdrop-blur-md animate-fade-up">
+          <span className="text-xs font-bold text-slate-300">
+            <strong className="text-white">{selectedBoardCodes.length}</strong> seleccionados
+          </span>
 
-      {/* MODAL QR INDIVIDUAL */}
+          <div className="h-4 w-px bg-slate-800" />
+
+          <button
+            type="button"
+            onClick={async () => {
+              if (!effectivePublicCode) return;
+              try {
+                const selectedBoardsData = boards.filter((b) => selectedBoardCodes.includes(b.code));
+                const companyName = selectedCompany?.name || "Voltguard";
+                await generateQrPdf(selectedBoardsData, companyName, effectivePublicCode);
+              } catch (error) {
+                alert("Error al exportar códigos QR.");
+              }
+            }}
+            className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20 transition-all cursor-pointer"
+          >
+            <QrCode size={14} />
+            Extraer QR
+          </button>
+
+          {auth?.role === "SUPERADMIN" && (
+            <>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!effectivePublicCode) return;
+                  try {
+                    const selectedBoardsData = boards.filter((b) => selectedBoardCodes.includes(b.code));
+                    const fullBoardsData = await Promise.all(
+                      selectedBoardsData.map((b) => publicGetCompanyBoardByCode(effectivePublicCode, b.code))
+                    );
+                    const companyName = selectedCompany?.name || "Voltguard";
+                    generateNfpaPDF(fullBoardsData, companyName);
+                  } catch (error) {
+                    alert("Error al generar etiquetas NFPA.");
+                  }
+                }}
+                className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20 transition-all cursor-pointer"
+              >
+                <Download size={14} />
+                Extraer NFPA70E
+              </button>
+
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 rounded-xl bg-red-600/90 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-600 transition-all cursor-pointer"
+              >
+                <Trash2 size={14} />
+                Eliminar
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── MODALES ADICIONALES ── */}
+      <ImportBoardsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        companies={companies}
+        onSuccess={refreshBoards}
+      />
+      <ImportInsulationsModal
+        isOpen={showImportInsulationsModal}
+        onClose={() => setShowImportInsulationsModal(false)}
+        companies={companies}
+        onSuccess={refreshBoards}
+      />
+      <ImportUnifilarBoardModal
+        isOpen={showImportUnifilarModal}
+        onClose={() => setShowImportUnifilarModal(false)}
+        companies={companies}
+        onSuccess={refreshBoards}
+      />
+      <ImportNfpa70eBoardModal
+        isOpen={showNfpa70eModal}
+        onClose={() => setShowNfpa70eModal(false)}
+        companies={companies}
+        onSuccess={refreshBoards}
+      />
+
       <QRModal
         isOpen={Boolean(selectedBoardForQR)}
         onClose={() => setSelectedBoardForQR(null)}

@@ -8,7 +8,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 // 1. IMPORTA LA NUEVA PÁGINA DE VERIFICACIÓN AQUÍ:
-import VerifyEmailPage from './pages/auth/VerifyEmailPage' 
+import VerifyEmailPage from './pages/auth/VerifyEmailPage'
 
 import AdminCreatePage from './pages/dashboard/admin/AdminCreatePage'
 import AdminDashboardPage from './pages/dashboard/admin/AdminDashboardPage'
@@ -38,6 +38,7 @@ import ScrollToTop from './shared/components/ScrollToTop'
 import OnboardingPage from './pages/landing/OnboardingPage'
 import ContactSalesPage from './pages/contact-sales/ContactSalesPage'
 import ContactSalesLayout from './layouts/ContactSalesLayout'
+import GroundingDashboardPage from './pages/dashboard/spat/GroundingDashboardPage'
 
 function App() {
   return (
@@ -54,7 +55,7 @@ function App() {
           </Route>
 
           <Route path='/contact-sales' element={<ContactSalesLayout />}>
-          <Route index element={<ContactSalesPage />} />
+            <Route index element={<ContactSalesPage />} />
           </Route>
 
           {/* RUTAS PÚBLICAS DE AUTENTICACIÓN */}
@@ -62,10 +63,10 @@ function App() {
             <Route path='/auth' element={<AuthLayout />}>
               <Route index element={<LoginPage />} />
               <Route path='register' element={<RegisterPage />} />
-              
+
               {/* 2. AÑADE ESTA RUTA DINÁMICA CON EL PARÁMETRO :token */}
               <Route path='verify-email/:token' element={<VerifyEmailPage />} />
-              
+
               <Route path='forgot-password' element={<ForgotPasswordPage />} />
               <Route path='reset-password' element={<ChangePasswordPage />} />
             </Route>
@@ -86,6 +87,10 @@ function App() {
               <Route path="boards" element={<BoardDashboardPage />} />
               <Route path="boards/:publicCode" element={<BoardDashboardPage />} />
               <Route path="boards/:publicCode/:code" element={<BoardDetailPage />} />
+
+              <Route path="grounding" element={<GroundingDashboardPage />} />
+              <Route path="companies/:publicCode/grounding" element={<GroundingDashboardPage />} />
+              <Route path="companies/:publicCode/grounding/:pozoCode" element={<GroundingDashboardPage />} />
 
               <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                 <Route path="users" element={<AdminDashboardPage />} />

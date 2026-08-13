@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
@@ -18,11 +18,8 @@ import {
   Info,
   Layers,
   MapPin,
-  RefreshCw,
   Shield,
-  ShieldAlert,
   Sun,
-  // ShieldCheck,
   UploadCloud,
   X,
   Zap
@@ -52,18 +49,6 @@ import { useAuth } from "../../../shared/hooks/useAuth";
 // ── OBJETOS HARDCODEADOS PARA LA PRESENTACIÓN ──
 const documentosHardcodeados = [
   {
-    _id: "spat-001",
-    title: "Certificado de Medición y Mantenimiento SPAT (Pozo a Tierra)",
-    type: "POZO_A_TIERRA",
-    url: "/pdfs/GESENER Certificado SPAT V2.0.pdf", // Ruta local pública
-  },
-  // {
-  //   _id: "mant-001",
-  //   title: "Certificado de Mantenimiento de Tableros Eléctricos",
-  //   type: "MANTENIMIENTO",
-  //   url: "/pdfs/certificado_mantenimiento.pdf",
-  // },
-  {
     _id: "oper-001",
     title: "Certificado de Operatividad de Tableros Eléctricos",
     type: "OPERATIVIDAD",
@@ -77,9 +62,8 @@ const MAIN_COLORS = [
   '#e91e63', '#795548', '#607d8b', '#03a9f4', '#eab308', '#ec4899'
 ];
 
-// Colores según especificación: Rojo para kvar c (capacitiva) y Azul para kvar i (inductiva)
-const REACTIVE_COLOR_CAPACITIVE = "#dc2626"; // Rojo (kvar c)
-const REACTIVE_COLOR_INDUCTIVE = "#1d4ed8";  // Azul (kvar i)
+const REACTIVE_COLOR_CAPACITIVE = "#dc2626";
+const REACTIVE_COLOR_INDUCTIVE = "#1d4ed8";
 
 // ── FUNCIONES AUXILIARES DE FORMATEO ──
 const value = (data: unknown) =>
@@ -96,28 +80,25 @@ const formatMeasurementWithUnit = (
 };
 
 const BoardDetailPage = () => {
-  // ── OBTENER PLAN DEL USUARIO AUTENTICADO ──
   const { auth } = useAuth();
   const userPlan = auth?.plan || "basico";
+  const isSuperAdmin = auth?.role === "SUPERADMIN";
 
-  // Banderas de permisos
-  const isIntermedioOrSuperior = ["intermedio", "empresarial"].includes(userPlan);
-  const isEmpresarial = userPlan === "empresarial";
+  const isIntermedioOrSuperior = isSuperAdmin || ["intermedio", "empresarial"].includes(userPlan);
+  const isEmpresarial = isSuperAdmin || userPlan === "empresarial";
 
   const navigate = useNavigate();
   const { publicCode, code } = useParams();
 
-  // ── ESTADOS PRINCIPALES DEL TABLERO ──
   const [board, setBoard] = useState<BoardResponseDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-  // ── ESTADOS DEL GRÁFICO INTERACTIVO (RECHARTS) ──
   const [rawChartData, setRawChartData] = useState<any[]>([]);
   const [seriesKeys, setSeriesKeys] = useState<string[]>([]);
-  const [selectedReactiveDay, setSelectedReactiveDay] = useState<string | null>(null); // ← AÑADIR ESTA LÍNEA
-  // ── ESTADOS DE VISIBILIDAD POR SECCIÓN (INDEPENDIENTES) ──
+  const [selectedReactiveDay, setSelectedReactiveDay] = useState<string | null>(null);
+
   const [visibleDemandSeries, setVisibleDemandSeries] = useState<{ [key: string]: boolean }>({
     "Promedio_General": true,
   });
@@ -131,18 +112,15 @@ const BoardDetailPage = () => {
   const [visibleSolarSeries, setVisibleSolarSeries] = useState<{ [key: string]: boolean }>({});
   const [importing, setImporting] = useState(false);
 
-  // ── ESTADOS DE FILTROS TEMPORALES Y LÍMITES ──
-  const [limitesPatron, setLimitesPatron] = useState({ min: "2026-06-20", max: "2026-06-30" });
-  const [startDate, setStartDate] = useState<string>("2026-06-22");
-  const [endDate, setEndDate] = useState<string>("2026-06-28");
+  // const [limitesPatron, setLimitesPatron] = useState({ min: "2026-06-20", max: "2026-06-30" });
+  // const [startDate, setStartDate] = useState<string>("2026-06-22");
+  // const [endDate, setEndDate] = useState<string>("2026-06-28");
 
-  // ── ESTADOS INTERACTIVOS (ZOOM / PAN / DRAG) ──
-  const [zoomRange, setZoomRange] = useState<{ startIdx: number; endIdx: number }>({ startIdx: 0, endIdx: 287 });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [dragStart, setDragStart] = useState<number>(0);
-  const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  // const [zoomRange, setZoomRange] = useState<{ startIdx: number; endIdx: number }>({ startIdx: 0, endIdx: 287 });
+  // const [isDragging, setIsDragging] = useState<boolean>(false);
+  // const [dragStart, setDragStart] = useState<number>(0);
+  // const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // ── ESTADOS DE TARIFAS Y ANÁLISIS ENERGÉTICO ──
   const [tarifaContratada] = useState<number>(350);
   const [costokW_HP] = useState<number>(48.50);
   const [costokW_HFP] = useState<number>(22.10);
@@ -154,7 +132,6 @@ const BoardDetailPage = () => {
   } | null>(null);
 
   const [energiaPorDiaData, setEnergiaPorDiaData] = useState<any[]>([]);
-
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -166,19 +143,11 @@ const BoardDetailPage = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ── PROCESAMIENTO Y SOLICITUD DE DATOS ──
+  // ✅ CÓDIGO CORREGIDO Y REESTRUCTURADO DE fetchChartData:
   const fetchChartData = async (boardId: string, start?: string, end?: string) => {
     try {
       const res: any = await getDemandChartData(boardId, start, end);
-      const { agrupado, minFecha, maxFecha } = res;
-
-      if (minFecha && maxFecha) {
-        setLimitesPatron({ min: minFecha, max: maxFecha });
-        if (!start) {
-          setStartDate(minFecha);
-          setEndDate(maxFecha);
-        }
-      }
+      const { agrupado } = res;
 
       if (!agrupado || Object.keys(agrupado).length === 0) {
         setRawChartData([]);
@@ -202,7 +171,6 @@ const BoardDetailPage = () => {
         let sumaCap = 0;
         let count = 0;
 
-        // ── DENTRO DE fetchChartData EN TU REACT COMPONENT ──
         rawKeys.forEach((diaKey) => {
           const partes = diaKey.split(' ');
           const fechaYMD = partes[0];
@@ -212,7 +180,6 @@ const BoardDetailPage = () => {
 
           const punto = agrupado[diaKey]?.[hora];
 
-          // Extraer p, ind y cap directamente de la respuesta del backend
           const valP = typeof punto === 'number' ? punto : (punto?.p ?? 0);
           const valInd = typeof punto === 'object' ? (punto?.ind ?? 0) : 0;
           const valCap = typeof punto === 'object' ? (punto?.cap ?? 0) : 0;
@@ -236,11 +203,12 @@ const BoardDetailPage = () => {
         return row;
       });
 
-      const sortedCleanKeys = rawKeys.sort().map(key => {
+      const sortedCleanKeys = rawKeys.map(key => {
         const partes = key.split(' ');
         const fechaYMD = partes[0];
         const diaNombre = partes[1] ? partes[1].replace(/[\(\)]/g, '').substring(0, 3) : '';
         const [_, mes, dia] = fechaYMD.split('-');
+
         return `${dia}/${mes} (${diaNombre})`;
       });
 
@@ -258,16 +226,16 @@ const BoardDetailPage = () => {
       setEnergiaPorDiaData(barrasProcesadas);
       setRawChartData(formattedData);
       setSeriesKeys(sortedCleanKeys);
-      // ← AÑADIR ESTA LÍNEA: Asigna el primer día disponible al cargar los datos
       setSelectedReactiveDay(prev => (prev && sortedCleanKeys.includes(prev) ? prev : sortedCleanKeys[0] || null));
 
-      // Inicializar visibilidad en la carga de datos
+      // Recalcular métricas de picos e indicadores eléctricos inmediatamente con los datos frescos
+      calcularMetricasLuzDelSur(formattedData);
+
       const initialVisibility: { [key: string]: boolean } = {};
       sortedCleanKeys.forEach((k) => {
         initialVisibility[k] = true;
       });
 
-      // 1. Visibilidad para Cuadro de Demanda (Promedio + Días)
       setVisibleDemandSeries(prev => {
         const visibility: any = {
           "Promedio_General": prev["Promedio_General"] ?? true
@@ -278,13 +246,11 @@ const BoardDetailPage = () => {
         return visibility;
       });
 
-      // 2. Visibilidad para Potencia Reactiva (Capacitiva e Inductiva)
       setVisibleReactiveSeries(prev => ({
         "kvar_inductivo": prev["kvar_inductivo"] ?? true,
         "kvar_capacitivo": prev["kvar_capacitivo"] ?? true
       }));
 
-      // 3. Inicializar el resto de secciones por separado
       setVisibleEnergySeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
       setVisibleCarbonSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
       setVisibleCostSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
@@ -318,34 +284,32 @@ const BoardDetailPage = () => {
     setVisibleSolarSeries(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // ── EFECTO PARA PASIVE LISTENERS EN SCROLL WHEEL DEL GRÁFICO ──
-  useEffect(() => {
-    const contenedor = chartContainerRef.current;
-    if (!contenedor) return;
+  // useEffect(() => {
+  //   const contenedor = chartContainerRef.current;
+  //   if (!contenedor) return;
 
-    const handleNativeWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      const zoomFactor = e.deltaY < 0 ? 4 : -4;
+  //   const handleNativeWheel = (e: WheelEvent) => {
+  //     e.preventDefault();
+  //     const zoomFactor = e.deltaY < 0 ? 4 : -4;
 
-      setZoomRange((prev) => {
-        let newStart = prev.startIdx + zoomFactor;
-        let newEnd = prev.endIdx - zoomFactor;
+  //     setZoomRange((prev) => {
+  //       let newStart = prev.startIdx + zoomFactor;
+  //       let newEnd = prev.endIdx - zoomFactor;
 
-        if (newEnd - newStart < 12) return prev;
-        if (newStart < 0) newStart = 0;
-        if (newEnd > 287) newEnd = 287;
+  //       if (newEnd - newStart < 12) return prev;
+  //       if (newStart < 0) newStart = 0;
+  //       if (newEnd > 287) newEnd = 287;
 
-        return { startIdx: newStart, endIdx: newEnd };
-      });
-    };
+  //       return { startIdx: newStart, endIdx: newEnd };
+  //     });
+  //   };
 
-    contenedor.addEventListener("wheel", handleNativeWheel, { passive: false });
-    return () => {
-      contenedor.removeEventListener("wheel", handleNativeWheel);
-    };
-  }, [rawChartData]);
+  //   contenedor.addEventListener("wheel", handleNativeWheel, { passive: false });
+  //   return () => {
+  //     contenedor.removeEventListener("wheel", handleNativeWheel);
+  //   };
+  // }, [rawChartData]);
 
-  // ── EFECTO CARGA INICIAL DEL TABLERO ──
   useEffect(() => {
     const fetchBoard = async () => {
       try {
@@ -364,14 +328,13 @@ const BoardDetailPage = () => {
     fetchBoard();
   }, [code, publicCode]);
 
-  // ── EFECTO RECALCULO DE METRICAS ENERGETICAS ──
+  // ✅ CÓDIGO NUEVO (Recalcula al activar/desactivar días):
   useEffect(() => {
     if (rawChartData.length > 0) {
       calcularMetricasLuzDelSur(rawChartData);
     }
-  }, [rawChartData, tarifaContratada, costokW_HP, costokW_HFP]);
+  }, [rawChartData, visibleDemandSeries, seriesKeys, tarifaContratada, costokW_HP, costokW_HFP]);
 
-  // ── ACCIONES Y INTERACCIONES DEL MOUSE / ZOOM ──
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !board?._id) return;
@@ -385,7 +348,7 @@ const BoardDetailPage = () => {
     try {
       await uploadMetrelCsv(board._id, file);
       alert("¡Archivo cargado y procesado por completo en VoltGuard!");
-      await fetchChartData(board._id, startDate, endDate);
+      await fetchChartData(board._id);
     } catch (err: any) {
       alert("Error procesando archivo: " + (err.response?.data?.error || err.message));
     } finally {
@@ -393,106 +356,118 @@ const BoardDetailPage = () => {
     }
   };
 
-  const handleMouseDown = (e: any) => {
-    if (e && e.chartX) {
-      setIsDragging(true);
-      setDragStart(e.chartX);
-    }
-  };
+  // const handleMouseDown = (e: any) => {
+  //   if (e && e.chartX) {
+  //     setIsDragging(true);
+  //     setDragStart(e.chartX);
+  //   }
+  // };
 
-  const handleMouseMove = (e: any) => {
-    if (!isDragging || !e || !e.chartX) return;
-    const distance = e.chartX - dragStart;
-    if (Math.abs(distance) < 10) return;
+  // const handleMouseMove = (e: any) => {
+  //   if (!isDragging || !e || !e.chartX) return;
+  //   const distance = e.chartX - dragStart;
+  //   if (Math.abs(distance) < 10) return;
 
-    const shift = distance > 0 ? -2 : 2;
+  //   const shift = distance > 0 ? -2 : 2;
 
-    setZoomRange((prev) => {
-      let newStart = prev.startIdx + shift;
-      let newEnd = prev.endIdx + shift;
-      if (newStart < 0 || newEnd > 287) return prev;
-      setDragStart(e.chartX);
-      return { startIdx: newStart, endIdx: newEnd };
-    });
-  };
+  //   setZoomRange((prev) => {
+  //     let newStart = prev.startIdx + shift;
+  //     let newEnd = prev.endIdx + shift;
+  //     if (newStart < 0 || newEnd > 287) return prev;
+  //     setDragStart(e.chartX);
+  //     return { startIdx: newStart, endIdx: newEnd };
+  //   });
+  // };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  // const handleMouseUp = () => {
+  //   setIsDragging(false);
+  // };
 
-  const handleResetZoom = () => {
-    setZoomRange({ startIdx: 0, endIdx: 287 });
-  };
+  // const handleResetZoom = () => {
+  //   setZoomRange({ startIdx: 0, endIdx: 287 });
+  // };
 
-  const handleApplyDateFilter = () => {
-    if (board?._id) {
-      handleResetZoom();
-      fetchChartData(board._id, startDate, endDate);
-    }
-  };
 
-  const dataFiltradaZoom = rawChartData.slice(zoomRange.startIdx, zoomRange.endIdx + 1);
 
-  // ── LÓGICA TARIFARIA LUZ DEL SUR (CORREGIDA) ──
+  // const dataFiltradaZoom = rawChartData.slice(zoomRange.startIdx, zoomRange.endIdx + 1);
+
+  // ✅ FUNCIÓN COMPLETA 100% DINÁMICA:
   const calcularMetricasLuzDelSur = (data: any[]) => {
     if (!data || data.length === 0) return;
 
-    let maxHP = { valor: 0, hora: "", fecha: "" };
-    let maxHFP = { valor: 0, hora: "", fecha: "" };
+    // 1. Filtrar únicamente las series/días que están ACTIVOS actualmente
+    const activeKeys = [
+      ...seriesKeys,
+      "Promedio_General"
+    ].filter((key) => visibleDemandSeries[key] === true);
+
+    // Si no hay ninguna serie seleccionada, limpiamos métricas
+    if (activeKeys.length === 0) {
+      setHoraPicoMaximo(null);
+      setAnalisisPotencia(null);
+      return;
+    }
+
+    let maxHP: { valor: number; hora: string; fecha: string } | null = null;
+    let maxHFP: { valor: number; hora: string; fecha: string } | null = null;
     let valorPicoAbsoluto = -1;
     let horaPicoAbsoluto = "";
 
-    data.forEach((row) => {
+    // Cambiado de data.forEach a for...of para que TypeScript mantenga el rastro del tipo
+    for (const row of data) {
       const horaStr = row.horaMinuto;
-      if (!horaStr) return;
+      if (!horaStr) continue; // En bucles for...of usamos continue en vez de return
 
       const [horas, minutos] = horaStr.split(":").map(Number);
       const totalMinutos = horas * 60 + minutos;
 
-      // Hora Punta: 18:00 a 23:00 (1080 min a 1380 min)
+      // Hora Punta (HP): 18:00 a 23:00 hrs (1080 a 1380 minutos)
       const esHoraPunta = totalMinutos >= 18 * 60 && totalMinutos < 23 * 60;
 
-      Object.keys(row).forEach((key) => {
-        // Ignorar horas y series auxiliares de kvar (inductiva_/capacitiva_)
-        if (
-          key === "horaMinuto" ||
-          key === "Promedio_General" ||
-          key.startsWith("inductiva_") ||
-          key.startsWith("capacitiva_") ||
-          key.startsWith("kvar_")
-        ) return;
-
+      // Cambiado de activeKeys.forEach a for...of
+      for (const key of activeKeys) {
         const valor = Number(row[key]);
-        if (!isNaN(valor) && valor !== null && valor !== undefined) {
+
+        if (!isNaN(valor) && valor !== null && valor !== undefined && valor > 0) {
+          // Pico Máximo Absoluto
           if (valor > valorPicoAbsoluto) {
             valorPicoAbsoluto = valor;
             horaPicoAbsoluto = horaStr;
           }
 
+          // Evaluar tarjeta de Hora Punta (HP)
           if (esHoraPunta) {
-            if (valor > maxHP.valor) {
+            if (!maxHP || valor > maxHP.valor) {
               maxHP = { valor, hora: horaStr, fecha: key };
             }
           } else {
-            if (valor > maxHFP.valor) {
+            // Evaluar tarjeta de Hora Fuera de Punta (HFP)
+            if (!maxHFP || valor > maxHFP.valor) {
               maxHFP = { valor, hora: horaStr, fecha: key };
             }
           }
         }
-      });
-    });
-
-    if (horaPicoAbsoluto) {
-      setHoraPicoMaximo(horaPicoAbsoluto);
+      }
     }
 
-    const picoMaximoAbsoluto = Math.max(maxHP.valor, maxHFP.valor);
+    // Mover la línea vertical punteada al pico de los días activos
+    if (horaPicoAbsoluto) {
+      setHoraPicoMaximo(horaPicoAbsoluto);
+    } else {
+      setHoraPicoMaximo(null);
+    }
+
+    // TypeScript ahora sabrá perfectamente que maxHP y maxHFP pueden no ser null aquí
+    const valHP = maxHP ? maxHP.valor : 0;
+    const valHFP = maxHFP ? maxHFP.valor : 0;
+    const picoMaximoAbsoluto = Math.max(valHP, valHFP);
+
     let sobrecostoPenalidad = 0;
     if (picoMaximoAbsoluto > tarifaContratada) {
       sobrecostoPenalidad = (picoMaximoAbsoluto - tarifaContratada) * costokW_HFP * 1.5;
     }
 
-    const ahorroPotenciaHP = maxHP.valor * 0.15 * costokW_HP;
+    const ahorroPotenciaHP = valHP * 0.15 * costokW_HP;
 
     setAnalisisPotencia({
       maxHP,
@@ -501,7 +476,6 @@ const BoardDetailPage = () => {
     });
   };
 
-  // ── TOOLTIP PERSONALIZADO PARA ENERGÍA REACTIVA ──
   const ReactiveTooltip = ({ active, label, payload }: any) => {
     if (active && payload && payload.length) {
       const rowData = payload[0]?.payload || {};
@@ -525,30 +499,6 @@ const BoardDetailPage = () => {
           </p>
 
           <div className="space-y-2 font-semibold text-[11px]">
-            {/* {mostrarCapacitiva && (
-              <div className="flex justify-between items-center">
-                <span className="flex items-center gap-1.5 text-red-600 font-bold">
-                  <span className="size-2 rounded-full bg-red-500 inline-block"></span>
-                  kvar c (Capacitiva):
-                </span>
-                <span className="text-slate-900 font-black tabular-nums">
-                  {valCap !== undefined && valCap !== null ? `${Number(valCap).toFixed(2)} kvar` : '-'}
-                </span>
-              </div>
-            )}
-
-            {mostrarInductiva && (
-              <div className="flex justify-between items-center">
-                <span className="flex items-center gap-1.5 text-blue-600 font-bold">
-                  <span className="size-2 rounded-full bg-blue-600 inline-block"></span>
-                  kvar i (Inductiva):
-                </span>
-                <span className="text-slate-900 font-black tabular-nums">
-                  {valInd !== undefined && valInd !== null ? `${Number(valInd).toFixed(2)} kvar` : '-'}
-                </span>
-              </div>
-            )} */}
-
             {mostrarCapacitiva && valCap > 0 && (
               <div className="flex justify-between items-center">
                 <span className="flex items-center gap-1.5 text-red-600 font-bold">
@@ -584,7 +534,6 @@ const BoardDetailPage = () => {
     return null;
   };
 
-  // ── COMPONENTE INTERNO: TOOLTIP PERSONALIZADO ──
   const CustomTooltip = ({ active, label, payload }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -627,7 +576,9 @@ const BoardDetailPage = () => {
     return null;
   };
 
-  // ── SECCIÓN MODULAR 1: CUADRO DE DEMANDA ──
+
+
+  // ✅ CÓDIGO CORREGIDO SIN ZOOM NI DRAG EN RENDERDEMANDSECTION:
   const renderDemandSection = () => {
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans">
@@ -641,10 +592,10 @@ const BoardDetailPage = () => {
               <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Demanda instantánea calculada y expresada en KiloVatios (kW)</p>
             </div>
           </div>
-          <div className="w-full sm:w-auto">
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
             <label
               htmlFor="csv-metrel"
-              className="flex sm:inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl sm:rounded-2xl px-5 py-3 text-xs font-black text-white transition-all duration-300 cursor-pointer shadow-md bg-emerald-600 hover:bg-emerald-700 active:scale-95"
+              className="flex sm:inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl px-5 py-2.5 text-xs font-black text-white transition-all duration-300 cursor-pointer shadow-md bg-emerald-600 hover:bg-emerald-700 active:scale-95 h-[38px]"
             >
               <UploadCloud size={16} />
               {importing ? "Importando..." : "Importar .Mediciones.csv"}
@@ -653,60 +604,19 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {rawChartData.length > 0 && (
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end rounded-2xl bg-slate-50 p-3 sm:p-4 border border-slate-100">
-            <div className="flex flex-col gap-1 col-span-1">
-              <label className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 tracking-wider">Inicio</label>
-              <input
-                type="date"
-                value={startDate}
-                min={limitesPatron.min}
-                max={limitesPatron.max}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 sm:py-2 text-xs font-bold text-slate-700 focus:outline-none shadow-sm"
-              />
-            </div>
-            <div className="flex flex-col gap-1 col-span-1">
-              <label className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400 tracking-wider">Cierre</label>
-              <input
-                type="date"
-                value={endDate}
-                min={limitesPatron.min}
-                max={limitesPatron.max}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 sm:py-2 text-xs font-bold text-slate-700 focus:outline-none shadow-sm"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleApplyDateFilter}
-              className="col-span-2 sm:col-span-1 rounded-xl bg-slate-800 px-4 py-2 text-xs font-black text-white hover:bg-slate-900 transition-colors shadow-sm cursor-pointer h-[34px]"
-            >
-              Filtrar Periodo
-            </button>
-            <button
-              type="button"
-              onClick={handleResetZoom}
-              className="col-span-2 sm:col-span-1 sm:ml-auto flex items-center justify-center gap-x-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer h-[34px]"
-            >
-              <RefreshCw size={14} /> Restablecer Vista
-            </button>
-          </div>
-        )}
-
         {rawChartData.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl sm:rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center">
             <BarChart3 size={32} className="text-slate-300 animate-pulse" />
-            <p className="mt-3 text-xs font-bold text-slate-500">Sin historial de curvas de demanda para este rango</p>
+            <p className="mt-3 text-xs font-bold text-slate-500">Sin historial de curvas de demanda cargado</p>
           </div>
         ) : (
           <div className="space-y-5">
+            {/* Selector de Días */}
             <div className="flex items-center gap-2.5 overflow-x-auto p-2.5 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
               <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1 shrink-0">
                 DÍAS:
               </span>
 
-              {/* Botón Promedio General */}
               <button
                 type="button"
                 onClick={() => toggleDemandDay("Promedio_General")}
@@ -718,7 +628,6 @@ const BoardDetailPage = () => {
                 <ChartNoAxesCombined size={14} /> Promedio General
               </button>
 
-              {/* Botones por Día */}
               {seriesKeys.map((key) => {
                 const isSelected = !!visibleDemandSeries[key];
                 return (
@@ -737,55 +646,48 @@ const BoardDetailPage = () => {
               })}
             </div>
 
-            <div className="flex items-center justify-between gap-2 px-1 sm:hidden">
-              <span className="text-[9px] font-black uppercase tracking-wider text-slate-400">Panel Gráfico</span>
-              <span className="flex items-center gap-1 text-[9px] font-black text-slate-500 animate-pulse bg-slate-100 px-2 py-1 rounded-lg border border-slate-200/60">
-                Desliza para explorar horas →
-              </span>
-            </div>
-
             <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-              <div ref={chartContainerRef} className="h-72 sm:h-80 md:h-[420px] w-[850px] sm:w-full text-xs font-medium text-slate-500 select-none cursor-ew-resize">
+              <div className="h-72 sm:h-80 md:h-[420px] w-[850px] sm:w-full text-xs font-medium text-slate-500 select-none">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart
-                    data={dataFiltradaZoom}
+                    data={rawChartData}
                     margin={{ top: 25, right: 15, left: 10, bottom: 25 }}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
 
-                    {/* Búsqueda dinámica de marcas existentes dentro del zoom actual */}
                     {(() => {
-                      const horasVisibles = dataFiltradaZoom.map(d => d.horaMinuto);
+                      const horasVisibles = rawChartData.map(d => d.horaMinuto);
                       const primerHora = horasVisibles[0];
                       const ultimaHora = horasVisibles[horasVisibles.length - 1];
 
-                      // Puntos límite estándar
                       const hora18 = horasVisibles.find(h => h >= "18:00") || "18:00";
                       const hora23 = horasVisibles.find(h => h >= "23:00") || "23:00";
 
                       return (
                         <>
-                          {/* Franja HFP de 00:00 a 18:00 */}
                           <ReferenceArea x1={primerHora} x2={hora18} fill="#f8fafc" fillOpacity={0.55}>
                             <Label value="HORA FUERA DE PUNTA (HFP)" position="top" offset={10} fill="#0284c7" style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }} />
                           </ReferenceArea>
 
-                          {/* Franja HP de 18:00 a 23:00 */}
                           <ReferenceArea x1={hora18} x2={hora23} fill="#fff1f2" fillOpacity={0.65}>
                             <Label value="HORA PUNTA (HP)" position="top" offset={10} fill="#f43f5e" style={{ fontSize: '9px', fontWeight: '900', letterSpacing: '0.05em' }} />
                           </ReferenceArea>
 
-                          {/* Franja HFP nocturna de 23:00 a 23:55 */}
                           <ReferenceArea x1={hora23} x2={ultimaHora} fill="#f8fafc" fillOpacity={0.55} />
 
-                          {/* Línea de Pico Máximo (Solo si el pico está dentro del rango con Zoom) */}
+                        // ✅ CÓDIGO NUEVO (Texto Descriptivo Dinámico):
                           {horaPicoMaximo && horasVisibles.includes(horaPicoMaximo) && (
                             <ReferenceLine x={horaPicoMaximo} stroke="#be123c" strokeWidth={2} strokeDasharray="4 4">
-                              <Label value="PICO MÁXIMO DEL PERIODO" position="top" offset={10} fill="#be123c" style={{ fontSize: '8px', fontWeight: '900' }} />
+                              <Label
+                                value={`PICO MÁXIMO DEL PERIODO (${Number(horaPicoMaximo.split(':')[0]) >= 18 && Number(horaPicoMaximo.split(':')[0]) < 23
+                                  ? 'EN HP'
+                                  : 'EN HFP'
+                                  })`}
+                                position="top"
+                                offset={10}
+                                fill="#be123c"
+                                style={{ fontSize: '8px', fontWeight: '900' }}
+                              />
                             </ReferenceLine>
                           )}
                         </>
@@ -826,14 +728,15 @@ const BoardDetailPage = () => {
             </div>
 
             {analisisPotencia && (
-              // <div className="mt-8 grid grid-cols-1 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2 md:grid-cols-3">
               <div className="mt-8 grid grid-cols-1 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2">
                 <div className="rounded-2xl border border-rose-100 bg-rose-50/30 p-4 sm:p-5">
                   <div className="flex items-center gap-2 text-rose-700">
                     <Clock size={16} className="animate-pulse" />
                     <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Pico Máximo en Hora Punta (HP)</h3>
                   </div>
-                  <p className="mt-2 text-2xl sm:text-3xl font-black text-rose-950">{analisisPotencia.maxHP?.valor.toFixed(1)} <span className="text-xs sm:text-sm font-bold text-rose-500">kW</span></p>
+                  <p className="mt-2 text-2xl sm:text-3xl font-black text-rose-950">
+                    {analisisPotencia.maxHP?.valor.toFixed(1)} <span className="text-xs sm:text-sm font-bold text-rose-500">kW</span>
+                  </p>
                   <div className="mt-1 text-[11px] sm:text-xs text-slate-500">
                     Registrado el <strong className="text-slate-700">{analisisPotencia.maxHP?.fecha}</strong> a las <strong className="text-slate-700">{analisisPotencia.maxHP?.hora} hrs</strong>.
                   </div>
@@ -845,7 +748,9 @@ const BoardDetailPage = () => {
                     <Zap size={16} />
                     <h3 className="text-[10px] sm:text-xs font-black uppercase tracking-wider">Pico Máximo Fuera de Punta (HFP)</h3>
                   </div>
-                  <p className="mt-2 text-2xl sm:text-3xl font-black text-blue-950">{analisisPotencia.maxHFP?.valor.toFixed(1)} <span className="text-xs sm:text-sm font-bold text-blue-500">kW</span></p>
+                  <p className="mt-2 text-2xl sm:text-3xl font-black text-blue-950">
+                    {analisisPotencia.maxHFP?.valor.toFixed(1)} <span className="text-xs sm:text-sm font-bold text-blue-500">kW</span>
+                  </p>
                   <div className="mt-1 text-[11px] sm:text-xs text-slate-500">
                     Registrado el <strong className="text-slate-700">{analisisPotencia.maxHFP?.fecha}</strong> a las <strong className="text-slate-700">{analisisPotencia.maxHFP?.hora} hrs</strong>.
                   </div>
@@ -859,7 +764,8 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── SECCIÓN MODULAR 2: POTENCIA REACTIVA POR DÍA SELECCIONADO ──
+
+
   const renderReactivePowerSection = () => {
     if (rawChartData.length === 0) return null;
 
@@ -867,7 +773,6 @@ const BoardDetailPage = () => {
 
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
-        {/* Encabezado */}
         <div className="mb-5 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex size-11 items-center justify-center rounded-2xl bg-blue-500/10 text-blue-600">
@@ -880,9 +785,7 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Controles: Selector de Día y Toggles de Visibilidad (Conservados) */}
         <div className="space-y-3 mb-5">
-          {/* Barra de Selección de Día */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
             <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">SELECCIONAR DÍA:</span>
             {seriesKeys.map((key) => {
@@ -903,7 +806,6 @@ const BoardDetailPage = () => {
             })}
           </div>
 
-          {/* Botones de Alternado de Visibilidad (kvar c / kvar i) */}
           <div className="flex gap-2 overflow-x-auto pb-1 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
             <button
               type="button"
@@ -926,11 +828,10 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Gráfico Recharts dibujando los datos reales del día seleccionado */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
           <div className="h-72 sm:h-80 md:h-[380px] w-[850px] sm:w-full text-xs select-none">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dataFiltradaZoom} margin={{ top: 15, right: 15, left: 10, bottom: 25 }}>
+              <LineChart data={rawChartData} margin={{ top: 15, right: 15, left: 10, bottom: 25 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis
                   dataKey="horaMinuto"
@@ -952,7 +853,6 @@ const BoardDetailPage = () => {
                 </YAxis>
                 <Tooltip content={<ReactiveTooltip />} shared={true} />
 
-                {/* Línea Capacitiva Real (Rojo) */}
                 {visibleReactiveSeries["kvar_capacitivo"] !== false && activeDay && (
                   <Line
                     type="linear"
@@ -966,7 +866,6 @@ const BoardDetailPage = () => {
                   />
                 )}
 
-                {/* Línea Inductiva Real (Azul) */}
                 {visibleReactiveSeries["kvar_inductivo"] !== false && activeDay && (
                   <Line
                     type="linear"
@@ -987,7 +886,6 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── SECCIÓN MODULAR ADICIONAL: CUADRO COMBINADO (DEMANDA kW + REACTIVA kvar) ──
   const renderCombinedDemandAndReactiveSection = () => {
     if (rawChartData.length === 0) return null;
 
@@ -995,7 +893,6 @@ const BoardDetailPage = () => {
 
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
-        {/* Encabezado del Nuevo Cuadro */}
         <div className="mb-5 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
             <div className="flex size-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600">
@@ -1012,7 +909,6 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Selector de Día Activo */}
         <div className="space-y-3 mb-5">
           <div className="flex gap-1.5 overflow-x-auto pb-1 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
             <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
@@ -1036,7 +932,6 @@ const BoardDetailPage = () => {
             })}
           </div>
 
-          {/* Toggles para Alternar Visibilidad de Variables en el Gráfico Combinado */}
           <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
             <button
               type="button"
@@ -1072,11 +967,10 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Gráfico Recharts Multi-Eje Integrado */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
           <div className="h-72 sm:h-80 md:h-[400px] w-[850px] sm:w-full text-xs select-none">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dataFiltradaZoom} margin={{ top: 15, right: 25, left: 10, bottom: 25 }}>
+              <LineChart data={rawChartData} margin={{ top: 15, right: 25, left: 10, bottom: 25 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
 
                 <XAxis
@@ -1095,26 +989,23 @@ const BoardDetailPage = () => {
                   />
                 </XAxis>
 
-                {/* Eje Y Izquierdo para kW */}
                 <YAxis yAxisId="left" tickLine={false} stroke="#f97316" width={45} domain={[0, 'auto']}>
                   <Label value="Demanda [kW]" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#f97316', fontWeight: '800', fontSize: '9px' }} />
                 </YAxis>
 
-                {/* Eje Y Derecho para kvar */}
                 <YAxis yAxisId="right" orientation="right" tickLine={false} stroke="#dc2626" width={45} domain={[0, 'auto']}>
                   <Label value="Reactiva [kvar]" angle={90} position="insideRight" style={{ textAnchor: 'middle', fill: '#dc2626', fontWeight: '800', fontSize: '9px' }} />
                 </YAxis>
 
                 <Tooltip content={<CustomTooltip />} shared={true} />
 
-                {/* Línea Demanda Activa (kW) -> Eje Y Izquierdo */}
                 {visibleDemandSeries[activeDay] !== false && activeDay && (
                   <Line
                     yAxisId="left"
                     type="monotone"
                     name={`Demanda kW - ${activeDay}`}
                     dataKey={activeDay}
-                    stroke="#f97316" // ← Naranja Eléctrico
+                    stroke="#f97316"
                     strokeWidth={2.5}
                     dot={false}
                     connectNulls={true}
@@ -1122,7 +1013,6 @@ const BoardDetailPage = () => {
                   />
                 )}
 
-                {/* Línea Capacitiva (kvar c) -> Eje Y Derecho */}
                 {visibleReactiveSeries["kvar_capacitivo"] !== false && activeDay && (
                   <Line
                     yAxisId="right"
@@ -1137,7 +1027,6 @@ const BoardDetailPage = () => {
                   />
                 )}
 
-                {/* Línea Inductiva (kvar i) -> Eje Y Derecho */}
                 {visibleReactiveSeries["kvar_inductivo"] !== false && activeDay && (
                   <Line
                     yAxisId="right"
@@ -1159,7 +1048,6 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── SECCIÓN MODULAR 3: ENERGÍA CONSUMIDA POR DÍA ──
   const renderEnergyBarSection = () => {
     const barrasVisibles = energiaPorDiaData.filter(d => visibleEnergySeries[d.name] !== false);
 
@@ -1182,7 +1070,6 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* TARJETAS DE RESUMEN EN TONOS AZULES */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Consumo Diario Promedio</p>
@@ -1209,7 +1096,6 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* BOTONES DE SELECCIÓN DE DÍAS */}
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
           {seriesKeys.map((key) => (
@@ -1227,7 +1113,6 @@ const BoardDetailPage = () => {
           ))}
         </div>
 
-        {/* GRÁFICO DE BARRAS */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
             {barrasVisibles.length === 0 ? (
@@ -1255,7 +1140,6 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── SECCIÓN MODULAR 4: HUELLA DE CARBONO Y EMISIONES DE CO₂ ──
   const renderCarbonEmissionsSection = () => {
     const FACTOR_EMISION_PERU = 0.00021;
 
@@ -1364,11 +1248,9 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── ESTADO Y TARIFAS PARA COSTO DE ENERGÍA Y ENERGÍA SOLAR ──
   const TARIFO_KWH_PEN = 0.45;
   const FACTOR_GENERACION_SOLAR_DIARIO = 0.15;
 
-  // ── SECCIÓN MODULAR 5: COSTO DE ENERGÍA ESTIMADO (S/.) ──
   const renderEnergyCostSection = () => {
     const costoData = energiaPorDiaData
       .filter(d => visibleCostSeries[d.name] !== false)
@@ -1464,7 +1346,6 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── SECCIÓN MODULAR 6: GENERACIÓN / POTENCIAL DE ENERGÍA SOLAR (kWh) ──
   const renderSolarEnergySection = () => {
     const solarData = energiaPorDiaData
       .filter(d => visibleSolarSeries[d.name] !== false)
@@ -1559,240 +1440,6 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── DATOS HARDCODEADOS SEGÚN LA IMAGEN DE REFERENCIA ──
-  const SPAT_HISTORICAL_DATA = [
-    { año: '2022', resistencia: 2.12, fuga: 0.80, diametro: 15.80, ph: 7.40 },
-    { año: '2023', resistencia: 2.35, fuga: 0.90, diametro: 15.60, ph: 7.10 },
-    { año: '2024', resistencia: 2.58, fuga: 1.10, diametro: 15.30, ph: 6.80 },
-    { año: '2025', resistencia: 2.71, fuga: 1.20, diametro: 15.00, ph: 6.50 },
-    { año: '2026', resistencia: 2.98, fuga: 1.40, diametro: 14.60, ph: 6.10 },
-  ];
-
-  const renderSpatQuinquennialSection = () => {
-    return (
-      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
-        {/* Encabezado Principal */}
-        <div className="mb-6 flex items-center gap-3 border-b border-slate-100 pb-5">
-          {/* Contenedor del Ícono Estilizado */}
-          <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-rose-500/10 text-rose-600">
-            <ShieldAlert size={20} className="sm:size-[22px]" />
-          </div>
-
-          {/* Textos de Título y Subtítulo */}
-          <div>
-            <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
-              Tendencia Histórica Quinquenal y Alerta Temprana (SPAT)
-            </h2>
-            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-              Evolución multianual de resistencia, corriente de fuga, deterioro y pH del terreno
-            </p>
-          </div>
-        </div>
-
-        {/* Grid de 2x2 para los 4 gráficos */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          {/* ── 1. Resistencia de Puesta a Tierra (Ω) ── */}
-          <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">Resistencia de puesta a tierra (Ω)</h3>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Criterio ≤ 5.00 Ω &nbsp;·&nbsp; Tasa media +8.9 %/año
-                </p>
-              </div>
-              <span className="bg-[#d97706] text-white text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0">
-                VIGILANCIA
-              </span>
-            </div>
-
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={SPAT_HISTORICAL_DATA} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px', fill: '#64748b' }} />
-                  <YAxis domain={[1.8, 5.2]} ticks={[2, 3, 4, 5]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px' }} />
-                  <Tooltip formatter={(val: any) => [`${val} Ω`, 'Resistencia']} />
-
-                  {/* Línea de Criterio */}
-                  <ReferenceLine y={5.0} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={1.5}>
-                    <Label value="Criterio 5.00 Ω" position="insideTopRight" fill="#dc2626" style={{ fontSize: '10px', fontWeight: '700' }} />
-                  </ReferenceLine>
-
-                  <Line
-                    type="monotone"
-                    dataKey="resistencia"
-                    stroke="#2563eb"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#2563eb' }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* ── 2. Corriente de Fuga (mA) ── */}
-          <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">Corriente de fuga (mA)</h3>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Criterio ≤ 5.00 mA &nbsp;·&nbsp; Tasa media +15.0 %/año
-                </p>
-              </div>
-              <span className="bg-[#16a34a] text-white text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0">
-                NORMAL
-              </span>
-            </div>
-
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={SPAT_HISTORICAL_DATA} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px', fill: '#64748b' }} />
-                  <YAxis domain={[0, 5.2]} ticks={[1, 2, 3, 4, 5]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px' }} />
-                  <Tooltip formatter={(val: any) => [`${val} mA`, 'Corriente de Fuga']} />
-
-                  {/* Línea de Criterio */}
-                  <ReferenceLine y={5.0} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={1.5}>
-                    <Label value="Criterio 5.00 mA" position="insideTopRight" fill="#dc2626" style={{ fontSize: '10px', fontWeight: '700' }} />
-                  </ReferenceLine>
-
-                  <Line
-                    type="monotone"
-                    dataKey="fuga"
-                    stroke="#2563eb"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#2563eb' }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* ── 3. Diámetro de Varilla (mm) ── */}
-          <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">Diámetro de varilla (mm)</h3>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Nominal 16.0 mm &nbsp;·&nbsp; Corrosión −0.40 mm/año
-                </p>
-              </div>
-              <span className="bg-[#dc2626] text-white text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0">
-                ALERTA
-              </span>
-            </div>
-
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={SPAT_HISTORICAL_DATA} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px', fill: '#64748b' }} />
-                  <YAxis domain={[14.0, 16.2]} ticks={[14.0, 14.5, 15.0, 15.5, 16.0]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px' }} />
-                  <Tooltip formatter={(val: any) => [`${val} mm`, 'Diámetro']} />
-
-                  {/* Línea de Umbral */}
-                  <ReferenceLine y={14.4} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={1.5}>
-                    <Label value="Umbral observación 14.40 mm" position="insideBottomRight" fill="#dc2626" style={{ fontSize: '10px', fontWeight: '700' }} />
-                  </ReferenceLine>
-
-                  <Line
-                    type="monotone"
-                    dataKey="diametro"
-                    stroke="#2563eb"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#2563eb' }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* ── 4. pH del Terreno ── */}
-          <div className="rounded-xl border border-slate-100 p-4 bg-white shadow-xs">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h3 className="font-bold text-slate-900 text-sm">pH del terreno</h3>
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Rango óptimo 6.5 − 8.0 &nbsp;·&nbsp; −0.33 /año
-                </p>
-              </div>
-              <span className="bg-[#d97706] text-white text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider shrink-0">
-                VIGILANCIA
-              </span>
-            </div>
-
-            <div className="h-56 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={SPAT_HISTORICAL_DATA} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px', fill: '#64748b' }} />
-                  <YAxis domain={[5.0, 7.8]} ticks={[5.5, 6.0, 6.5, 7.0, 7.5]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: '11px' }} />
-                  <Tooltip formatter={(val: any) => [`${val}`, 'pH']} />
-
-                  {/* Línea de Criterio Crítico */}
-                  <ReferenceLine y={5.5} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={1.5}>
-                    <Label value="Crítico 5.50" position="insideTopRight" fill="#dc2626" style={{ fontSize: '10px', fontWeight: '700' }} />
-                  </ReferenceLine>
-
-                  <Line
-                    type="monotone"
-                    dataKey="ph"
-                    stroke="#2563eb"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: '#2563eb' }}
-                    isAnimationActive={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Leyenda y Pie de Página */}
-        <div className="mt-6 border-t border-slate-100 pt-3.5">
-          <div className="flex flex-wrap items-center justify-start gap-x-4 gap-y-2 text-xs font-semibold text-slate-600">
-            <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider mr-1">
-              Criterios:
-            </span>
-
-            {/* Verde */}
-            <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-100">
-              <span className="size-2 rounded-full bg-emerald-600 inline-block"></span>
-              <span><strong>Verde:</strong> dentro de criterio</span>
-            </div>
-
-            {/* Ámbar */}
-            <div className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg border border-amber-100">
-              <span className="size-2 rounded-full bg-amber-600 inline-block"></span>
-              <span><strong>Ámbar:</strong> vigilancia por tendencia</span>
-            </div>
-
-            {/* Rojo */}
-            <div className="flex items-center gap-1.5 bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg border border-rose-100">
-              <span className="size-2 rounded-full bg-rose-600 inline-block"></span>
-              <span><strong>Rojo:</strong> alerta temprana</span>
-            </div>
-          </div>
-        </div>
-      </section>
-    );
-  };
-
-  // ── MANEJO Y RENDERIZADO DE DOCUMENTOS Y PDF ──
-  // const certificadosSpat = board?.assignedDocuments?.filter(doc => doc.type as string === "POZO_A_TIERRA") || [];
-  // const certificadosMantenimiento = board?.assignedDocuments?.filter(doc => doc.type === "MANTENIMIENTO") || [];
-  // const certificadosOperatividad = board?.assignedDocuments?.filter(doc => doc.type === "OPERATIVIDAD") || [];
-
-  const certificadosSpat = documentosHardcodeados.filter(
-    (doc) => doc.type === "POZO_A_TIERRA"
-  );
-
   const certificadosMantenimiento = documentosHardcodeados.filter(
     (doc) => doc.type === "MANTENIMIENTO"
   );
@@ -1801,41 +1448,10 @@ const BoardDetailPage = () => {
     (doc) => doc.type === "OPERATIVIDAD"
   );
 
-  // const openPdfInNewTab = async (url: string, title: string) => {
-  //   try {
-  //     const response = await fetch(url);
-  //     const blob = await response.blob();
-  //     const pdfBlob = new Blob([blob], { type: "application/pdf" });
-  //     const blobUrl = URL.createObjectURL(pdfBlob);
-  //     const newTab = window.open(blobUrl, "_blank");
-  //     if (newTab) newTab.document.title = title;
-  //   } catch (error) {
-  //     console.error("Error al abrir el PDF:", error);
-  //     window.open(url, "_blank");
-  //   }
-  // };
-
   const openPdfInNewTab = (url: string) => {
     if (!url) return;
-    // Abrimos directamente la URL de Cloudinary en una pestaña nueva.
-    // El navegador ejecutará su visor nativo de PDF sin problemas de CORS ni Blobs vacíos.
     window.open(url, "_blank", "noopener,noreferrer");
   };
-
-  //   const openPdfInNewTab = async (url: string) => {
-  //   try {
-  //     const response = await fetch(url);
-  //     const blob = await response.blob();
-  //     // 💡 Forzamos explícitamente que el Blob sea interpretado como application/pdf
-  //     const pdfBlob = new Blob([blob], { type: "application/pdf" });
-  //     const blobUrl = URL.createObjectURL(pdfBlob);
-
-  //     window.open(blobUrl, "_blank");
-  //   } catch (error) {
-  //     console.error("Error al abrir PDF:", error);
-  //     window.open(url, "_blank");
-  //   }
-  // };
 
   const renderField = (label: string, data: unknown, index: number) => (
     <div style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${index * 30}ms` }} className="rounded-2xl bg-slate-50 p-4 transition-all hover:bg-slate-100/80">
@@ -1895,8 +1511,6 @@ const BoardDetailPage = () => {
         ) : (
           <div className="flex flex-wrap gap-2">
             {documentsList.map((doc) => (
-              // <button key={doc._id} onClick={() => openPdfInNewTab(doc.cloudinaryUrl, doc.title)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
-              // <button key={doc._id} onClick={() => openPdfInNewTab(doc.cloudinaryUrl)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
               <button key={doc._id} onClick={() => openPdfInNewTab(doc.url)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
                 <FileImage size={15} />
                 {doc.title}
@@ -1906,9 +1520,8 @@ const BoardDetailPage = () => {
         )}
       </section>
     );
-  }
+  };
 
-  // ── SECCIÓN MODULAR 4: NFPA RIESGOS ELÉCTRICOS ──
   const renderNfpaSection = () => {
     if (!board?.nfpa) {
       return (
@@ -1921,10 +1534,8 @@ const BoardDetailPage = () => {
     const { nfpa } = board;
     const currentCompanyName = typeof board.company === "object" ? board.company?.name : "Sin empresa";
 
-    // Construcción de la URL pública directa para el QR
     const qrUrl = `${window.location.origin}/dashboard/boards/${publicCode}/${board.code}`;
 
-    // Helper para separar valor numérico y unidad
     const parseValUnit = (strValue: string | number | null | undefined, defaultUnit: string = "") => {
       if (!strValue && strValue !== 0) return { val: "-", unit: defaultUnit };
       const str = String(strValue).trim();
@@ -1947,10 +1558,7 @@ const BoardDetailPage = () => {
           </button>
         </div>
 
-        {/* ETIQUETA ANSI Z535 / NFPA 70E RESPONSIVA */}
         <div className="overflow-hidden rounded-2xl sm:rounded-[26px] bg-white shadow-2xl ring-1 ring-slate-300 font-sans">
-
-          {/* ENCABEZADO ANSI Z535 · PELIGRO */}
           <header className="flex min-h-[100px] sm:min-h-[142px] items-center justify-center gap-3 sm:gap-6 bg-gradient-to-b from-[#D81332] to-[#A50E24] px-4 py-4">
             <AlertTriangle className="h-12 w-12 sm:h-20 sm:w-20 md:h-[90px] md:w-[90px] text-white fill-white stroke-[#C8102E] stroke-[1.5] shrink-0" />
             <h1 className="text-4xl sm:text-6xl md:text-[78px] font-black leading-none tracking-[0.08em] text-white">
@@ -1958,7 +1566,6 @@ const BoardDetailPage = () => {
             </h1>
           </header>
 
-          {/* TÍTULO Y NORMA */}
           <div className="bg-slate-900 px-4 sm:px-8 pb-5 pt-4 text-center">
             <h2 className="text-lg sm:text-2xl md:text-[31px] font-extrabold leading-tight tracking-wide text-white">
               RIESGO DE ARCO ELÉCTRICO Y ELECTROCUCIÓN PRESENTE
@@ -1971,10 +1578,7 @@ const BoardDetailPage = () => {
             </p>
           </div>
 
-          {/* CUERPO - GRID RESPONSIVA DE 1 A 2 COLUMNAS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 bg-slate-50 p-4 sm:p-[26px]">
-
-            {/* RIESGO DE ARCO ELÉCTRICO */}
             <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
               <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
                 <span className="h-[19px] w-[6px] rounded-full bg-[#C8102E] shrink-0"></span>
@@ -2032,7 +1636,6 @@ const BoardDetailPage = () => {
               </div>
             </section>
 
-            {/* RIESGO DE ELECTROCUCIÓN */}
             <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
               <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
                 <span className="h-[19px] w-[6px] rounded-full bg-sky-500 shrink-0"></span>
@@ -2088,7 +1691,6 @@ const BoardDetailPage = () => {
               </div>
             </section>
 
-            {/* EPP REQUERIDO */}
             <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
                 <div className="flex items-center gap-2.5">
@@ -2116,7 +1718,6 @@ const BoardDetailPage = () => {
               </ul>
             </section>
 
-            {/* ESCANEAR TABLERO (QR) */}
             <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm min-w-0">
               <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
                 <span className="h-[19px] w-[6px] rounded-full bg-sky-500 shrink-0"></span>
@@ -2140,14 +1741,12 @@ const BoardDetailPage = () => {
                   </div>
                 </div>
 
-                {/* Contenedor del Texto con min-w-0 y break-all para evitar desbordamiento */}
                 <div className="text-center sm:text-left min-w-0 w-full flex-1">
                   <p className="text-[10px] font-bold tracking-[0.12em] text-slate-500 uppercase">ACCESO RÁPIDO</p>
                   <p className="mt-1 text-xs sm:text-[13.5px] font-medium leading-snug text-slate-800">
                     Datos técnicos, memoria de cálculo y curvas de protección del tablero.
                   </p>
 
-                  {/* URL de Acceso con Truncado y Rompimiento de Palabra Seguro */}
                   <div className="mt-2.5 w-full overflow-hidden">
                     <p className="w-full truncate rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 tracking-tight" title={qrUrl.replace(/^https?:\/\//, "")}>
                       {qrUrl.replace(/^https?:\/\//, "")}
@@ -2158,7 +1757,6 @@ const BoardDetailPage = () => {
             </section>
           </div>
 
-          {/* PIE DE ETIQUETA */}
           <footer className="flex flex-col md:flex-row min-h-[78px] items-center justify-between gap-4 border-t-[3px] border-[#C8102E] bg-[#0B1220] px-4 sm:px-[26px] py-4 text-center md:text-left">
             <div>
               <p className="text-[9.5px] sm:text-[10.5px] font-bold tracking-[0.16em] text-slate-400">TABLERO</p>
@@ -2189,7 +1787,6 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── SECCIÓN MODULAR 5: MEDICIONES DE AISLAMIENTO ──
   const renderInsulationMeasurements = () => {
     const records = board?.insulationMeasurements ?? [];
     const record = records.length > 0 ? records[records.length - 1] : null;
@@ -2241,7 +1838,6 @@ const BoardDetailPage = () => {
     );
   };
 
-  // ── MANEJO DE ESTADOS DE CARGA INICIAL EXCEPCIONES ──
   if (loading) {
     return (
       <section className="mx-auto max-w-7xl space-y-6">
@@ -2286,7 +1882,7 @@ const BoardDetailPage = () => {
           Volver
         </button>
 
-        {/* ── SECCIÓN IDENTIFICACIÓN GENERAL (STICKY Y COMPACTO AL SCROLL) ── */}
+        {/* ── HEADER DEL TABLERO ── */}
         <section
           className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled
             ? "rounded-2xl border border-slate-200/80 bg-white/90 shadow-md backdrop-blur-md"
@@ -2300,7 +1896,6 @@ const BoardDetailPage = () => {
             <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent pointer-events-none" />
             <div className="flex flex-row items-center justify-between gap-4 relative z-10">
               <div className="flex items-center gap-3 min-w-0">
-                {/* Botón Volver rápido que aparece solo al scroll */}
                 {isScrolled && (
                   <button
                     type="button"
@@ -2341,7 +1936,6 @@ const BoardDetailPage = () => {
             </div>
           </div>
 
-          {/* Ocultar tarjetas informativas en modo scroll para no estorbar el viewport */}
           {!isScrolled && (
             <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4">
               {[
@@ -2383,40 +1977,25 @@ const BoardDetailPage = () => {
           </div>
         )}
 
-        {isEmpresarial && (
-          // {/* Renderizado de bloques modulares */ }
+        {/* ── PLAN EMPRESARIAL: ETIQUETADO DE SEGURIDAD (NFPA 70E) ── */}
+        {isEmpresarial && board?.nfpa && (
           renderNfpaSection()
         )}
 
-        {isIntermedioOrSuperior && (
+        {/* ── PLAN EMPRESARIAL: ANALÍTICA DE CONSUMO, REACTIVA Y DEMANDA ── */}
+        {isEmpresarial && rawChartData.length > 0 && (
           <>
-            {/* 3. 🛡️ SECCIÓN SUPERIOR: PROTOCOLOS Y CERTIFICADOS SPAT (POZO A TIERRA) */}
-            {renderSpatQuinquennialSection()}
-            {renderPdfSection(
-              "Certificados de Puesta a Tierra (SPAT)",
-              "Protocolos de medición de resistencia (Ω), corriente de fuga y salud del pozo",
-              certificadosSpat
-            )}
-          </>
-        )}
-
-        {/* {renderGroundingSection()}
-        {renderLoadPanelSection()} */}
-
-        {isEmpresarial && (
-          <>
-            {/* PANEL DE CONTROL DE GRÁFICOS INYECTADO AUTOMÁTICAMENTE AQUÍ */}
             {renderDemandSection()}
             {renderReactivePowerSection()}
             {renderCombinedDemandAndReactiveSection()}
             {renderEnergyBarSection()}
             {renderCarbonEmissionsSection()}
-            {renderEnergyCostSection()}   {/* ← Gráfico de Costo (S/.) en Ámbar */}
-            {renderSolarEnergySection()}  {/* ← Gráfico de Energía Solar en Verde */}
+            {renderEnergyCostSection()}
+            {renderSolarEnergySection()}
           </>
         )}
 
-        {/* ── ESPECIFICACIONES TÉCNICAS (CASCADA COMPACTA) ── */}
+        {/* ── PLAN BÁSICO / BÁSICO COMÚN A TODOS ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-4 font-bold text-slate-950 text-base">Información general</h2>
@@ -2447,77 +2026,85 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* ── LEYENDA TÉCNICA ── */}
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-3 font-bold text-slate-950 text-base">Leyenda</h2>
+        {/* ── PLAN BÁSICO: LEYENDA Y CIRCUITION ── */}
+        {board.circuits && board.circuits.length > 0 && (
+          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 font-bold text-slate-950 text-base">Leyenda de circuitos</h2>
 
-          {!board.circuits?.length ? (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-xs font-bold text-slate-400 uppercase">
-              Sin circuitos registrados
+            <div className="grid grid-cols-1 gap-3 md:hidden">
+              {board.circuits.map((c, i) => (
+                <div key={i} className="space-y-1.5 rounded-2xl border border-slate-200 bg-slate-50/50 p-4 text-xs font-medium text-slate-600">
+                  <p><strong className="text-slate-800">Circuito:</strong> {value(c.circuito)}</p>
+                  <p><strong className="text-slate-800">Descripción:</strong> {value(c.descripcion)}</p>
+                </div>
+              ))}
             </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 gap-3 md:hidden">
-                {board.circuits.map((c, i) => (
-                  <div key={i} className="space-y-1.5 rounded-2xl border border-slate-200 bg-slate-50/50 p-4 text-xs font-medium text-slate-600">
-                    <p><strong className="text-slate-800">Circuito:</strong> {value(c.circuito)}</p>
-                    <p><strong className="text-slate-800">Descripción:</strong> {value(c.descripcion)}</p>
-                  </div>
-                ))}
-              </div>
 
-              <div className="hidden overflow-x-auto md:block rounded-2xl border border-slate-100">
-                <table className="w-full min-w-[720px] text-xs text-left border-collapse">
-                  <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
-                    <tr>
-                      <th className="p-3 w-1/4">Circuito</th>
-                      <th className="p-3">Descripción</th>
+            <div className="hidden overflow-x-auto md:block rounded-2xl border border-slate-100">
+              <table className="w-full min-w-[720px] text-xs text-left border-collapse">
+                <thead className="bg-slate-50 font-bold text-slate-500 uppercase border-b border-slate-100 tracking-wider">
+                  <tr>
+                    <th className="p-3 w-1/4">Circuito</th>
+                    <th className="p-3">Descripción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                  {board.circuits.map((c, i) => (
+                    <tr key={i} className="hover:bg-slate-50/50">
+                      <td className="p-3 text-slate-900 font-bold">{value(c.circuito)}</td>
+                      <td className="p-3 font-medium">{value(c.descripcion)}</td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                    {board.circuits.map((c, i) => (
-                      <tr key={i} className="hover:bg-slate-50/50">
-                        <td className="p-3 text-slate-900 font-bold">{value(c.circuito)}</td>
-                        <td className="p-3 font-medium">{value(c.descripcion)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Secciones de imágenes fijas */}
-        {renderInsulationMeasurements()}
-        {renderImageSection("Imágenes del tablero", "Fotografías generales del tablero eléctrico", board.images?.tablero)}
-        {isIntermedioOrSuperior && (
-          renderImageSection("Diagrama unifilar", "Imágenes del diagrama unifilar registrado", board.images?.unifilar)
-        )}
-        {isEmpresarial && (
-          renderImageSection("Termografía", "Imágenes termográficas asociadas al tablero", board.images?.termografia)
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
 
+        {/* ── PLAN EMPRESARIAL: MEDICIONES DE POZO A TIERRA / AISLAMIENTO (SPAT) ── */}
+        {isEmpresarial && board.insulationMeasurements && board.insulationMeasurements.length > 0 && (
+          renderInsulationMeasurements()
+        )}
+
+        {/* ── IMÁGENES DEL TABLERO ── */}
+        {board.images?.tablero && board.images.tablero.length > 0 && (
+          renderImageSection("Imágenes del tablero", "Fotografías generales del tablero eléctrico", board.images.tablero)
+        )}
+
+        {/* ── PLAN INTERMEDIO Y EMPRESARIAL: DIAGRAMA UNIFILAR ── */}
+        {isIntermedioOrSuperior && board.images?.unifilar && board.images.unifilar.length > 0 && (
+          renderImageSection("Diagrama unifilar", "Imágenes del diagrama unifilar registrado", board.images.unifilar)
+        )}
+
+        {/* ── PLAN EMPRESARIAL: INSPECCIÓN TERMOGRÁFICA (NFPA 70B) ── */}
+        {isEmpresarial && board.images?.termografia && board.images.termografia.length > 0 && (
+          renderImageSection("Termografía", "Imágenes termográficas asociadas al tablero", board.images.termografia)
+        )}
+
+        {/* ── PLAN INTERMEDIO Y EMPRESARIAL: CERTIFICADOS Y MANTENIMIENTO ── */}
         {isIntermedioOrSuperior && (
           <>
-            {/* ── 📄 CONECTADO: SECCIONES DE CERTIFICADOS ASIGNADOS REALES DE CLOUDINARY ── */}
-            {renderPdfSection(
-              "Certificados de mantenimiento",
-              "Documentos PDF asignados de mantenimiento técnico",
-              certificadosMantenimiento
+            {certificadosMantenimiento.length > 0 && (
+              renderPdfSection(
+                "Certificados de mantenimiento",
+                "Documentos PDF asignados de mantenimiento técnico",
+                certificadosMantenimiento
+              )
             )}
 
-            {renderPdfSection(
-              "Certificados de operatividad",
-              "Documentos PDF asignados del nivel de operatividad estructural",
-              certificadosOperatividad
+            {certificadosOperatividad.length > 0 && (
+              renderPdfSection(
+                "Certificados de operatividad",
+                "Documentos PDF asignados del nivel de operatividad estructural",
+                certificadosOperatividad
+              )
             )}
           </>
         )}
 
       </section>
 
-      {/* Visor de imágenes modal integrado */}
+      {/* MODAL PARA VISTA PREVIA DE IMAGEN */}
       {selectedImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 transition-all duration-300 animate-fade-in">
           <button

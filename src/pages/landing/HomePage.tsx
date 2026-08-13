@@ -119,7 +119,7 @@ const plans: Plan[] = [
         path: "/contact-sales?plan=pyme",
         features: [
             "De 01 a 04 Tableros eléctricos",
-            "Diagrama unifilar CAD y leyenda CNE",
+            "Diagrama unifilar y leyenda CNE",
             "Gestión de seguridad e inspección ITSE",
             "Firma de Ingeniero Colegiado (CIP)",
             "Mantenimiento preventivo de tableros",
@@ -245,7 +245,7 @@ const cumplimiento: ComplianceCard[] = [
         delay: "0.1s",
         items: [
             "Levantamiento de observaciones en campo",
-            "Diagramas unifilares CAD y leyendas CNE",
+            "Diagramas unifilares y leyendas CNE",
             "Firma de Ingeniero Colegiado (CIP) + QR",
             "Expediente digital listo para Defensa Civil"
         ]
@@ -809,7 +809,7 @@ export default function HomePage() {
                         * La tarifa del Plan Intermedio aplica por tablero eléctrico registrado.
                     </p>
                     <p className="text-xs text-slate-400">
-                        La emisión de certificados con firma CIP y archivos CAD (.DWG) está condicionada a los planes Intermedio y Empresarial.
+                        La emisión de certificados con firma CIP está condicionada a los planes Intermedio y Empresarial.
                     </p>
                 </div>
             </section>
@@ -1024,7 +1024,7 @@ export default function HomePage() {
                                 Nuestro equipo se encarga de la inspección, diagramación unifilar y verificación en campo requerida por Defensa Civil y municipalidades.
                             </p>
                             <ul className="mt-6 space-y-3">
-                                {["Levantamiento de observaciones de auditorías ITSE", "Planos unifilares en CAD y leyendas CNE", "Pruebas de Pozo a Tierra y Aislamiento"].map((item, i) => (
+                                {["Levantamiento de observaciones de auditorías ITSE", "Planos unifilares y leyendas CNE", "Pruebas de Pozo a Tierra y Aislamiento"].map((item, i) => (
                                     <li key={i} className="flex items-center gap-3 text-sm text-white/80">
                                         <span className="size-5 rounded-full bg-[#0797d5]/20 border border-[#0797d5]/40 flex items-center justify-center shrink-0">
                                             <Check size={10} className="text-[#0797d5]" strokeWidth={3} />

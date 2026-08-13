@@ -54,7 +54,7 @@ export default function RegisterPage() {
                     <ShieldCheck size={24} />
                 </div>
                 <h2 className="text-3xl font-black text-slate-950 tracking-tight">
-                    Crea tu cuenta en Voltguard
+                    Crea tu cuenta en VoltGuard
                 </h2>
                 <p className="mt-2 text-sm text-slate-500">
                     Estás registrándote en el <span className="font-bold text-[#0797d5] uppercase">{planSelected}</span>

@@ -81,7 +81,7 @@ const plans: Plan[] = [
         features: [
             "01 a 04 Tableros Eléctricos",
             "Rotulación (Leyenda) en PDF",
-            "Diagrama Unifilar en CAD y Leyenda Normativa CNE",
+            "Diagrama Unifilar y Leyenda Normativa CNE",
             "Gestión de Seguridad y Licencias ITSE",
             "Firma de Ingeniero Colegiado (CIP)",
             "Servicio de Mantenimiento Preventivo",
@@ -110,8 +110,7 @@ const plans: Plan[] = [
 const faqs: FAQItem[] = [
     { q: "¿Cómo ayuda Voltguard a mi empresa a pasar la inspección ITSE de Defensa Civil?", a: "Voltguard automatiza la generación de diagramas unifilares en formato CAD, rotula la leyenda de tableros bajo el Código Nacional de Electricidad (CNE) y coordina la validación firmada por un Ingeniero Colegiado (CIP) para responder a las observaciones municipales." },
     { q: "¿Quién realiza el trabajo técnico en campo y sube los documentos?", a: "El equipo especializado de Voltguard realiza la inspección presencial, pruebas de pozo a tierra y medición termográfica. Posteriormente, todos los planos, reportes y certificados quedan disponibles en tu panel de usuario para descarga inmediata." },
-    { q: "¿Qué diferencia existe entre el Plan Básico, Intermedio y Empresarial?", a: "El Plan Básico (Gratis) permite mapear 1 tablero con leyenda PDF[cite: 1]. El Plan Intermedio cubre hasta 4 tableros, entregando diagramas CAD, expediente ITSE y firma CIP[cite: 1]. El Plan Empresarial es para instalaciones industriales con más de 5 tableros, sumando análisis energético, termografía NFPA 70B y protocolo NFPA 70E[cite: 1]." },
-    { q: "¿Puedo descargar los planos en formato CAD para modificaciones futuras?", a: "Sí, a partir del Plan Intermedio se habilita la visualización y descarga de los planos unifilares digitalizados en formato CAD (.DWG) y los certificados oficiales en PDF[cite: 1]." },
+    { q: "¿Qué diferencia existe entre el Plan Básico, Intermedio y Empresarial?", a: "El Plan Básico (Gratis) permite mapear 1 tablero con leyenda PDF[cite: 1]. El Plan Intermedio cubre hasta 4 tableros, entregando diagramas, expediente ITSE y firma CIP[cite: 1]. El Plan Empresarial es para instalaciones industriales con más de 5 tableros, sumando análisis energético, termografía NFPA 70B y protocolo NFPA 70E[cite: 1]." },
 ];
 
 const tableRows: {
@@ -123,7 +122,7 @@ const tableRows: {
     { label: "Precio de la Licencia / Servicio", icon: FileText, basic: "Gratis", pyme: "S/ 250.00 + IGV", enterprise: "Contáctenos" },
     { category: "Entregables Normativos y Documentales", basic: null, pyme: null, enterprise: null },
     { label: "Rotulación (Leyenda) en PDF", icon: FileText, basic: true, pyme: true, enterprise: true },
-    { label: "Diagrama Unifilar en CAD y Leyenda CNE", icon: FileCode, basic: false, pyme: true, enterprise: true },
+    { label: "Diagrama Unifilar y Leyenda CNE", icon: FileCode, basic: false, pyme: true, enterprise: true },
     { label: "Gestión de Seguridad y Licencias ITSE", icon: FileCheck, basic: false, pyme: true, enterprise: true },
     { label: "Firma de Ingeniero Colegiado (CIP)", icon: Award, basic: false, pyme: true, enterprise: true },
     { label: "Servicio de Mantenimiento Preventivo", icon: Shield, basic: false, pyme: true, enterprise: true },
@@ -301,7 +300,7 @@ export default function PlanesPage() {
                         </span>
                     </h1>
                     <p className="text-slate-500 text-base max-w-xl mx-auto leading-relaxed">
-                        Adquiere una suscripción Voltguard para habilitar la emisión de expedientes ITSE, planos CAD unifilares y firmas autorizadas de Ingeniero Colegiado (CIP).
+                        Adquiere una suscripción Voltguard para habilitar la emisión de expedientes ITSE, planos unifilares y firmas autorizadas de Ingeniero Colegiado (CIP).
                     </p>
                 </div>
 
@@ -310,7 +309,7 @@ export default function PlanesPage() {
                     {plans.map((plan, i) => <PlanCard key={plan.name} plan={plan} index={i} active={cardsVisible} />)}
                 </div>
                 <p className="text-center text-xs text-slate-400 mb-24">
-                    La descarga de entregables de ingeniería (Planos CAD .DWG y Certificados CIP) está sujeta al plan contratado.
+                    La descarga de entregables de ingeniería (Certificados CIP) está sujeta al plan contratado.
                 </p>
 
                 {/* ── TABLA COMPARATIVA (Basada en la imagen recibida) ── */}

@@ -169,7 +169,7 @@ export default function ContactSalesPage() {
                 </div>
 
                 <div className="text-xs text-slate-400 font-medium">
-                    Voltguard ITSE System © {new Date().getFullYear()}. Todos los derechos reservados.
+                    VoltGuard ITSE System © {new Date().getFullYear()}. Todos los derechos reservados.
                 </div>
             </div>
 

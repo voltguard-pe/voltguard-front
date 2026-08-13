@@ -251,7 +251,7 @@ const RegisterPage = () => {
         {/* CÓMO LLEGÓ A VOLTGUARD */}
         <div className="flex flex-col gap-1">
           <label className="text-[11px] font-semibold text-slate-700">
-            ¿Cómo llegó a Voltguard? <span className="text-red-500">*</span>
+            ¿Cómo llegó a VoltGuard? <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">

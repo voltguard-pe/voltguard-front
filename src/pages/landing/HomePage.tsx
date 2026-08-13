@@ -287,11 +287,11 @@ const cumplimiento: ComplianceCard[] = [
 ];
 
 const faqs: FAQItem[] = [
-    { q: "¿Cómo ayuda Voltguard a aprobar las Inspecciones ITSE de Defensa Civil?", a: "Voltguard organiza y mantiene actualizados los diagramas unifilares en CAD, certificados de operatividad firmados por un Ingeniero Colegiado (CIP) y la rotulación normativa CNE para que tu establecimiento supere cualquier auditoría de ITSE sin riesgo de clausura." },
-    { q: "¿Qué tipo de documentación técnica puedo centralizar en cada tablero?", a: "Voltguard almacena certificados de operatividad, diagramas unifilares (PDF/DWG), leyendas de circuitos CNE, protocolos de puesta a tierra y reportes de mantenimiento preventivo o termografía infrarroja." },
+    { q: "¿Cómo ayuda VoltGuard a aprobar las Inspecciones ITSE de Defensa Civil?", a: "VoltGuard organiza y mantiene actualizados los diagramas unifilares en CAD, certificados de operatividad firmados por un Ingeniero Colegiado (CIP) y la rotulación normativa CNE para que tu establecimiento supere cualquier auditoría de ITSE sin riesgo de clausura." },
+    { q: "¿Qué tipo de documentación técnica puedo centralizar en cada tablero?", a: "VoltGuard almacena certificados de operatividad, diagramas unifilares (PDF/DWG), leyendas de circuitos CNE, protocolos de puesta a tierra y reportes de mantenimiento preventivo o termografía infrarroja." },
     { q: "¿Puedo cambiar de plan si mi negocio amplía la cantidad de tableros?", a: "Sí. Puedes empezar con el Plan Básico para 1 tablero y escalar al Plan Intermedio (hasta 4 tableros) o Plan Empresarial (más de 5 tableros) a medida que tus instalaciones crezcan o requieras mayor exigencia técnica." },
     { q: "¿Los certificados expedidos cuentan con firma de Ingeniero Colegiado?", a: "A partir del Plan Intermedio y Empresarial, la gestión documental incluye la validación y firma de un Ingeniero Colegiado y Habilitado (CIP) especialista en instalaciones eléctricas." },
-    { q: "¿Quién realiza el trabajo técnico en campo y sube los documentos?", a: "El equipo especializado de Voltguard realiza la inspección presencial, pruebas de pozo a tierra y medición termográfica. Posteriormente, todos los planos, reportes y certificados quedan disponibles en tu panel de usuario para descarga inmediata." }
+    { q: "¿Quién realiza el trabajo técnico en campo y sube los documentos?", a: "El equipo especializado de VoltGuard realiza la inspección presencial, pruebas de pozo a tierra y medición termográfica. Posteriormente, todos los planos, reportes y certificados quedan disponibles en tu panel de usuario para descarga inmediata." }
 ];
 
 /* ─── Styles & Animations ────────────────────────────────────────────────── */
@@ -623,7 +623,7 @@ function StoriesCarousel() {
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#0797d5]/20 bg-[#0797d5]/5 text-xs font-semibold text-[#0797d5] mb-2">
                         <Award size={13} /> Casos de éxito
                     </div>
-                    <h2 className="text-3xl font-black text-slate-950 tracking-tight">Empresas que confían en Voltguard</h2>
+                    <h2 className="text-3xl font-black text-slate-950 tracking-tight">Empresas que confían en VoltGuard</h2>
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -782,6 +782,35 @@ export default function HomePage() {
                         </div>
                     </div>
 
+                </div>
+            </section>
+
+            {/* ── PLANES Y LICENCIAS VOLTGUARD ────────────────────────────────── */}
+            <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 size-96 rounded-full bg-[#0797d5]/5 blur-3xl pointer-events-none" style={{ animation: "blobMove 10s ease-in-out infinite" }} />
+
+                <div ref={pricingHeadRef} style={{ opacity: pricingHeadVisible ? 1 : 0, transform: pricingHeadVisible ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.65s ease, transform 0.65s ease" }} className="text-center mb-14 relative z-10">
+                    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0797d5]/10 text-[#0797d5] font-semibold text-xs tracking-widest uppercase mb-3 border border-[#0797d5]/20">
+                        Licenciamiento VoltGuard
+                    </span>
+                    <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
+                        Elige el plan adecuado según tus tableros y requisitos ITSE
+                    </h2>
+                </div>
+
+                <div ref={pricingRef} className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto relative z-10">
+                    {plans.map((plan, i) => (
+                        <PlanCard key={plan.id} plan={plan} index={i} active={pricingVisible} />
+                    ))}
+                </div>
+
+                <div className="mt-10 text-center space-y-1 relative z-10">
+                    <p className="text-xs font-semibold text-slate-500">
+                        * La tarifa del Plan Intermedio aplica por tablero eléctrico registrado.
+                    </p>
+                    <p className="text-xs text-slate-400">
+                        La emisión de certificados con firma CIP y archivos CAD (.DWG) está condicionada a los planes Intermedio y Empresarial.
+                    </p>
                 </div>
             </section>
 
@@ -1009,34 +1038,7 @@ export default function HomePage() {
                 </div>
             </section>
 
-            {/* ── PLANES Y LICENCIAS VOLTGUARD ────────────────────────────────── */}
-            <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 size-96 rounded-full bg-[#0797d5]/5 blur-3xl pointer-events-none" style={{ animation: "blobMove 10s ease-in-out infinite" }} />
-
-                <div ref={pricingHeadRef} style={{ opacity: pricingHeadVisible ? 1 : 0, transform: pricingHeadVisible ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.65s ease, transform 0.65s ease" }} className="text-center mb-14 relative z-10">
-                    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0797d5]/10 text-[#0797d5] font-semibold text-xs tracking-widest uppercase mb-3 border border-[#0797d5]/20">
-                        Licenciamiento VoltGuard
-                    </span>
-                    <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
-                        Elige el plan adecuado según tus tableros y requisitos ITSE
-                    </h2>
-                </div>
-
-                <div ref={pricingRef} className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto relative z-10">
-                    {plans.map((plan, i) => (
-                        <PlanCard key={plan.id} plan={plan} index={i} active={pricingVisible} />
-                    ))}
-                </div>
-
-                <div className="mt-10 text-center space-y-1 relative z-10">
-                    <p className="text-xs font-semibold text-slate-500">
-                        * La tarifa del Plan Intermedio aplica por tablero eléctrico registrado.
-                    </p>
-                    <p className="text-xs text-slate-400">
-                        La emisión de certificados con firma CIP y archivos CAD (.DWG) está condicionada a los planes Intermedio y Empresarial.
-                    </p>
-                </div>
-            </section>
+            
 
             {/* ── CASOS DE ÉXITO (CARRUSEL INTERACTIVO) ────────────────────── */}
             <StoriesCarousel />
@@ -1051,7 +1053,7 @@ export default function HomePage() {
                         Caso de éxito ITSE
                     </div>
                     <blockquote className="text-2xl sm:text-3xl font-black text-white leading-snug">
-                        "Antes tardábamos días en ubicar los certificados de un tablero. Con Voltguard lo hacemos en segundos desde el celular."
+                        "Antes tardábamos días en ubicar los certificados de un tablero. Con VoltGuard lo hacemos en segundos desde el celular."
                     </blockquote>
                     <div className="mt-8 flex items-center justify-center gap-4">
                         <img src="/avatar-engineer.png" alt="Administrador de Local Comercial" className="size-12 rounded-full object-cover border-2 border-[#0797d5] shadow-lg shadow-[#0797d5]/40" />
@@ -1071,7 +1073,7 @@ export default function HomePage() {
                         Preguntas Frecuentes
                     </div>
                     <h2 className="text-3xl font-black text-slate-950 tracking-tight">Preguntas Frecuentes sobre la Norma ITSE</h2>
-                    <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto leading-relaxed">Aclara tus dudas sobre cómo Voltguard te ayuda a cumplir con las inspecciones y licenciamiento de Defensa Civil.</p>
+                    <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto leading-relaxed">Aclara tus dudas sobre cómo VoltGuard te ayuda a cumplir con las inspecciones y licenciamiento de Defensa Civil.</p>
                 </div>
                 <div className="space-y-3">
                     {faqs.map((faq, i) => <FAQRow key={i} {...faq} index={i} />)}
@@ -1094,11 +1096,11 @@ export default function HomePage() {
                                 Protege tu negocio y aprueba tu<br />
                                 <span className="bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] bg-clip-text text-transparent" style={{ backgroundSize: "200% 200%", animation: "gradShift 4s ease infinite" }}>Inspección ITSE sin contratiempos</span>
                             </h2>
-                            <p className="mt-4 text-white/60 text-sm leading-7 max-w-lg">Suscríbete a un Plan Voltguard para gestionar tus tableros, certificados y diagramas unifilares con asesoría experta.</p>
+                            <p className="mt-4 text-white/60 text-sm leading-7 max-w-lg">Suscríbete a un Plan VoltGuard para gestionar tus tableros, certificados y diagramas unifilares con asesoría experta.</p>
                         </div>
                         <button onClick={() => navigate("/auth")} className="group shrink-0 inline-flex items-center gap-2.5 px-8 py-4 bg-gradient-to-r from-white to-slate-50 hover:from-slate-50 hover:to-white text-slate-900 font-extrabold text-sm rounded-2xl transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-black/40 relative overflow-hidden">
                             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-[#0797d5]/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-600 pointer-events-none" />
-                            Suscribirme a Voltguard <ArrowRight size={18} className="group-hover:translate-x-1.5 transition-transform duration-300" />
+                            Suscribirme a VoltGuard <ArrowRight size={18} className="group-hover:translate-x-1.5 transition-transform duration-300" />
                         </button>
                     </div>
                 </div>

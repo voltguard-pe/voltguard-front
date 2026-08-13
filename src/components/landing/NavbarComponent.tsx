@@ -96,7 +96,7 @@ const NavbarComponent = () => {
                     </div>
                     <div className="text-left">
                         <h1 className="text-xl font-bold text-slate-950 transition-colors duration-300 group-hover:text-[#0797d5]">
-                            Voltguard
+                            VoltGuard
                         </h1>
                     </div>
                 </Link>

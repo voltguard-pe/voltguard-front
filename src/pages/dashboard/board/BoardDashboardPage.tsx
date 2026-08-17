@@ -488,8 +488,8 @@ const BoardDashboardPage = () => {
                     key={board.code}
                     style={{ animation: "fadeUp 0.35s ease both", animationDelay: `${index * 25}ms` }}
                     className={`transition-colors duration-150 ${selectedBoardCodes.includes(board.code)
-                        ? "bg-[#0797d5]/5 hover:bg-[#0797d5]/10"
-                        : "hover:bg-slate-50/70"
+                      ? "bg-[#0797d5]/5 hover:bg-[#0797d5]/10"
+                      : "hover:bg-slate-50/70"
                       }`}
                   >
                     <td className="px-6 py-3.5 text-center">
@@ -625,13 +625,21 @@ const BoardDashboardPage = () => {
                 onClick={async () => {
                   if (!effectivePublicCode) return;
                   try {
+                    // 1. Filtramos los tableros que seleccionó el usuario de la lista que YA está en memoria
                     const selectedBoardsData = boards.filter((b) => selectedBoardCodes.includes(b.code));
-                    const fullBoardsData = await Promise.all(
-                      selectedBoardsData.map((b) => publicGetCompanyBoardByCode(effectivePublicCode, b.code))
-                    );
+
+                    if (selectedBoardsData.length === 0) {
+                      alert("Por favor selecciona al menos un tablero.");
+                      return;
+                    }
+
                     const companyName = selectedCompany?.name || "Voltguard";
-                    generateNfpaPDF(fullBoardsData, companyName);
+
+                    // 2. Enviamos DIRECTAMENTE los datos de la lista (que ya incluyen la propiedad .nfpa)
+                    await generateNfpaPDF(selectedBoardsData, companyName, effectivePublicCode);
+
                   } catch (error) {
+                    console.error("Error al generar etiquetas NFPA:", error);
                     alert("Error al generar etiquetas NFPA.");
                   }
                 }}

@@ -46,16 +46,6 @@ import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import QRCode from "react-qr-code";
 import { useAuth } from "../../../shared/hooks/useAuth";
 
-// ── OBJETOS HARDCODEADOS PARA LA PRESENTACIÓN ──
-const documentosHardcodeados = [
-  {
-    _id: "oper-001",
-    title: "Certificado de Operatividad de Tableros Eléctricos",
-    type: "OPERATIVIDAD",
-    url: "/pdfs/CERTIFICADO DE OPERATIVIDAD DE TABLEROS ELECTRICOS - RECOLETA.pdf",
-  },
-];
-
 // ── CONSTANTES DE PALETAS DE COLORES ──
 const MAIN_COLORS = [
   '#2f5597', '#4caf50', '#9c27b0', '#00bcd4', '#ff9800',
@@ -111,15 +101,6 @@ const BoardDetailPage = () => {
   const [visibleCostSeries, setVisibleCostSeries] = useState<{ [key: string]: boolean }>({});
   const [visibleSolarSeries, setVisibleSolarSeries] = useState<{ [key: string]: boolean }>({});
   const [importing, setImporting] = useState(false);
-
-  // const [limitesPatron, setLimitesPatron] = useState({ min: "2026-06-20", max: "2026-06-30" });
-  // const [startDate, setStartDate] = useState<string>("2026-06-22");
-  // const [endDate, setEndDate] = useState<string>("2026-06-28");
-
-  // const [zoomRange, setZoomRange] = useState<{ startIdx: number; endIdx: number }>({ startIdx: 0, endIdx: 287 });
-  // const [isDragging, setIsDragging] = useState<boolean>(false);
-  // const [dragStart, setDragStart] = useState<number>(0);
-  // const chartContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [tarifaContratada] = useState<number>(350);
   const [costokW_HP] = useState<number>(48.50);
@@ -284,32 +265,6 @@ const BoardDetailPage = () => {
     setVisibleSolarSeries(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // useEffect(() => {
-  //   const contenedor = chartContainerRef.current;
-  //   if (!contenedor) return;
-
-  //   const handleNativeWheel = (e: WheelEvent) => {
-  //     e.preventDefault();
-  //     const zoomFactor = e.deltaY < 0 ? 4 : -4;
-
-  //     setZoomRange((prev) => {
-  //       let newStart = prev.startIdx + zoomFactor;
-  //       let newEnd = prev.endIdx - zoomFactor;
-
-  //       if (newEnd - newStart < 12) return prev;
-  //       if (newStart < 0) newStart = 0;
-  //       if (newEnd > 287) newEnd = 287;
-
-  //       return { startIdx: newStart, endIdx: newEnd };
-  //     });
-  //   };
-
-  //   contenedor.addEventListener("wheel", handleNativeWheel, { passive: false });
-  //   return () => {
-  //     contenedor.removeEventListener("wheel", handleNativeWheel);
-  //   };
-  // }, [rawChartData]);
-
   useEffect(() => {
     const fetchBoard = async () => {
       try {
@@ -355,41 +310,6 @@ const BoardDetailPage = () => {
       setImporting(false);
     }
   };
-
-  // const handleMouseDown = (e: any) => {
-  //   if (e && e.chartX) {
-  //     setIsDragging(true);
-  //     setDragStart(e.chartX);
-  //   }
-  // };
-
-  // const handleMouseMove = (e: any) => {
-  //   if (!isDragging || !e || !e.chartX) return;
-  //   const distance = e.chartX - dragStart;
-  //   if (Math.abs(distance) < 10) return;
-
-  //   const shift = distance > 0 ? -2 : 2;
-
-  //   setZoomRange((prev) => {
-  //     let newStart = prev.startIdx + shift;
-  //     let newEnd = prev.endIdx + shift;
-  //     if (newStart < 0 || newEnd > 287) return prev;
-  //     setDragStart(e.chartX);
-  //     return { startIdx: newStart, endIdx: newEnd };
-  //   });
-  // };
-
-  // const handleMouseUp = () => {
-  //   setIsDragging(false);
-  // };
-
-  // const handleResetZoom = () => {
-  //   setZoomRange({ startIdx: 0, endIdx: 287 });
-  // };
-
-
-
-  // const dataFiltradaZoom = rawChartData.slice(zoomRange.startIdx, zoomRange.endIdx + 1);
 
   // ✅ FUNCIÓN COMPLETA 100% DINÁMICA:
   const calcularMetricasLuzDelSur = (data: any[]) => {
@@ -576,8 +496,6 @@ const BoardDetailPage = () => {
     return null;
   };
 
-
-
   // ✅ CÓDIGO CORREGIDO SIN ZOOM NI DRAG EN RENDERDEMANDSECTION:
   const renderDemandSection = () => {
     return (
@@ -763,8 +681,6 @@ const BoardDetailPage = () => {
       </section>
     );
   };
-
-
 
   const renderReactivePowerSection = () => {
     if (rawChartData.length === 0) return null;
@@ -1440,17 +1356,67 @@ const BoardDetailPage = () => {
     );
   };
 
-  const certificadosMantenimiento = documentosHardcodeados.filter(
-    (doc) => doc.type === "MANTENIMIENTO"
+  interface IDocument {
+    _id: string;
+    title: string;
+    type: string;
+    cloudinaryUrl: string;
+  }
+
+  // Asumiendo que 'board' es el objeto que recibiste de tu API
+  const assignedDocs = board?.assignedDocuments || [];
+
+  // Filtrar documentos que vienen poblados desde el Tablero
+  const certificadosMantenimiento = assignedDocs.filter(
+    (doc: any) => typeof doc === "object" && doc.type === "MANTENIMIENTO"
   );
 
-  const certificadosOperatividad = documentosHardcodeados.filter(
-    (doc) => doc.type === "OPERATIVIDAD"
+  const certificadosOperatividad = assignedDocs.filter(
+    (doc: any) => typeof doc === "object" && doc.type === "OPERATIVIDAD"
   );
 
-  const openPdfInNewTab = (url: string) => {
+  const openPdfInNewTab = (url: string, title: string) => {
     if (!url) return;
-    window.open(url, "_blank", "noopener,noreferrer");
+
+    // Creamos una nueva ventana
+    const newWindow = window.open("", "_blank");
+
+    if (newWindow) {
+      // Inyectamos el HTML dinámico con el favicon y el título personalizado
+      // TODO: Este es el icono default de PDF => <link rel="icon" type="image/svg+xml" href="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg" />
+      newWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="es">
+        <head>
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>${title} - Visor PDF</title>
+          
+          <!-- Icono de PDF estándar o el favicon de tu app -->
+          <link rel="icon" type="image/svg+xml" href="/voltguard.png" />
+          
+          <style>
+            body, html {
+              margin: 0;
+              padding: 0;
+              height: 100%;
+              overflow: hidden;
+              background-color: #525659;
+            }
+            iframe {
+              width: 100%;
+              height: 100%;
+              border: none;
+            }
+          </style>
+        </head>
+        <body>
+          <iframe src="${url}"></iframe>
+        </body>
+      </html>
+    `);
+      newWindow.document.close();
+    }
   };
 
   const renderField = (label: string, data: unknown, index: number) => (
@@ -1489,21 +1455,20 @@ const BoardDetailPage = () => {
     </section>
   );
 
-  const renderPdfSection = (title: string, description: string, documentsList: any[]) => {
-    if (!documentsList || documentsList.length === 0) {
-      return null;
-    }
-
+  const renderPdfSection = (title: string, description: string, documentsList: IDocument[]) => {
     return (
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
         <div className="mb-5 flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]"><FileImage size={22} /></div>
+          <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+            <FileImage size={22} />
+          </div>
           <div>
             <h2 className="font-bold text-slate-950 text-base tracking-tight">{title}</h2>
             <p className="text-xs text-slate-500 mt-0.5">{description}</p>
           </div>
         </div>
-        {documentsList.length === 0 ? (
+
+        {!documentsList || documentsList.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
             <FileImage size={32} className="text-slate-300" />
             <p className="mt-2 text-xs font-bold text-slate-500">Sin documentos registrados</p>
@@ -1511,7 +1476,11 @@ const BoardDetailPage = () => {
         ) : (
           <div className="flex flex-wrap gap-2">
             {documentsList.map((doc) => (
-              <button key={doc._id} onClick={() => openPdfInNewTab(doc.url)} className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer">
+              <button
+                key={doc._id}
+                onClick={() => openPdfInNewTab(doc.cloudinaryUrl, doc.title)} // 👈 Uso exacto del campo de MongoDB
+                className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer"
+              >
                 <FileImage size={15} />
                 {doc.title}
               </button>
@@ -2084,21 +2053,19 @@ const BoardDetailPage = () => {
         {/* ── PLAN INTERMEDIO Y EMPRESARIAL: CERTIFICADOS Y MANTENIMIENTO ── */}
         {isIntermedioOrSuperior && (
           <>
-            {certificadosMantenimiento.length > 0 && (
+            {
               renderPdfSection(
                 "Certificados de mantenimiento",
                 "Documentos PDF asignados de mantenimiento técnico",
                 certificadosMantenimiento
-              )
-            )}
+              )}
 
-            {certificadosOperatividad.length > 0 && (
+            {
               renderPdfSection(
                 "Certificados de operatividad",
                 "Documentos PDF asignados del nivel de operatividad estructural",
                 certificadosOperatividad
-              )
-            )}
+              )}
           </>
         )}
 

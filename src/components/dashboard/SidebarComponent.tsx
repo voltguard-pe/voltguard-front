@@ -295,6 +295,20 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
                     </NavLink>
 
                     <NavLink
+                      to="/dashboard/companies"
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all cursor-pointer ${isActive
+                          ? "bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white shadow-md shadow-[#0797d5]/15"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                        }`
+                      }
+                    >
+                      <Building2 size={17} />
+                      <span>Empresas</span>
+                    </NavLink>
+
+                    <NavLink
                       to="/dashboard/documents"
                       onClick={onClose}
                       className={({ isActive }) =>

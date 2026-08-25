@@ -115,6 +115,8 @@ const BoardDetailPage = () => {
   const [energiaPorDiaData, setEnergiaPorDiaData] = useState<any[]>([]);
   const [isScrolled, setIsScrolled] = useState(false);
 
+  console.log(isScrolled)
+  
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 40);
@@ -1839,112 +1841,66 @@ const BoardDetailPage = () => {
   const companyName = typeof board.company === "object" ? board.company.name : "Sin empresa";
 
   return (
-    <>
-      <section className="mx-auto max-w-7xl space-y-6 opacity-0" style={{ animation: "fadeUp 0.5s ease forwards" }}>
+  <>
+    <section className="mx-auto max-w-7xl space-y-6 opacity-0" style={{ animation: "fadeUp 0.5s ease forwards" }}>
 
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 transition-all hover:bg-slate-50 cursor-pointer"
-        >
-          <ArrowLeft size={16} />
-          Volver
-        </button>
+      {/* ── HEADER DEL TABLERO (SIEMPRE COMPACTO Y STICKY) ── */}
+      <section className="sticky top-0 z-30 rounded-2xl border border-slate-200/80 bg-white/90 shadow-md backdrop-blur-md transition-all duration-300">
+        <div className="relative rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-3.5 px-6 text-white transition-all duration-300">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 to-transparent" />
+          
+          <div className="relative z-10 flex flex-row items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              {/* Botón Volver integrado en el Header */}
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white/20 p-2 text-white backdrop-blur-sm transition-all hover:bg-white/30"
+                title="Volver"
+              >
+                <ArrowLeft size={18} />
+              </button>
 
-        {/* ── HEADER DEL TABLERO ── */}
-        <section
-          className={`sticky top-0 z-30 transition-all duration-300 ${isScrolled
-            ? "rounded-2xl border border-slate-200/80 bg-white/90 shadow-md backdrop-blur-md"
-            : "rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden"
-            }`}
-        >
-          <div
-            className={`bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white relative transition-all duration-300 ${isScrolled ? "p-3.5 px-6 rounded-2xl" : "p-6 rounded-t-3xl"
-              }`}
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-black/5 to-transparent pointer-events-none" />
-            <div className="flex flex-row items-center justify-between gap-4 relative z-10">
-              <div className="flex items-center gap-3 min-w-0">
-                {isScrolled && (
-                  <button
-                    type="button"
-                    onClick={() => navigate(-1)}
-                    className="inline-flex shrink-0 items-center justify-center rounded-xl bg-white/20 p-2 text-white hover:bg-white/30 transition-all cursor-pointer backdrop-blur-sm"
-                    title="Volver"
-                  >
-                    <ArrowLeft size={18} />
-                  </button>
-                )}
-
-                <div className="min-w-0">
-                  {!isScrolled && (
-                    <div className="mb-2.5 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider">
-                      <Zap size={12} />
-                      Tablero eléctrico
-                    </div>
-                  )}
-                  <h1 className={`font-black tracking-tight truncate transition-all duration-300 ${isScrolled ? "text-lg md:text-xl" : "text-2xl md:text-3xl"
-                    }`}>
-                    {board.name}
-                  </h1>
-                  <p className={`flex items-center gap-1.5 font-medium text-white/95 transition-all duration-300 ${isScrolled ? "text-xs" : "mt-2 text-sm"
-                    }`}>
-                    <Building2 size={isScrolled ? 13 : 15} />
-                    {companyName}
-                  </p>
-                </div>
-              </div>
-
-              <div className={`shrink-0 rounded-2xl bg-white/15 backdrop-blur border border-white/10 transition-all duration-300 ${isScrolled ? "px-3.5 py-1.5" : "px-5 py-3.5"
-                }`}>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">Código</p>
-                <p className={`font-black tracking-tight ${isScrolled ? "text-sm" : "mt-0.5 text-xl"}`}>
-                  {value(board.boardCode)}
+              <div className="min-w-0">
+                <h1 className="truncate text-lg font-black tracking-tight md:text-xl">
+                  {board.name}
+                </h1>
+                <p className="flex items-center gap-1.5 text-xs font-medium text-white/95">
+                  <Building2 size={13} />
+                  {companyName}
                 </p>
               </div>
             </div>
-          </div>
 
-          {!isScrolled && (
-            <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4">
-              {[
-                { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-                { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-                { l: "Sistema", v: board.sistema, icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-                { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
-              ].map((item, i) => {
-                const CardIcon = item.icon;
-                return (
-                  <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/50 transition-colors">
-                    <CardIcon className={item.iconCls} size={20} />
-                    <p className="mt-2.5 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{item.l}</p>
-                    <p className={`mt-0.5 text-xs sm:text-sm font-bold truncate ${item.textCls}`}>{value(item.v)}</p>
-                  </div>
-                );
-              })}
+            {/* Código del Tablero */}
+            <div className="shrink-0 rounded-2xl border border-white/10 bg-white/15 px-3.5 py-1.5 backdrop-blur">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">Código</p>
+              <p className="text-sm font-black tracking-tight">
+                {value(board.boardCode)}
+              </p>
             </div>
-          )}
-        </section>
-
-        {isScrolled && (
-          <div className="grid gap-4 p-6 grid-cols-2 lg:grid-cols-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            {[
-              { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-              { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-              { l: "Sistema", v: board.sistema, icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-              { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
-            ].map((item, i) => {
-              const CardIcon = item.icon;
-              return (
-                <div key={i} className="rounded-2xl bg-slate-50/70 p-4 border border-transparent hover:border-slate-200/50 transition-colors">
-                  <CardIcon className={item.iconCls} size={20} />
-                  <p className="mt-2.5 text-[10px] font-bold uppercase text-slate-400 tracking-wider">{item.l}</p>
-                  <p className={`mt-0.5 text-xs sm:text-sm font-bold truncate ${item.textCls}`}>{value(item.v)}</p>
-                </div>
-              );
-            })}
           </div>
-        )}
+        </div>
+      </section>
+
+      {/* ── GRILLA DE DETALLES (UBICACIÓN, TIPO, SISTEMA, ESTADO) ── */}
+      <div className="grid grid-cols-2 gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-4">
+        {[
+          { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+          { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+          { l: "Sistema", v: board.sistema, icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+          { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
+        ].map((item, i) => {
+          const CardIcon = item.icon;
+          return (
+            <div key={i} className="rounded-2xl border border-transparent bg-slate-50/70 p-4 transition-colors hover:border-slate-200/50">
+              <CardIcon className={item.iconCls} size={20} />
+              <p className="mt-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.l}</p>
+              <p className={`mt-0.5 truncate text-xs font-bold sm:text-sm ${item.textCls}`}>{value(item.v)}</p>
+            </div>
+          );
+        })}
+      </div>
 
         {/* ── PLAN EMPRESARIAL: ETIQUETADO DE SEGURIDAD (NFPA 70E) ── */}
         {isEmpresarial && board?.nfpa && (

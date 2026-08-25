@@ -41,6 +41,7 @@ import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 import { generateQrPdf } from "../../../shared/utils/generateQrPdf";
+import ImportBoardsAndNfpaModal from "../../../components/dashboard/modals/ImportBoardsAndNfpaModal";
 
 type SortConfig = {
   key: "name" | "boardCode" | "location" | "nfpa";
@@ -65,6 +66,7 @@ const BoardDashboardPage = () => {
   const [showImportInsulationsModal, setShowImportInsulationsModal] = useState(false);
   const [showImportUnifilarModal, setShowImportUnifilarModal] = useState(false);
   const [showNfpa70eModal, setShowNfpa70eModal] = useState(false);
+  const [showImportBoardsAndNfpaModal, setShowImportBoardsAndNfpaModal] = useState(false);
 
   // Menú desplegable de importación
   const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
@@ -330,6 +332,14 @@ const BoardDashboardPage = () => {
                   >
                     <Import size={15} className="text-slate-500" />
                     Importar lista de tableros
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowImportBoardsAndNfpaModal(true)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-[#0797d5]/20 transition hover:opacity-95 active:scale-95 cursor-pointer"
+                  >
+                    <Sparkles size={15} className="text-white" />
+                    Importar con IA (Fotos + NFPA)
                   </button>
                 </div>
               )}
@@ -684,6 +694,13 @@ const BoardDashboardPage = () => {
       <ImportNfpa70eBoardModal
         isOpen={showNfpa70eModal}
         onClose={() => setShowNfpa70eModal(false)}
+        companies={companies}
+        onSuccess={refreshBoards}
+      />
+      {/* ── MODAL CONSOLIDADO (UNIFILAR + FOTOS + NFPA) ── */}
+      <ImportBoardsAndNfpaModal
+        isOpen={showImportBoardsAndNfpaModal}
+        onClose={() => setShowImportBoardsAndNfpaModal(false)}
         companies={companies}
         onSuccess={refreshBoards}
       />

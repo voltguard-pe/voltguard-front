@@ -471,7 +471,7 @@ export const generateNfpaPDF = async (
 
     doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);
-    doc.text(String(board?.boardCode || board?.name || "PRUEBA").toUpperCase(), pageStartX + 4, footerY + 8.8);
+    doc.text(String(board?.name || "PRUEBA").toUpperCase(), pageStartX + 4, footerY + 8.8);
 
     // Columna 2: Creado por Voltguard
     doc.setFontSize(5);
@@ -479,7 +479,7 @@ export const generateNfpaPDF = async (
     doc.text("CREADO POR", 105, footerY + 4, { align: "center" });
 
     if (voltguardLogoBase64) {
-      doc.addImage(voltguardLogoBase64, "PNG", 96, footerY + 8.8, 3.8, 3.8);
+      doc.addImage(voltguardLogoBase64, "PNG", 96, footerY + 6, 3.8, 3.8);
     }
     doc.setFontSize(9);
     doc.setTextColor(255, 255, 255);

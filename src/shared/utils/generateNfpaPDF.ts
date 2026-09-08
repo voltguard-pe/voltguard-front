@@ -106,7 +106,7 @@ export const generateNfpaPDF = async (
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.text(
-      "RIESGO DE ARCO ELÉCTRICO Y ELECTROCUCIÓN PRESENTE",
+      "RIESGO DE ARCO ELÉCTRICO Y CHOQUE ELÉCTRICO PRESENTE",
       105,
       darkHeaderY + 5.8,
       { align: "center" }
@@ -215,7 +215,7 @@ export const generateNfpaPDF = async (
     doc.setFontSize(12); doc.setFont("helvetica", "bold"); doc.setTextColor(15, 23, 42);
     doc.text(parsedTrabajo.val, rowXValRight - (unitW > 0 ? unitW - 5 : 0), cardsY + 30, { align: "right" });
 
-    // ──────────────── CARD DERECHA: ELECTROCUCIÓN ────────────────
+    // ──────────────── CARD DERECHA: CHOQUE ELÉCTRICO ────────────────
     const rightCardX = pageStartX + pageWidth - cardColWidth;
     doc.setFillColor(255, 255, 255);
     doc.setDrawColor(226, 232, 240);
@@ -228,7 +228,7 @@ export const generateNfpaPDF = async (
     doc.setFont("helvetica", "bold");
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42);
-    doc.text("RIESGO DE ELECTROCUCIÓN", rightCardX + 6.5, cardsY + 7);
+    doc.text("RIESGO DE CHOQUE ELÉCTRICO", rightCardX + 6.5, cardsY + 7);
 
     // Caja Tensión Nominal
     const tensionBoxX = rightCardX + 3;
@@ -354,35 +354,14 @@ export const generateNfpaPDF = async (
 
     eppList.forEach((itemText: string) => {
       // Círculo rosa de fondo para el icono Shield (de tu componente React)
-      // doc.setFillColor(253, 236, 239);
-      // doc.circle(leftCardX + 5, listY - 0.8, 2, "F");
-
       doc.setFillColor(30, 41, 59);
       doc.circle(leftCardX + 4.5, listY - 1, 0.6, "F");
-
-      // Ícono de escudo vectorial rojo
-      // doc.setDrawColor(155, 12, 34);
-      // doc.setLineWidth(0.3);
-      // doc.lines(
-      //   [
-      //     [1.6, 0],
-      //     [0, 1.6],
-      //     [-0.8, 1.0],
-      //     [-0.8, -1.0],
-      //     [0, -1.6],
-      //   ],
-      //   leftCardX + 4.2,
-      //   listY - 1.8,
-      //   [1, 1],
-      //   "S",
-      //   true
-      // );
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(7);
       doc.setTextColor(30, 41, 59);
 
-      const lines = doc.splitTextToSize(itemText, cardColWidth - 8);
+      const lines = doc.splitTextToSize(itemText, cardColWidth - 11);
       doc.text(lines, leftCardX + 7, listY);
       listY += lines.length * 3.8;
     });
@@ -404,53 +383,63 @@ export const generateNfpaPDF = async (
     const qrOrigin = typeof window !== "undefined" ? window.location.origin : "https://voltguard.pe";
     const qrUrl = `${qrOrigin}/dashboard/boards/${publicCode}/${board.code || "default"}`;
 
+    const qrSize = 27; // Tamaño óptimo para evitar que colisione con el texto lateral
+    const qrX = rightCardX + 3;
+    const qrY = eppBoxY + 11.5;
+
     try {
       const qrBase64 = await QRCode.toDataURL(qrUrl, { margin: 1, errorCorrectionLevel: "H" });
       if (qrBase64) {
         // Renderizado del QR
-        doc.addImage(qrBase64, "PNG", rightCardX + 3, eppBoxY + 12, 25, 25);
+        doc.addImage(qrBase64, "PNG", qrX, qrY, qrSize, qrSize);
 
-        // Logo flotante al centro del QR (como en tu JSX)
+        // Logo flotante al centro exacto del QR (como en tu JSX)
         if (voltguardLogoBase64) {
+          const logoBoxSize = 5.4;
+          const logoBoxX = qrX + (qrSize - logoBoxSize) / 2;
+          const logoBoxY = qrY + (qrSize - logoBoxSize) / 2;
+
           doc.setFillColor(255, 255, 255);
-          doc.roundedRect(rightCardX + 13, eppBoxY + 22, 5, 5, 0.8, 0.8, "F");
-          doc.addImage(voltguardLogoBase64, "PNG", rightCardX + 13.5, eppBoxY + 22.5, 4, 4);
+          doc.roundedRect(logoBoxX, logoBoxY, logoBoxSize, logoBoxSize, 0.8, 0.8, "F");
+
+          const logoImgSize = 4;
+          const logoImgX = qrX + (qrSize - logoImgSize) / 2;
+          const logoImgY = qrY + (qrSize - logoImgSize) / 2;
+          doc.addImage(voltguardLogoBase64, "PNG", logoImgX, logoImgY, logoImgSize, logoImgSize);
         }
       }
     } catch (e) {
       console.error("Error al generar el QR:", e);
     }
 
-    // Textos informativos
-    const qrInfoX = rightCardX + 30;
+    // Textos informativos (inician después del QR con margen adecuado)
+    const qrInfoX = qrX + qrSize + 3;
+    const qrInfoWidth = cardColWidth - qrSize - 8;
+
+    doc.setFontSize(6.8);
+    doc.setFont("helvetica", "normal");
+    const qrDescLines = doc.splitTextToSize(
+      "Datos técnicos, memoria de cálculo y curvas de protección del tablero.",
+      qrInfoWidth
+    );
+
+    // Cálculo dinámico para centrado vertical exacto con el QR
+    const titleGap = 4; // Distancia entre el título y la descripción
+    const descLineHeight = 2.8; // Altura aproximada por línea a 6.8pt
+    const totalTextHeight = titleGap + (qrDescLines.length * descLineHeight);
+    const startY = qrY + (qrSize - totalTextHeight) / 2 + 2;
+
+    // ACCESO RÁPIDO
     doc.setFontSize(6.2);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(100, 116, 139);
-    doc.text("ACCESO RÁPIDO", qrInfoX, eppBoxY + 14);
+    doc.text("ACCESO RÁPIDO", qrInfoX, startY);
 
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
+    // Descripción
+    doc.setFontSize(6.8);
+    doc.setFont("helvetica", "normal");
     doc.setTextColor(30, 41, 59);
-    const qrDescLines = doc.splitTextToSize(
-      "Datos técnicos, memoria de cálculo y curvas de protección del tablero.",
-      cardColWidth - 33
-    );
-    doc.text(qrDescLines, qrInfoX, eppBoxY + 18.5);
-
-    // Píldora URL
-    const urlBoxY = eppBoxY + 28;
-    const urlBoxW = cardColWidth - 33;
-    const urlBoxH = 9;
-
-    doc.setFillColor(241, 245, 249);
-    doc.roundedRect(qrInfoX, urlBoxY, urlBoxW, urlBoxH, 1.5, 1.5, "F");
-
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(51, 65, 85);
-    const displayUrl = qrUrl.replace(/^https?:\/\//, "");
-    const splitUrl = doc.splitTextToSize(displayUrl, urlBoxW - 3);
-    doc.text(splitUrl, qrInfoX + 1.5, urlBoxY + 3.5);
+    doc.text(qrDescLines, qrInfoX, startY + titleGap, { lineHeightFactor: 1.2 });
 
     // ── 4. PIE DE PÁGINA (ESTILO CONSOLA OSCURA) ──
     const footerY = eppBoxY + eppBoxHeight + 3.5;

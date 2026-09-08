@@ -34,6 +34,8 @@ import {
   ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   Tooltip,
   XAxis,
   YAxis
@@ -45,6 +47,9 @@ import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import QRCode from "react-qr-code";
 import { useAuth } from "../../../shared/hooks/useAuth";
+import { ThermographyViewer } from "../../../components/dashboard/sections/ThermographyViewer";
+import { getIticEvents, uploadIticCsv, type VoltageEventItem } from "../../../services/voltageEvent.service";
+import ImportThermographyModal from "../../../components/dashboard/modals/ImportThermographyModal";
 
 // ── CONSTANTES DE PALETAS DE COLORES ──
 const MAIN_COLORS = [
@@ -88,6 +93,13 @@ const BoardDetailPage = () => {
   const [rawChartData, setRawChartData] = useState<any[]>([]);
   const [seriesKeys, setSeriesKeys] = useState<string[]>([]);
   const [selectedReactiveDay, setSelectedReactiveDay] = useState<string | null>(null);
+  // ── ESTADOS PARA DISTORSIÓN ARMÓNICA ──
+  const [selectedThdUDay, setSelectedThdUDay] = useState<string | null>(null);
+  const [selectedThdIDay, setSelectedThdIDay] = useState<string | null>(null);
+
+  // Dentro de tu componente BoardDetailPage:
+  const [showThermographyModal, setShowThermographyModal] = useState(false);
+  const [thermographyReloadKey, setThermographyReloadKey] = useState(0);
 
   const [visibleDemandSeries, setVisibleDemandSeries] = useState<{ [key: string]: boolean }>({
     "Promedio_General": true,
@@ -116,7 +128,7 @@ const BoardDetailPage = () => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   console.log(isScrolled)
-  
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 40);
@@ -166,10 +178,14 @@ const BoardDetailPage = () => {
           const valP = typeof punto === 'number' ? punto : (punto?.p ?? 0);
           const valInd = typeof punto === 'object' ? (punto?.ind ?? 0) : 0;
           const valCap = typeof punto === 'object' ? (punto?.cap ?? 0) : 0;
+          const valThdV = typeof punto === 'object' ? (punto?.thd_v ?? 0) : 0;
+          const valThdI = typeof punto === 'object' ? (punto?.thd_i ?? 0) : 0;
 
           row[labelCorto] = valP;
           row[`inductiva_${labelCorto}`] = valInd;
           row[`capacitiva_${labelCorto}`] = valCap;
+          row[`thd_v_${labelCorto}`] = valThdV;
+          row[`thd_i_${labelCorto}`] = valThdI;
 
           sumaP += valP;
           sumaInd += valInd;
@@ -243,6 +259,46 @@ const BoardDetailPage = () => {
     }
   };
 
+  const [iticEvents, setIticEvents] = useState<VoltageEventItem[]>([]);
+  const [uploadingItic, setUploadingItic] = useState(false);
+
+  // Función para consultar los eventos del tablero
+  const fetchIticData = async (boardId: string) => {
+    try {
+      const res = await getIticEvents(boardId);
+      if (res?.events) {
+        setIticEvents(res.events);
+      }
+    } catch (err) {
+      console.error("Error al cargar eventos ITIC:", err);
+    }
+  };
+
+  // Disparar la consulta al cargar el tablero
+  useEffect(() => {
+    if (board?._id) {
+      fetchIticData(board._id);
+    }
+  }, [board?._id]);
+
+  // Handler para subir el archivo CSV de la Curva ITIC
+  const handleIticFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !board?._id) return;
+
+    setUploadingItic(true);
+    try {
+      await uploadIticCsv(board._id, file);
+      alert("¡Eventos ITIC cargados y procesados correctamente!");
+      await fetchIticData(board._id);
+    } catch (err: any) {
+      alert("Error al importar eventos ITIC: " + (err.response?.data?.error || err.message));
+    } finally {
+      setUploadingItic(false);
+      e.target.value = "";
+    }
+  };
+
   const toggleDemandDay = (key: string) => {
     setVisibleDemandSeries(prev => ({ ...prev, [key]: !prev[key] }));
   };
@@ -265,6 +321,11 @@ const BoardDetailPage = () => {
 
   const toggleSolarDay = (key: string) => {
     setVisibleSolarSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleThermographySuccess = () => {
+    // Dispara la recarga de datos en el visor
+    setThermographyReloadKey((prev) => prev + 1);
   };
 
   useEffect(() => {
@@ -1358,6 +1419,654 @@ const BoardDetailPage = () => {
     );
   };
 
+  const renderThdVoltageSection = () => {
+    if (rawChartData.length === 0) return null;
+
+    const activeDay = selectedThdUDay || seriesKeys[0] || "";
+
+    let maxThdV = 0;
+    let sumThdV = 0;
+    let countThdV = 0;
+    let horaPicoThdV = "--:--";
+
+    rawChartData.forEach(row => {
+      const val = Number(row[`thd_v_${activeDay}`] || 0);
+      if (val > 0) {
+        if (val > maxThdV) {
+          maxThdV = val;
+          horaPicoThdV = row.horaMinuto;
+        }
+        sumThdV += val;
+        countThdV++;
+      }
+    });
+
+    const avgThdV = countThdV > 0 ? sumThdV / countThdV : 0;
+    const cumpleNorma = maxThdV <= 5.0;
+
+    const VoltageTooltip = ({ active, label, payload }: any) => {
+      if (active && payload && payload.length) {
+        const val = payload[0]?.value ?? 0;
+        return (
+          <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl font-sans text-xs min-w-[210px]">
+            <div className="mb-2 border-b border-slate-100 pb-1.5 flex justify-between items-center">
+              <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Distorsión THD-U</span>
+              <span className="font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">{label} hrs</span>
+            </div>
+            <p className="text-[11px] font-bold text-slate-700 mb-2">
+              Día: <span className="text-slate-900">{activeDay}</span>
+            </p>
+            <div className="flex items-center justify-between font-semibold">
+              <span className="flex items-center gap-1.5 text-purple-700 font-bold">
+                <span className="size-2 rounded-full bg-purple-600 inline-block"></span>
+                THD Tensión:
+              </span>
+              <span className={`font-black tabular-nums text-sm ${val > 5.0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                {Number(val).toFixed(2)}%
+              </span>
+            </div>
+            <div className="mt-2 border-t border-slate-100 pt-1.5 text-[9px] flex justify-between text-slate-400">
+              <span>Límite IEEE 519: <strong>5.0%</strong></span>
+              <span className={val <= 5.0 ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>
+                {val <= 5.0 ? "Conforme" : "No conforme"}
+              </span>
+            </div>
+          </div>
+        );
+      }
+      return null;
+    };
+
+    return (
+      <section className="rounded-2xl sm:rounded-3xl border-2 border-purple-200/70 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6 transition-all">
+        {/* Header con Badge de Estado */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-purple-600 text-white shadow-md shadow-purple-200">
+              <Shield size={22} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-extrabold text-slate-950 text-base sm:text-lg tracking-tight">
+                  Calidad de Tensión: Distorsión Armónica Total (THD-U)
+                </h2>
+                <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-black tracking-wide text-purple-800 uppercase">
+                  Parámetro Crítico
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Supervisión de salud de la red bajo estándar <strong>IEEE 519 / CNE</strong> (Límite estricto admisible: <strong>5.00%</strong>)
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <span className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black border ${cumpleNorma
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+              : 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse'
+              }`}>
+              <span className={`size-2 rounded-full ${cumpleNorma ? 'bg-emerald-500' : 'bg-rose-600'}`}></span>
+              {cumpleNorma ? 'CONFORME CON IEEE 519' : 'SUPERA LÍMITE PERMITIDO (>5%)'}
+            </span>
+          </div>
+        </div>
+
+        {/* Tarjetas KPI de THD-U */}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-purple-100 bg-purple-50/50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-purple-700">Pico Máximo Registrado</p>
+            <p className={`mt-1 text-3xl font-black ${maxThdV > 5.0 ? 'text-rose-600' : 'text-purple-950'}`}>
+              {maxThdV.toFixed(2)} <span className="text-sm font-bold text-purple-600">%</span>
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              A las <strong className="text-slate-700">{horaPicoThdV} hrs</strong> en el día filtrado
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-purple-100 bg-purple-50/50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-purple-700">Promedio THD-U Diario</p>
+            <p className="mt-1 text-3xl font-black text-purple-950">
+              {avgThdV.toFixed(2)} <span className="text-sm font-bold text-purple-600">%</span>
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">Tensión en barras principales</p>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Límite Normativo Máximo</p>
+            <p className="mt-1 text-3xl font-black text-slate-800">
+              5.00 <span className="text-sm font-bold text-slate-400">%</span>
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">Redes de baja tensión (V ≤ 1 kV)</p>
+          </div>
+        </div>
+
+        {/* Selector de Días */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
+          <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
+            SELECCIONAR DÍA:
+          </span>
+          {seriesKeys.map((key) => {
+            const isSelected = activeDay === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSelectedThdUDay(key)}
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
+                  ? 'bg-purple-700 border-purple-700 text-white shadow-md'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+              >
+                {key}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Gráfico THD-U */}
+        <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
+          <div className="h-72 sm:h-80 md:h-[360px] w-[850px] sm:w-full text-xs select-none">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={rawChartData} margin={{ top: 20, right: 25, left: 10, bottom: 25 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="horaMinuto"
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  interval={11}
+                  dy={5}
+                  tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
+                >
+                  <Label value="Hora del Día" position="insideBottom" offset={-15} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px' }} />
+                </XAxis>
+                <YAxis
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  width={45}
+                  domain={[0, (dataMax: number) => Math.max(6, Math.ceil(dataMax + 1))]}
+                  tickFormatter={(val) => `${val}%`}
+                >
+                  <Label value="THD-U (%)" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#7e22ce', fontWeight: '800', fontSize: '9px' }} />
+                </YAxis>
+
+                <Tooltip content={<VoltageTooltip />} shared={true} />
+
+                {/* Límite 5% IEEE */}
+                <ReferenceLine y={5.0} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={2}>
+                  <Label
+                    value="LÍMITE MÁXIMO IEEE 519 (5.0%)"
+                    position="insideTopRight"
+                    fill="#dc2626"
+                    style={{ fontSize: '9px', fontWeight: '900' }}
+                  />
+                </ReferenceLine>
+
+                <Line
+                  type="monotone"
+                  name={`THD-U - ${activeDay}`}
+                  dataKey={`thd_v_${activeDay}`}
+                  stroke="#9333ea"
+                  strokeWidth={2.5}
+                  dot={false}
+                  connectNulls={true}
+                  animationDuration={150}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+  const renderThdCurrentSection = () => {
+    if (rawChartData.length === 0) return null;
+
+    const activeDay = selectedThdIDay || seriesKeys[0] || "";
+
+    let maxThdI = 0;
+    let sumThdI = 0;
+    let countThdI = 0;
+    let horaPicoThdI = "--:--";
+
+    rawChartData.forEach(row => {
+      const val = Number(row[`thd_i_${activeDay}`] || 0);
+      if (val > 0) {
+        if (val > maxThdI) {
+          maxThdI = val;
+          horaPicoThdI = row.horaMinuto;
+        }
+        sumThdI += val;
+        countThdI++;
+      }
+    });
+
+    const avgThdI = countThdI > 0 ? sumThdI / countThdI : 0;
+
+    const CurrentTooltip = ({ active, label, payload }: any) => {
+      if (active && payload && payload.length) {
+        const val = payload[0]?.value ?? 0;
+        return (
+          <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl font-sans text-xs min-w-[210px]">
+            <div className="mb-2 border-b border-slate-100 pb-1.5 flex justify-between items-center">
+              <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Distorsión THD-I</span>
+              <span className="font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">{label} hrs</span>
+            </div>
+            <p className="text-[11px] font-bold text-slate-700 mb-2">
+              Día: <span className="text-slate-900">{activeDay}</span>
+            </p>
+            <div className="flex items-center justify-between font-semibold">
+              <span className="flex items-center gap-1.5 text-cyan-700 font-bold">
+                <span className="size-2 rounded-full bg-cyan-600 inline-block"></span>
+                THD Corriente:
+              </span>
+              <span className="font-black tabular-nums text-sm text-slate-900">
+                {Number(val).toFixed(2)}%
+              </span>
+            </div>
+            <p className="mt-2 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400">
+              Generado por cargas no lineales (VFD, UPS, Fuentes)
+            </p>
+          </div>
+        );
+      }
+      return null;
+    };
+
+    return (
+      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6 transition-all hover:border-slate-300">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-600">
+              <Activity size={22} />
+            </div>
+            <div>
+              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
+                Distorsión Armónica de Corriente (THD-I)
+              </h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                Nivel de contaminación por inyección armónica de las cargas del tablero
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Tarjetas KPI de THD-I */}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-cyan-100 bg-cyan-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-cyan-700">Pico Máximo THD-I</p>
+            <p className="mt-1 text-2xl sm:text-3xl font-black text-cyan-950">
+              {maxThdI.toFixed(2)} <span className="text-xs sm:text-sm font-bold text-cyan-600">%</span>
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Registrado a las <strong className="text-slate-700">{horaPicoThdI} hrs</strong>
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-cyan-100 bg-cyan-50/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-cyan-700">Promedio THD-I del Periodo</p>
+            <p className="mt-1 text-2xl sm:text-3xl font-black text-cyan-950">
+              {avgThdI.toFixed(2)} <span className="text-xs sm:text-sm font-bold text-cyan-600">%</span>
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">Inyección armónica promedio hacia la red</p>
+          </div>
+        </div>
+
+        {/* Selector de Días */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
+          <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
+            SELECCIONAR DÍA:
+          </span>
+          {seriesKeys.map((key) => {
+            const isSelected = activeDay === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSelectedThdIDay(key)}
+                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
+                  ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+              >
+                {key}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Gráfico THD-I */}
+        <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
+          <div className="h-72 sm:h-80 md:h-[340px] w-[850px] sm:w-full text-xs select-none">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={rawChartData} margin={{ top: 15, right: 25, left: 10, bottom: 25 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis
+                  dataKey="horaMinuto"
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  interval={11}
+                  dy={5}
+                  tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
+                >
+                  <Label value="Hora del Día" position="insideBottom" offset={-15} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px' }} />
+                </XAxis>
+                <YAxis
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  width={45}
+                  domain={[0, 'auto']}
+                  tickFormatter={(val) => `${val}%`}
+                >
+                  <Label value="THD-I (%)" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#0891b2', fontWeight: '800', fontSize: '9px' }} />
+                </YAxis>
+
+                <Tooltip content={<CurrentTooltip />} shared={true} />
+
+                <Line
+                  type="monotone"
+                  name={`THD-I - ${activeDay}`}
+                  dataKey={`thd_i_${activeDay}`}
+                  stroke="#0891b2"
+                  strokeWidth={2}
+                  dot={false}
+                  connectNulls={true}
+                  animationDuration={150}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
+  // ── TRAZADO OFICIAL CURVA ITIC / CBEMA (COINCIDENTE CON METREL POWERVIEW) ──
+  const ITIC_UPPER_LINE = [
+    { x: 0.0002, y: 400 },
+    { x: 0.001, y: 200 },
+    { x: 0.003, y: 140 },
+    { x: 0.003001, y: 120 },
+    { x: 0.5, y: 120 },
+    { x: 0.5001, y: 110 },
+    { x: 100000, y: 110 }
+  ];
+
+  const ITIC_LOWER_LINE = [
+    { x: 0.00001, y: 0 },
+    { x: 0.02, y: 0 },
+    { x: 0.02001, y: 70 },
+    { x: 0.5, y: 70 },
+    { x: 0.5001, y: 80 },
+    { x: 10, y: 80 },
+    { x: 10.001, y: 90 },
+    { x: 100000, y: 90 }
+  ];
+
+  // DÉCADAS EXACTAS DEL EJE X DE METREL
+  const ITIC_TICKS_X = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000];
+
+  const renderIticCurveSection = () => {
+    if (!iticEvents || iticEvents.length === 0) {
+      return (
+        <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-6 shadow-sm font-sans mt-6">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center">
+            <Zap size={32} className="text-slate-300 animate-pulse" />
+            <p className="mt-3 text-xs font-bold text-slate-500">Sin historial de eventos ITIC cargado</p>
+            <label
+              htmlFor="csv-itic-empty"
+              className={`mt-4 flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-black text-white shadow-md ${uploadingItic ? 'bg-amber-400 cursor-not-allowed' : 'cursor-pointer bg-amber-600 hover:bg-amber-700'}`}
+            >
+              <UploadCloud size={15} /> {uploadingItic ? "Procesando..." : "Importar Eventos (.csv)"}
+            </label>
+            <input id="csv-itic-empty" type="file" accept=".csv" onChange={handleIticFileUpload} className="hidden" disabled={uploadingItic} />
+          </div>
+        </section>
+      );
+    }
+
+    // ── 1. DETERMINAR TENSIÓN NOMINAL DEL TABLERO (Línea-Línea y Línea-Neutro) ──
+    const vNominalLinea = Number(board?.tensionNominal) || 220;
+    const vNominalFase = Math.round(vNominalLinea / Math.sqrt(3)); // Ej: 220V -> 127V | 380V -> 220V
+
+    const dataFase1: any[] = [];
+    const dataFase2: any[] = [];
+    const dataFase3: any[] = [];
+
+    iticEvents.forEach((ev: any, idx: number) => {
+      const tRaw = Number(ev.duracionSegundos) || 0.01;
+      const rawResidual = Number(ev.tensionResidual) || 0;
+      const f = String(ev.fase || "").toUpperCase().trim();
+
+      // ── 2. SELECCIONAR LA TENSIÓN BASE CORRECTA SEGÚN LA FASE ──
+      const esLineaALinea = f.includes("L12") || f.includes("L23") || f.includes("L31");
+      const vBase = esLineaALinea ? vNominalLinea : vNominalFase;
+
+      // ── 3. CONVERSIÓN EXACTA A % DE LA NOMINAL ──
+      // Si el valor viene en voltios reales (ej: 120V o 133.5V en red de 127V; o 215V en red de 220V),
+      // lo dividimos por su tensión base.
+      let vPercent = rawResidual;
+      if (rawResidual > 50) {
+        vPercent = (rawResidual / vBase) * 100;
+      }
+
+      // Clamping para el gráfico
+      const t = Math.max(0.00001, Math.min(100000, tRaw));
+      const v = Math.max(0, Math.min(400, vPercent));
+
+      const item = {
+        id: idx + 1,
+        x: t,
+        y: v,
+        duracionOriginal: ev.duracionSegundos,
+        tipoEvento: ev.tipoEvento,
+        horaInicio: ev.horaInicio,
+        fase: ev.fase,
+        voltiosReales: rawResidual > 50 ? rawResidual : (rawResidual * vBase) / 100
+      };
+
+      // ── 4. CLASIFICACIÓN POR FASE ──
+      if (f.includes("L12") || f === "L1" || f.includes("FASE 1")) {
+        dataFase1.push(item);
+      } else if (f.includes("L23") || f === "L2" || f.includes("FASE 2")) {
+        dataFase2.push(item);
+      } else {
+        dataFase3.push(item); // L31, L3 o LN
+      }
+    });
+
+    // Tooltip formateado idéntico al recuadro de Metrel
+    const MetrelTooltip = ({ active, payload }: any) => {
+      if (active && payload && payload.length) {
+        const data = payload[0]?.payload;
+        if (!data || data.tipoEvento === undefined) return null;
+
+        const duracionMs = data.duracionOriginal < 1
+          ? `${Math.round(data.duracionOriginal * 1000)} ms`
+          : `${data.duracionOriginal.toFixed(2)} s`;
+
+        return (
+          <div className="rounded-lg border border-slate-400 bg-white/95 p-2.5 shadow-xl font-sans text-[11px] leading-tight min-w-[190px] z-50">
+            <p className="font-bold text-slate-800 border-b border-slate-100 pb-1 mb-1">
+              {data.fase} {data.tipoEvento}
+            </p>
+            <div className="space-y-1 text-slate-600">
+              <p><strong>Iniciado:</strong> {data.horaInicio || "N/A"}</p>
+              <p><strong>Duración:</strong> {duracionMs}</p>
+              <p><strong>% Residual:</strong> {data.y.toFixed(1)}%</p>
+              <p><strong>Tensión medida:</strong> {data.voltiosReales.toFixed(1)} V</p>
+            </div>
+          </div>
+        );
+      }
+      return null;
+    };
+
+    return (
+      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6 transition-all">
+        {/* Encabezado y Leyenda */}
+        <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600">
+              <Zap size={22} />
+            </div>
+            <div>
+              <h2 className="font-extrabold text-slate-950 text-base tracking-tight">
+                Curva de Tolerancia ITIC
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Sensibilidad a perturbaciones transitorias por fase según estándar IEEE 446
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700">
+              <span className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-sm bg-[#dc2626] inline-block" /> Línea 12 / L1
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-sm bg-[#16a34a] inline-block" /> Línea 23 / L2
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="size-2.5 rounded-full bg-[#2563eb] inline-block" /> Línea 31 / L3
+              </span>
+            </div>
+
+            <label
+              htmlFor="csv-itic-btn"
+              className="flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs font-black text-white cursor-pointer bg-amber-600 hover:bg-amber-700 shadow-sm"
+            >
+              <UploadCloud size={15} /> Recargar CSV
+            </label>
+            <input id="csv-itic-btn" type="file" accept=".csv" onChange={handleIticFileUpload} className="hidden" />
+          </div>
+        </div>
+
+        {/* Contenedor del Gráfico */}
+        <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2">
+          <div className="h-[480px] w-[950px] sm:w-full text-xs select-none">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 20, right: 30, left: 10, bottom: 35 }}>
+                <CartesianGrid strokeDasharray="1 1" stroke="#cbd5e1" />
+
+                {/* ── ZONAS SOMBREADAS ESCALONADAS (IGUAL QUE METREL) ── */}
+                {/* ZONA SUPERIOR: Sobretensión / Daño (Color Naranja suave) */}
+                <ReferenceArea x1={0.0002} x2={0.003} y1={140} y2={400} fill="#fed7aa" fillOpacity={0.65} />
+                <ReferenceArea x1={0.003} x2={0.5} y1={120} y2={400} fill="#fed7aa" fillOpacity={0.65} />
+                <ReferenceArea x1={0.5} x2={100000} y1={110} y2={400} fill="#fed7aa" fillOpacity={0.65} />
+
+                {/* ZONA INFERIOR: Caída / Apagado (Color Amarillo suave) */}
+                <ReferenceArea x1={0.02} x2={0.5} y1={0} y2={70} fill="#fef08a" fillOpacity={0.7} />
+                <ReferenceArea x1={0.5} x2={10} y1={0} y2={80} fill="#fef08a" fillOpacity={0.7} />
+                <ReferenceArea x1={10} x2={100000} y1={0} y2={90} fill="#fef08a" fillOpacity={0.7} />
+
+                {/* ── EJE X CON TODAS LAS DÉCADAS CALIBRADAS ── */}
+                <XAxis
+                  type="number"
+                  dataKey="x"
+                  domain={[0.00001, 100000]}
+                  scale="log"
+                  allowDataOverflow
+                  ticks={ITIC_TICKS_X}
+                  tickFormatter={(val) => {
+                    if (val === 0.00001) return "10 µs";
+                    if (val === 0.0001) return "100 µs";
+                    if (val === 0.001) return "1 ms";
+                    if (val === 0.01) return "10 ms";
+                    if (val === 0.1) return "100 ms";
+                    if (val === 1) return "1 s";
+                    if (val === 10) return "10 s";
+                    if (val === 100) return "10² s";
+                    if (val === 1000) return "10³ s";
+                    if (val === 10000) return "10⁴ s";
+                    if (val === 100000) return "10⁵ s";
+                    return "";
+                  }}
+                  stroke="#475569"
+                  tick={{ fontSize: '10px', fill: '#1e293b', fontWeight: 600 }}
+                >
+                  <Label
+                    value="Duración del evento (segundos)"
+                    position="insideBottom"
+                    offset={-20}
+                    style={{ textAnchor: 'middle', fill: '#0f172a', fontWeight: '800', fontSize: '11px' }}
+                  />
+                </XAxis>
+
+                {/* ── EJE Y (0.0 A 400.0%) ── */}
+                <YAxis
+                  type="number"
+                  dataKey="y"
+                  domain={[0, 400]}
+                  ticks={[0, 100, 200, 300, 400]}
+                  stroke="#475569"
+                  width={50}
+                  tickFormatter={(val) => `${val}.0`}
+                  tick={{ fontSize: '10px', fill: '#1e293b', fontWeight: 600 }}
+                >
+                  <Label
+                    value="% de la nominal"
+                    angle={-90}
+                    position="insideLeft"
+                    offset={-5}
+                    style={{ textAnchor: 'middle', fill: '#0f172a', fontWeight: '800', fontSize: '11px' }}
+                  />
+                </YAxis>
+
+                <Tooltip content={<MetrelTooltip />} cursor={{ strokeDasharray: '3 3', stroke: '#94a3b8' }} />
+
+                {/* LÍNEA NOMINAL 100% */}
+                <ReferenceLine y={100} stroke="#475569" strokeDasharray="3 3" strokeWidth={1} />
+
+                {/* ── LÍNEAS NEGRAS DE LA ENVOLVENTE ITIC ── */}
+                <Scatter
+                  name="Límite Superior"
+                  data={ITIC_UPPER_LINE}
+                  line={{ stroke: '#0f172a', strokeWidth: 2 }}
+                  shape={() => null}
+                  legendType="none"
+                  isAnimationActive={false}
+                />
+                <Scatter
+                  name="Límite Inferior"
+                  data={ITIC_LOWER_LINE}
+                  line={{ stroke: '#0f172a', strokeWidth: 2 }}
+                  shape={() => null}
+                  legendType="none"
+                  isAnimationActive={false}
+                />
+
+                {/* ── DISPERSIÓN DE PUNTOS POR FASE ── */}
+                <Scatter
+                  name="Fase 1"
+                  data={dataFase1}
+                  fill="#dc2626"
+                  shape="square"
+                  isAnimationActive={false}
+                />
+                <Scatter
+                  name="Fase 2"
+                  data={dataFase2}
+                  fill="#16a34a"
+                  shape="square"
+                  isAnimationActive={false}
+                />
+                <Scatter
+                  name="Fase 3"
+                  data={dataFase3}
+                  fill="#2563eb"
+                  shape="circle"
+                  isAnimationActive={false}
+                />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
   interface IDocument {
     _id: string;
     title: string;
@@ -1539,7 +2248,7 @@ const BoardDetailPage = () => {
 
           <div className="bg-slate-900 px-4 sm:px-8 pb-5 pt-4 text-center">
             <h2 className="text-lg sm:text-2xl md:text-[31px] font-extrabold leading-tight tracking-wide text-white">
-              RIESGO DE ARCO ELÉCTRICO Y ELECTROCUCIÓN PRESENTE
+              RIESGO DE ARCO ELÉCTRICO Y CHOQUE ELÉCTRICO PRESENTE
             </h2>
             <p className="mt-2 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs sm:text-[14px] font-medium text-slate-400">
               <span>Se requiere EPP de acuerdo a categoría</span>
@@ -1611,7 +2320,7 @@ const BoardDetailPage = () => {
               <div className="flex items-center gap-2.5 border-b border-slate-200 pb-3">
                 <span className="h-[19px] w-[6px] rounded-full bg-sky-500 shrink-0"></span>
                 <h3 className="text-sm sm:text-[15.5px] font-extrabold tracking-wide text-slate-900">
-                  RIESGO DE ELECTROCUCIÓN
+                  RIESGO DE CHOQUE ELÉCTRICO
                 </h3>
               </div>
 
@@ -1701,9 +2410,9 @@ const BoardDetailPage = () => {
                 <div className="relative rounded-xl border border-slate-200 bg-white p-2 shrink-0">
                   <QRCode
                     value={qrUrl}
-                    size={110}
+                    size={150}
                     level="H"
-                    style={{ height: "110px", width: "110px" }}
+                    style={{ height: "150px", width: "150px" }}
                   />
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="bg-white p-0.5 rounded-md shadow-md border border-slate-100 size-6 flex items-center justify-center">
@@ -1718,11 +2427,11 @@ const BoardDetailPage = () => {
                     Datos técnicos, memoria de cálculo y curvas de protección del tablero.
                   </p>
 
-                  <div className="mt-2.5 w-full overflow-hidden">
+                  {/* <div className="mt-2.5 w-full overflow-hidden">
                     <p className="w-full truncate rounded-lg border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 tracking-tight" title={qrUrl.replace(/^https?:\/\//, "")}>
                       {qrUrl.replace(/^https?:\/\//, "")}
                     </p>
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </section>
@@ -1841,66 +2550,66 @@ const BoardDetailPage = () => {
   const companyName = typeof board.company === "object" ? board.company.name : "Sin empresa";
 
   return (
-  <>
-    <section className="mx-auto max-w-7xl space-y-6 opacity-0" style={{ animation: "fadeUp 0.5s ease forwards" }}>
+    <>
+      <section className="mx-auto max-w-7xl space-y-6 opacity-0" style={{ animation: "fadeUp 0.5s ease forwards" }}>
 
-      {/* ── HEADER DEL TABLERO (SIEMPRE COMPACTO Y STICKY) ── */}
-      <section className="sticky top-0 z-30 rounded-2xl border border-slate-200/80 bg-white/90 shadow-md backdrop-blur-md transition-all duration-300">
-        <div className="relative rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-3.5 px-6 text-white transition-all duration-300">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 to-transparent" />
-          
-          <div className="relative z-10 flex flex-row items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              {/* Botón Volver integrado en el Header */}
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white/20 p-2 text-white backdrop-blur-sm transition-all hover:bg-white/30"
-                title="Volver"
-              >
-                <ArrowLeft size={18} />
-              </button>
+        {/* ── HEADER DEL TABLERO (SIEMPRE COMPACTO Y STICKY) ── */}
+        <section className="sticky top-0 z-30 rounded-2xl border border-slate-200/80 bg-white/90 shadow-md backdrop-blur-md transition-all duration-300">
+          <div className="relative rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-3.5 px-6 text-white transition-all duration-300">
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 to-transparent" />
 
-              <div className="min-w-0">
-                <h1 className="truncate text-lg font-black tracking-tight md:text-xl">
-                  {board.name}
-                </h1>
-                <p className="flex items-center gap-1.5 text-xs font-medium text-white/95">
-                  <Building2 size={13} />
-                  {companyName}
+            <div className="relative z-10 flex flex-row items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                {/* Botón Volver integrado en el Header */}
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white/20 p-2 text-white backdrop-blur-sm transition-all hover:bg-white/30"
+                  title="Volver"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+
+                <div className="min-w-0">
+                  <h1 className="truncate text-lg font-black tracking-tight md:text-xl">
+                    {board.name}
+                  </h1>
+                  <p className="flex items-center gap-1.5 text-xs font-medium text-white/95">
+                    <Building2 size={13} />
+                    {companyName}
+                  </p>
+                </div>
+              </div>
+
+              {/* Código del Tablero */}
+              <div className="shrink-0 rounded-2xl border border-white/10 bg-white/15 px-3.5 py-1.5 backdrop-blur">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">Código</p>
+                <p className="text-sm font-black tracking-tight">
+                  {value(board.boardCode)}
                 </p>
               </div>
             </div>
-
-            {/* Código del Tablero */}
-            <div className="shrink-0 rounded-2xl border border-white/10 bg-white/15 px-3.5 py-1.5 backdrop-blur">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">Código</p>
-              <p className="text-sm font-black tracking-tight">
-                {value(board.boardCode)}
-              </p>
-            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── GRILLA DE DETALLES (UBICACIÓN, TIPO, SISTEMA, ESTADO) ── */}
-      <div className="grid grid-cols-2 gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-4">
-        {[
-          { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-          { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-          { l: "Sistema", v: board.sistema, icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-          { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
-        ].map((item, i) => {
-          const CardIcon = item.icon;
-          return (
-            <div key={i} className="rounded-2xl border border-transparent bg-slate-50/70 p-4 transition-colors hover:border-slate-200/50">
-              <CardIcon className={item.iconCls} size={20} />
-              <p className="mt-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.l}</p>
-              <p className={`mt-0.5 truncate text-xs font-bold sm:text-sm ${item.textCls}`}>{value(item.v)}</p>
-            </div>
-          );
-        })}
-      </div>
+        {/* ── GRILLA DE DETALLES (UBICACIÓN, TIPO, SISTEMA, ESTADO) ── */}
+        <div className="grid grid-cols-2 gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-4">
+          {[
+            { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+            { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+            { l: "Sistema", v: board.sistema, icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+            { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
+          ].map((item, i) => {
+            const CardIcon = item.icon;
+            return (
+              <div key={i} className="rounded-2xl border border-transparent bg-slate-50/70 p-4 transition-colors hover:border-slate-200/50">
+                <CardIcon className={item.iconCls} size={20} />
+                <p className="mt-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.l}</p>
+                <p className={`mt-0.5 truncate text-xs font-bold sm:text-sm ${item.textCls}`}>{value(item.v)}</p>
+              </div>
+            );
+          })}
+        </div>
 
         {/* ── PLAN EMPRESARIAL: ETIQUETADO DE SEGURIDAD (NFPA 70E) ── */}
         {isEmpresarial && board?.nfpa && (
@@ -1908,11 +2617,27 @@ const BoardDetailPage = () => {
         )}
 
         {/* ── PLAN EMPRESARIAL: ANALÍTICA DE CONSUMO, REACTIVA Y DEMANDA ── */}
-        {isEmpresarial && rawChartData.length > 0 && (
+        {/* {isEmpresarial && rawChartData.length > 0 && (
           <>
             {renderDemandSection()}
             {renderReactivePowerSection()}
             {renderCombinedDemandAndReactiveSection()}
+            {renderHarmonicDistortionSection()}
+            {renderEnergyBarSection()}
+            {renderCarbonEmissionsSection()}
+            {renderEnergyCostSection()}
+            {renderSolarEnergySection()}
+          </>
+        )} */}
+
+        {isEmpresarial && (
+          <>
+            {renderDemandSection()}
+            {renderReactivePowerSection()}
+            {renderCombinedDemandAndReactiveSection()}
+            {renderThdVoltageSection()}
+            {renderThdCurrentSection()}
+            {renderIticCurveSection()}
             {renderEnergyBarSection()}
             {renderCarbonEmissionsSection()}
             {renderEnergyCostSection()}
@@ -2004,6 +2729,26 @@ const BoardDetailPage = () => {
         {/* ── PLAN EMPRESARIAL: INSPECCIÓN TERMOGRÁFICA (NFPA 70B) ── */}
         {isEmpresarial && board.images?.termografia && board.images.termografia.length > 0 && (
           renderImageSection("Termografía", "Imágenes termográficas asociadas al tablero", board.images.termografia)
+        )}
+
+        {/* ── PLAN EMPRESARIAL: INSPECCIÓN TERMOGRÁFICA (NFPA 70B) ── */}
+        {isEmpresarial && (
+          <>
+            <ThermographyViewer
+              boardId={board._id}
+              title="Inspección Termográfica Radiométrica (NFPA 70B)"
+              originalImageUrl={board.images?.termografia?.[0]}
+              onOpenImportModal={() => setShowThermographyModal(true)}
+              reloadKey={thermographyReloadKey}
+            />
+
+            <ImportThermographyModal
+              isOpen={showThermographyModal}
+              onClose={() => setShowThermographyModal(false)}
+              boardId={board._id}
+              onSuccess={handleThermographySuccess}
+            />
+          </>
         )}
 
         {/* ── PLAN INTERMEDIO Y EMPRESARIAL: CERTIFICADOS Y MANTENIMIENTO ── */}

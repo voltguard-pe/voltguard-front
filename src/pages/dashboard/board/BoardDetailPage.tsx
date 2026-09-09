@@ -1,5 +1,3 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
 import {
   Activity,
   AlertTriangle,
@@ -16,14 +14,16 @@ import {
   Hand,
   ImageIcon,
   Info,
-  Layers,
   MapPin,
   Shield,
-  Sun,
   UploadCloud,
   X,
   Zap
 } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import QRCode from "react-qr-code";
+import { useNavigate, useParams } from "react-router-dom";
+import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import {
   Bar,
   BarChart,
@@ -40,16 +40,14 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+import ImportThermographyModal from "../../../components/dashboard/modals/ImportThermographyModal";
+import { ThermographyViewer } from "../../../components/dashboard/sections/ThermographyViewer";
 import { getBoardByCode } from "../../../services/board.service";
 import { getDemandChartData, uploadMetrelCsv } from "../../../services/measurement.service";
-import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
-import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
-import QRCode from "react-qr-code";
-import { useAuth } from "../../../shared/hooks/useAuth";
-import { ThermographyViewer } from "../../../components/dashboard/sections/ThermographyViewer";
 import { getIticEvents, uploadIticCsv, type VoltageEventItem } from "../../../services/voltageEvent.service";
-import ImportThermographyModal from "../../../components/dashboard/modals/ImportThermographyModal";
+import { useAuth } from "../../../shared/hooks/useAuth";
+import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
+import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 
 // ── CONSTANTES DE PALETAS DE COLORES ──
 const MAIN_COLORS = [
@@ -95,7 +93,7 @@ const BoardDetailPage = () => {
   const [selectedReactiveDay, setSelectedReactiveDay] = useState<string | null>(null);
   // ── ESTADOS PARA DISTORSIÓN ARMÓNICA ──
   const [selectedThdUDay, setSelectedThdUDay] = useState<string | null>(null);
-  const [selectedThdIDay, setSelectedThdIDay] = useState<string | null>(null);
+  // const [selectedThdIDay, setSelectedThdIDay] = useState<string | null>(null);
 
   // Dentro de tu componente BoardDetailPage:
   const [showThermographyModal, setShowThermographyModal] = useState(false);
@@ -111,7 +109,7 @@ const BoardDetailPage = () => {
   const [visibleEnergySeries, setVisibleEnergySeries] = useState<{ [key: string]: boolean }>({});
   const [visibleCarbonSeries, setVisibleCarbonSeries] = useState<{ [key: string]: boolean }>({});
   const [visibleCostSeries, setVisibleCostSeries] = useState<{ [key: string]: boolean }>({});
-  const [visibleSolarSeries, setVisibleSolarSeries] = useState<{ [key: string]: boolean }>({});
+  // const [visibleSolarSeries, setVisibleSolarSeries] = useState<{ [key: string]: boolean }>({});
   const [importing, setImporting] = useState(false);
 
   const [tarifaContratada] = useState<number>(350);
@@ -240,7 +238,7 @@ const BoardDetailPage = () => {
           "Promedio_General": prev["Promedio_General"] ?? true
         };
         sortedCleanKeys.forEach((k) => {
-          visibility[k] = prev[k] !== undefined ? prev[k] : true;
+          visibility[k] = prev[k] !== undefined ? prev[k] : false;
         });
         return visibility;
       });
@@ -253,7 +251,7 @@ const BoardDetailPage = () => {
       setVisibleEnergySeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
       setVisibleCarbonSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
       setVisibleCostSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
-      setVisibleSolarSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
+      // setVisibleSolarSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
     } catch (err) {
       console.error("Error cargando curvas de demanda en Recharts:", err);
     }
@@ -319,9 +317,9 @@ const BoardDetailPage = () => {
     setVisibleCostSeries(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const toggleSolarDay = (key: string) => {
-    setVisibleSolarSeries(prev => ({ ...prev, [key]: !prev[key] }));
-  };
+  // const toggleSolarDay = (key: string) => {
+  //   setVisibleSolarSeries(prev => ({ ...prev, [key]: !prev[key] }));
+  // };
 
   const handleThermographySuccess = () => {
     // Dispara la recarga de datos en el visor
@@ -865,167 +863,167 @@ const BoardDetailPage = () => {
     );
   };
 
-  const renderCombinedDemandAndReactiveSection = () => {
-    if (rawChartData.length === 0) return null;
+  // const renderCombinedDemandAndReactiveSection = () => {
+  //   if (rawChartData.length === 0) return null;
 
-    const activeDay = selectedReactiveDay || seriesKeys[0] || "";
+  //   const activeDay = selectedReactiveDay || seriesKeys[0] || "";
 
-    return (
-      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
-        <div className="mb-5 border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600">
-              <Layers size={22} />
-            </div>
-            <div>
-              <h2 className="font-bold text-slate-950 text-base">
-                Cuadro Integrado: Demanda (kW) y Potencia Reactiva (kvar)
-              </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Superposición de curva de potencia activa y potencia reactiva capacitiva e inductiva por día
-              </p>
-            </div>
-          </div>
-        </div>
+  //   return (
+  //     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
+  //       <div className="mb-5 border-b border-slate-100 pb-4">
+  //         <div className="flex items-center gap-3">
+  //           <div className="flex size-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600">
+  //             <Layers size={22} />
+  //           </div>
+  //           <div>
+  //             <h2 className="font-bold text-slate-950 text-base">
+  //               Cuadro Integrado: Demanda (kW) y Potencia Reactiva (kvar)
+  //             </h2>
+  //             <p className="text-xs text-slate-500 mt-0.5">
+  //               Superposición de curva de potencia activa y potencia reactiva capacitiva e inductiva por día
+  //             </p>
+  //           </div>
+  //         </div>
+  //       </div>
 
-        <div className="space-y-3 mb-5">
-          <div className="flex gap-1.5 overflow-x-auto pb-1 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
-            <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
-              SELECCIONAR DÍA:
-            </span>
-            {seriesKeys.map((key) => {
-              const isSelected = activeDay === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setSelectedReactiveDay(key)}
-                  className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
-                    ? 'bg-slate-900 border-slate-900 text-white shadow-md scale-105'
-                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                >
-                  {key}
-                </button>
-              );
-            })}
-          </div>
+  //       <div className="space-y-3 mb-5">
+  //         <div className="flex gap-1.5 overflow-x-auto pb-1 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
+  //           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
+  //             SELECCIONAR DÍA:
+  //           </span>
+  //           {seriesKeys.map((key) => {
+  //             const isSelected = activeDay === key;
+  //             return (
+  //               <button
+  //                 key={key}
+  //                 type="button"
+  //                 onClick={() => setSelectedReactiveDay(key)}
+  //                 className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
+  //                   ? 'bg-slate-900 border-slate-900 text-white shadow-md scale-105'
+  //                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+  //                   }`}
+  //               >
+  //                 {key}
+  //               </button>
+  //             );
+  //           })}
+  //         </div>
 
-          <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
-            <button
-              type="button"
-              onClick={() => toggleDemandDay(activeDay)}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleDemandSeries[activeDay] !== false
-                ? 'bg-orange-600 text-white border-orange-600'
-                : 'bg-white text-slate-600 border-slate-200'
-                }`}
-            >
-              <span className={`size-2.5 rounded-full inline-block ${visibleDemandSeries[activeDay] !== false ? 'bg-white' : 'bg-orange-600'}`}></span>
-              Demanda Activa ({activeDay}) [kW]
-            </button>
+  //         <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
+  //           <button
+  //             type="button"
+  //             onClick={() => toggleDemandDay(activeDay)}
+  //             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleDemandSeries[activeDay] !== false
+  //               ? 'bg-orange-600 text-white border-orange-600'
+  //               : 'bg-white text-slate-600 border-slate-200'
+  //               }`}
+  //           >
+  //             <span className={`size-2.5 rounded-full inline-block ${visibleDemandSeries[activeDay] !== false ? 'bg-white' : 'bg-orange-600'}`}></span>
+  //             Demanda Activa ({activeDay}) [kW]
+  //           </button>
 
-            <button
-              type="button"
-              onClick={() => toggleReactiveDay("kvar_capacitivo")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'
-                }`}
-            >
-              <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-white' : 'bg-red-600'}`}></span>
-              kvar c (Capacitiva)
-            </button>
+  //           <button
+  //             type="button"
+  //             onClick={() => toggleReactiveDay("kvar_capacitivo")}
+  //             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'
+  //               }`}
+  //           >
+  //             <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-white' : 'bg-red-600'}`}></span>
+  //             kvar c (Capacitiva)
+  //           </button>
 
-            <button
-              type="button"
-              onClick={() => toggleReactiveDay("kvar_inductivo")}
-              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-indigo-700 text-white border-indigo-700' : 'bg-white text-slate-600 border-slate-200'
-                }`}
-            >
-              <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-white' : 'bg-indigo-700'}`}></span>
-              kvar i (Inductiva)
-            </button>
-          </div>
-        </div>
+  //           <button
+  //             type="button"
+  //             onClick={() => toggleReactiveDay("kvar_inductivo")}
+  //             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-indigo-700 text-white border-indigo-700' : 'bg-white text-slate-600 border-slate-200'
+  //               }`}
+  //           >
+  //             <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-white' : 'bg-indigo-700'}`}></span>
+  //             kvar i (Inductiva)
+  //           </button>
+  //         </div>
+  //       </div>
 
-        <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
-          <div className="h-72 sm:h-80 md:h-[400px] w-[850px] sm:w-full text-xs select-none">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={rawChartData} margin={{ top: 15, right: 25, left: 10, bottom: 25 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+  //       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
+  //         <div className="h-72 sm:h-80 md:h-[400px] w-[850px] sm:w-full text-xs select-none">
+  //           <ResponsiveContainer width="100%" height="100%">
+  //             <LineChart data={rawChartData} margin={{ top: 15, right: 25, left: 10, bottom: 25 }}>
+  //               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
 
-                <XAxis
-                  dataKey="horaMinuto"
-                  tickLine={false}
-                  interval={11}
-                  stroke="#94a3b8"
-                  dy={5}
-                  tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
-                >
-                  <Label
-                    value="Hora del Día"
-                    position="insideBottom"
-                    offset={-15}
-                    style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
-                  />
-                </XAxis>
+  //               <XAxis
+  //                 dataKey="horaMinuto"
+  //                 tickLine={false}
+  //                 interval={11}
+  //                 stroke="#94a3b8"
+  //                 dy={5}
+  //                 tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
+  //               >
+  //                 <Label
+  //                   value="Hora del Día"
+  //                   position="insideBottom"
+  //                   offset={-15}
+  //                   style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
+  //                 />
+  //               </XAxis>
 
-                <YAxis yAxisId="left" tickLine={false} stroke="#f97316" width={45} domain={[0, 'auto']}>
-                  <Label value="Demanda [kW]" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#f97316', fontWeight: '800', fontSize: '9px' }} />
-                </YAxis>
+  //               <YAxis yAxisId="left" tickLine={false} stroke="#f97316" width={45} domain={[0, 'auto']}>
+  //                 <Label value="Demanda [kW]" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#f97316', fontWeight: '800', fontSize: '9px' }} />
+  //               </YAxis>
 
-                <YAxis yAxisId="right" orientation="right" tickLine={false} stroke="#dc2626" width={45} domain={[0, 'auto']}>
-                  <Label value="Reactiva [kvar]" angle={90} position="insideRight" style={{ textAnchor: 'middle', fill: '#dc2626', fontWeight: '800', fontSize: '9px' }} />
-                </YAxis>
+  //               <YAxis yAxisId="right" orientation="right" tickLine={false} stroke="#dc2626" width={45} domain={[0, 'auto']}>
+  //                 <Label value="Reactiva [kvar]" angle={90} position="insideRight" style={{ textAnchor: 'middle', fill: '#dc2626', fontWeight: '800', fontSize: '9px' }} />
+  //               </YAxis>
 
-                <Tooltip content={<CustomTooltip />} shared={true} />
+  //               <Tooltip content={<CustomTooltip />} shared={true} />
 
-                {visibleDemandSeries[activeDay] !== false && activeDay && (
-                  <Line
-                    yAxisId="left"
-                    type="monotone"
-                    name={`Demanda kW - ${activeDay}`}
-                    dataKey={activeDay}
-                    stroke="#f97316"
-                    strokeWidth={2.5}
-                    dot={false}
-                    connectNulls={true}
-                    animationDuration={150}
-                  />
-                )}
+  //               {visibleDemandSeries[activeDay] !== false && activeDay && (
+  //                 <Line
+  //                   yAxisId="left"
+  //                   type="monotone"
+  //                   name={`Demanda kW - ${activeDay}`}
+  //                   dataKey={activeDay}
+  //                   stroke="#f97316"
+  //                   strokeWidth={2.5}
+  //                   dot={false}
+  //                   connectNulls={true}
+  //                   animationDuration={150}
+  //                 />
+  //               )}
 
-                {visibleReactiveSeries["kvar_capacitivo"] !== false && activeDay && (
-                  <Line
-                    yAxisId="right"
-                    type="linear"
-                    name={`Ntotcap+ - ${activeDay}`}
-                    dataKey={`capacitiva_${activeDay}`}
-                    stroke={REACTIVE_COLOR_CAPACITIVE}
-                    strokeWidth={1.5}
-                    dot={false}
-                    connectNulls={true}
-                    isAnimationActive={false}
-                  />
-                )}
+  //               {visibleReactiveSeries["kvar_capacitivo"] !== false && activeDay && (
+  //                 <Line
+  //                   yAxisId="right"
+  //                   type="linear"
+  //                   name={`Ntotcap+ - ${activeDay}`}
+  //                   dataKey={`capacitiva_${activeDay}`}
+  //                   stroke={REACTIVE_COLOR_CAPACITIVE}
+  //                   strokeWidth={1.5}
+  //                   dot={false}
+  //                   connectNulls={true}
+  //                   isAnimationActive={false}
+  //                 />
+  //               )}
 
-                {visibleReactiveSeries["kvar_inductivo"] !== false && activeDay && (
-                  <Line
-                    yAxisId="right"
-                    type="linear"
-                    name={`Ntotind+ - ${activeDay}`}
-                    dataKey={`inductiva_${activeDay}`}
-                    stroke={REACTIVE_COLOR_INDUCTIVE}
-                    strokeWidth={1.5}
-                    dot={false}
-                    connectNulls={true}
-                    isAnimationActive={false}
-                  />
-                )}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </section>
-    );
-  };
+  //               {visibleReactiveSeries["kvar_inductivo"] !== false && activeDay && (
+  //                 <Line
+  //                   yAxisId="right"
+  //                   type="linear"
+  //                   name={`Ntotind+ - ${activeDay}`}
+  //                   dataKey={`inductiva_${activeDay}`}
+  //                   stroke={REACTIVE_COLOR_INDUCTIVE}
+  //                   strokeWidth={1.5}
+  //                   dot={false}
+  //                   connectNulls={true}
+  //                   isAnimationActive={false}
+  //                 />
+  //               )}
+  //             </LineChart>
+  //           </ResponsiveContainer>
+  //         </div>
+  //       </div>
+  //     </section>
+  //   );
+  // };
 
   const renderEnergyBarSection = () => {
     const barrasVisibles = energiaPorDiaData.filter(d => visibleEnergySeries[d.name] !== false);
@@ -1228,7 +1226,7 @@ const BoardDetailPage = () => {
   };
 
   const TARIFO_KWH_PEN = 0.45;
-  const FACTOR_GENERACION_SOLAR_DIARIO = 0.15;
+  // const FACTOR_GENERACION_SOLAR_DIARIO = 0.15;
 
   const renderEnergyCostSection = () => {
     const costoData = energiaPorDiaData
@@ -1325,99 +1323,99 @@ const BoardDetailPage = () => {
     );
   };
 
-  const renderSolarEnergySection = () => {
-    const solarData = energiaPorDiaData
-      .filter(d => visibleSolarSeries[d.name] !== false)
-      .map(item => {
-        const solarKWh = (item.kWh || 0) * FACTOR_GENERACION_SOLAR_DIARIO;
-        return {
-          name: item.name,
-          solarKWh: Number(solarKWh.toFixed(1)),
-          consumoTotal: item.kWh
-        };
-      });
+  // const renderSolarEnergySection = () => {
+  //   const solarData = energiaPorDiaData
+  //     .filter(d => visibleSolarSeries[d.name] !== false)
+  //     .map(item => {
+  //       const solarKWh = (item.kWh || 0) * FACTOR_GENERACION_SOLAR_DIARIO;
+  //       return {
+  //         name: item.name,
+  //         solarKWh: Number(solarKWh.toFixed(1)),
+  //         consumoTotal: item.kWh
+  //       };
+  //     });
 
-    const totalSolar = solarData.reduce((acc, curr) => acc + curr.solarKWh, 0);
+  //   const totalSolar = solarData.reduce((acc, curr) => acc + curr.solarKWh, 0);
 
-    return (
-      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600">
-              <Sun size={20} className="sm:size-[22px]" />
-            </div>
-            <div>
-              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">Potencial de Energía Solar por Día</h2>
-              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Estimación de generación fotovoltaica por día expresada en KiloVatios-Hora (kWh)</p>
-            </div>
-          </div>
-        </div>
+  //   return (
+  //     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
+  //       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
+  //         <div className="flex items-center gap-3">
+  //           <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600">
+  //             <Sun size={20} className="sm:size-[22px]" />
+  //           </div>
+  //           <div>
+  //             <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">Potencial de Energía Solar por Día</h2>
+  //             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Estimación de generación fotovoltaica por día expresada en KiloVatios-Hora (kWh)</p>
+  //           </div>
+  //         </div>
+  //       </div>
 
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Generación Solar Estimada Total</p>
-            <p className="mt-1 text-2xl font-black text-emerald-950">
-              {totalSolar.toFixed(1)} <span className="text-xs font-bold text-emerald-600">kWh</span>
-            </p>
-            <p className="mt-1 text-[10px] text-emerald-600">Ahorro verde equivalente en el periodo filtrado</p>
-          </div>
+  //       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+  //         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+  //           <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Generación Solar Estimada Total</p>
+  //           <p className="mt-1 text-2xl font-black text-emerald-950">
+  //             {totalSolar.toFixed(1)} <span className="text-xs font-bold text-emerald-600">kWh</span>
+  //           </p>
+  //           <p className="mt-1 text-[10px] text-emerald-600">Ahorro verde equivalente en el periodo filtrado</p>
+  //         </div>
 
-          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Cobertura Solar Estimada</p>
-            <p className="mt-1 text-2xl font-black text-emerald-950">
-              {(FACTOR_GENERACION_SOLAR_DIARIO * 100).toFixed(0)}% <span className="text-xs font-bold text-emerald-600">del consumo</span>
-            </p>
-            <p className="mt-1 text-[10px] text-emerald-600">Proyección de autogeneración sobre la demanda</p>
-          </div>
-        </div>
+  //         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
+  //           <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Cobertura Solar Estimada</p>
+  //           <p className="mt-1 text-2xl font-black text-emerald-950">
+  //             {(FACTOR_GENERACION_SOLAR_DIARIO * 100).toFixed(0)}% <span className="text-xs font-bold text-emerald-600">del consumo</span>
+  //           </p>
+  //           <p className="mt-1 text-[10px] text-emerald-600">Proyección de autogeneración sobre la demanda</p>
+  //         </div>
+  //       </div>
 
-        <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
-          <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
-          {seriesKeys.map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => toggleSolarDay(key)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSolarSeries[key] !== false
-                ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
-                : 'bg-white border-slate-200 text-slate-400'
-                }`}
-            >
-              {key}
-            </button>
-          ))}
-        </div>
+  //       <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
+  //         <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
+  //         {seriesKeys.map((key) => (
+  //           <button
+  //             key={key}
+  //             type="button"
+  //             onClick={() => toggleSolarDay(key)}
+  //             className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSolarSeries[key] !== false
+  //               ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
+  //               : 'bg-white border-slate-200 text-slate-400'
+  //               }`}
+  //           >
+  //             {key}
+  //           </button>
+  //         ))}
+  //       </div>
 
-        <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-          <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
-            {solarData.length === 0 ? (
-              <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
-                Selecciona al menos un día para visualizar los datos del gráfico.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={solarData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
-                    <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                  </XAxis>
-                  <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
-                    <Label value="Energía Solar (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-                  </YAxis>
-                  <Tooltip
-                    cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
-                    formatter={(val: any) => [`${Number(val).toFixed(1)} kWh`, 'Energía Solar']}
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                  />
-                  <Bar dataKey="solarKWh" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={50} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </section>
-    );
-  };
+  //       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
+  //         <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
+  //           {solarData.length === 0 ? (
+  //             <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
+  //               Selecciona al menos un día para visualizar los datos del gráfico.
+  //             </div>
+  //           ) : (
+  //             <ResponsiveContainer width="100%" height="100%">
+  //               <BarChart data={solarData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
+  //                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+  //                 <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
+  //                   <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+  //                 </XAxis>
+  //                 <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
+  //                   <Label value="Energía Solar (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+  //                 </YAxis>
+  //                 <Tooltip
+  //                   cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
+  //                   formatter={(val: any) => [`${Number(val).toFixed(1)} kWh`, 'Energía Solar']}
+  //                   contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+  //                 />
+  //                 <Bar dataKey="solarKWh" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={50} />
+  //               </BarChart>
+  //             </ResponsiveContainer>
+  //           )}
+  //         </div>
+  //       </div>
+  //     </section>
+  //   );
+  // };
 
   const renderThdVoltageSection = () => {
     if (rawChartData.length === 0) return null;
@@ -1619,169 +1617,170 @@ const BoardDetailPage = () => {
     );
   };
 
-  const renderThdCurrentSection = () => {
-    if (rawChartData.length === 0) return null;
+  // const renderThdCurrentSection = () => {
+  //   if (rawChartData.length === 0) return null;
 
-    const activeDay = selectedThdIDay || seriesKeys[0] || "";
+  //   const activeDay = selectedThdIDay || seriesKeys[0] || "";
 
-    let maxThdI = 0;
-    let sumThdI = 0;
-    let countThdI = 0;
-    let horaPicoThdI = "--:--";
+  //   let maxThdI = 0;
+  //   let sumThdI = 0;
+  //   let countThdI = 0;
+  //   let horaPicoThdI = "--:--";
 
-    rawChartData.forEach(row => {
-      const val = Number(row[`thd_i_${activeDay}`] || 0);
-      if (val > 0) {
-        if (val > maxThdI) {
-          maxThdI = val;
-          horaPicoThdI = row.horaMinuto;
-        }
-        sumThdI += val;
-        countThdI++;
-      }
-    });
+  //   rawChartData.forEach(row => {
+  //     const val = Number(row[`thd_i_${activeDay}`] || 0);
+  //     if (val > 0) {
+  //       if (val > maxThdI) {
+  //         maxThdI = val;
+  //         horaPicoThdI = row.horaMinuto;
+  //       }
+  //       sumThdI += val;
+  //       countThdI++;
+  //     }
+  //   });
 
-    const avgThdI = countThdI > 0 ? sumThdI / countThdI : 0;
+  //   const avgThdI = countThdI > 0 ? sumThdI / countThdI : 0;
 
-    const CurrentTooltip = ({ active, label, payload }: any) => {
-      if (active && payload && payload.length) {
-        const val = payload[0]?.value ?? 0;
-        return (
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl font-sans text-xs min-w-[210px]">
-            <div className="mb-2 border-b border-slate-100 pb-1.5 flex justify-between items-center">
-              <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Distorsión THD-I</span>
-              <span className="font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">{label} hrs</span>
-            </div>
-            <p className="text-[11px] font-bold text-slate-700 mb-2">
-              Día: <span className="text-slate-900">{activeDay}</span>
-            </p>
-            <div className="flex items-center justify-between font-semibold">
-              <span className="flex items-center gap-1.5 text-cyan-700 font-bold">
-                <span className="size-2 rounded-full bg-cyan-600 inline-block"></span>
-                THD Corriente:
-              </span>
-              <span className="font-black tabular-nums text-sm text-slate-900">
-                {Number(val).toFixed(2)}%
-              </span>
-            </div>
-            <p className="mt-2 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400">
-              Generado por cargas no lineales (VFD, UPS, Fuentes)
-            </p>
-          </div>
-        );
-      }
-      return null;
-    };
+  //   const CurrentTooltip = ({ active, label, payload }: any) => {
+  //     if (active && payload && payload.length) {
+  //       const val = payload[0]?.value ?? 0;
+  //       return (
+  //         <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl font-sans text-xs min-w-[210px]">
+  //           <div className="mb-2 border-b border-slate-100 pb-1.5 flex justify-between items-center">
+  //             <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Distorsión THD-I</span>
+  //             <span className="font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">{label} hrs</span>
+  //           </div>
+  //           <p className="text-[11px] font-bold text-slate-700 mb-2">
+  //             Día: <span className="text-slate-900">{activeDay}</span>
+  //           </p>
+  //           <div className="flex items-center justify-between font-semibold">
+  //             <span className="flex items-center gap-1.5 text-cyan-700 font-bold">
+  //               <span className="size-2 rounded-full bg-cyan-600 inline-block"></span>
+  //               THD Corriente:
+  //             </span>
+  //             <span className="font-black tabular-nums text-sm text-slate-900">
+  //               {Number(val).toFixed(2)}%
+  //             </span>
+  //           </div>
+  //           <p className="mt-2 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400">
+  //             Generado por cargas no lineales (VFD, UPS, Fuentes)
+  //           </p>
+  //         </div>
+  //       );
+  //     }
+  //     return null;
+  //   };
 
-    return (
-      <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6 transition-all hover:border-slate-300">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-600">
-              <Activity size={22} />
-            </div>
-            <div>
-              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
-                Distorsión Armónica de Corriente (THD-I)
-              </h2>
-              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-                Nivel de contaminación por inyección armónica de las cargas del tablero
-              </p>
-            </div>
-          </div>
-        </div>
+  //   return (
+  //     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6 transition-all hover:border-slate-300">
+  //       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
+  //         <div className="flex items-center gap-3">
+  //           <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-600">
+  //             <Activity size={22} />
+  //           </div>
+  //           <div>
+  //             <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
+  //               Distorsión Armónica de Corriente (THD-I)
+  //             </h2>
+  //             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+  //               Nivel de contaminación por inyección armónica de las cargas del tablero
+  //             </p>
+  //           </div>
+  //         </div>
+  //       </div>
 
-        {/* Tarjetas KPI de THD-I */}
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-cyan-100 bg-cyan-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-cyan-700">Pico Máximo THD-I</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-black text-cyan-950">
-              {maxThdI.toFixed(2)} <span className="text-xs sm:text-sm font-bold text-cyan-600">%</span>
-            </p>
-            <p className="mt-1 text-[11px] text-slate-500">
-              Registrado a las <strong className="text-slate-700">{horaPicoThdI} hrs</strong>
-            </p>
-          </div>
+  //       {/* Tarjetas KPI de THD-I */}
+  //       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+  //         <div className="rounded-2xl border border-cyan-100 bg-cyan-50/40 p-4">
+  //           <p className="text-[10px] font-black uppercase tracking-wider text-cyan-700">Pico Máximo THD-I</p>
+  //           <p className="mt-1 text-2xl sm:text-3xl font-black text-cyan-950">
+  //             {maxThdI.toFixed(2)} <span className="text-xs sm:text-sm font-bold text-cyan-600">%</span>
+  //           </p>
+  //           <p className="mt-1 text-[11px] text-slate-500">
+  //             Registrado a las <strong className="text-slate-700">{horaPicoThdI} hrs</strong>
+  //           </p>
+  //         </div>
 
-          <div className="rounded-2xl border border-cyan-100 bg-cyan-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-cyan-700">Promedio THD-I del Periodo</p>
-            <p className="mt-1 text-2xl sm:text-3xl font-black text-cyan-950">
-              {avgThdI.toFixed(2)} <span className="text-xs sm:text-sm font-bold text-cyan-600">%</span>
-            </p>
-            <p className="mt-1 text-[11px] text-slate-500">Inyección armónica promedio hacia la red</p>
-          </div>
-        </div>
+  //         <div className="rounded-2xl border border-cyan-100 bg-cyan-50/40 p-4">
+  //           <p className="text-[10px] font-black uppercase tracking-wider text-cyan-700">Promedio THD-I del Periodo</p>
+  //           <p className="mt-1 text-2xl sm:text-3xl font-black text-cyan-950">
+  //             {avgThdI.toFixed(2)} <span className="text-xs sm:text-sm font-bold text-cyan-600">%</span>
+  //           </p>
+  //           <p className="mt-1 text-[11px] text-slate-500">Inyección armónica promedio hacia la red</p>
+  //         </div>
+  //       </div>
 
-        {/* Selector de Días */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
-          <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
-            SELECCIONAR DÍA:
-          </span>
-          {seriesKeys.map((key) => {
-            const isSelected = activeDay === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setSelectedThdIDay(key)}
-                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
-                  ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-              >
-                {key}
-              </button>
-            );
-          })}
-        </div>
+  //       {/* Selector de Días */}
+  //       <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
+  //         <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
+  //           SELECCIONAR DÍA:
+  //         </span>
+  //         {seriesKeys.map((key) => {
+  //           const isSelected = activeDay === key;
+  //           return (
+  //             <button
+  //               key={key}
+  //               type="button"
+  //               onClick={() => setSelectedThdIDay(key)}
+  //               className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
+  //                 ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+  //                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+  //                 }`}
+  //             >
+  //               {key}
+  //             </button>
+  //           );
+  //         })}
+  //       </div>
 
-        {/* Gráfico THD-I */}
-        <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
-          <div className="h-72 sm:h-80 md:h-[340px] w-[850px] sm:w-full text-xs select-none">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={rawChartData} margin={{ top: 15, right: 25, left: 10, bottom: 25 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis
-                  dataKey="horaMinuto"
-                  tickLine={false}
-                  stroke="#94a3b8"
-                  interval={11}
-                  dy={5}
-                  tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
-                >
-                  <Label value="Hora del Día" position="insideBottom" offset={-15} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px' }} />
-                </XAxis>
-                <YAxis
-                  tickLine={false}
-                  stroke="#94a3b8"
-                  width={45}
-                  domain={[0, 'auto']}
-                  tickFormatter={(val) => `${val}%`}
-                >
-                  <Label value="THD-I (%)" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#0891b2', fontWeight: '800', fontSize: '9px' }} />
-                </YAxis>
+  //       {/* Gráfico THD-I */}
+  //       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
+  //         <div className="h-72 sm:h-80 md:h-[340px] w-[850px] sm:w-full text-xs select-none">
+  //           <ResponsiveContainer width="100%" height="100%">
+  //             <LineChart data={rawChartData} margin={{ top: 15, right: 25, left: 10, bottom: 25 }}>
+  //               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+  //               <XAxis
+  //                 dataKey="horaMinuto"
+  //                 tickLine={false}
+  //                 stroke="#94a3b8"
+  //                 interval={11}
+  //                 dy={5}
+  //                 tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
+  //               >
+  //                 <Label value="Hora del Día" position="insideBottom" offset={-15} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px' }} />
+  //               </XAxis>
+  //               <YAxis
+  //                 tickLine={false}
+  //                 stroke="#94a3b8"
+  //                 width={45}
+  //                 domain={[0, 'auto']}
+  //                 tickFormatter={(val) => `${val}%`}
+  //               >
+  //                 <Label value="THD-I (%)" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#0891b2', fontWeight: '800', fontSize: '9px' }} />
+  //               </YAxis>
 
-                <Tooltip content={<CurrentTooltip />} shared={true} />
+  //               <Tooltip content={<CurrentTooltip />} shared={true} />
 
-                <Line
-                  type="monotone"
-                  name={`THD-I - ${activeDay}`}
-                  dataKey={`thd_i_${activeDay}`}
-                  stroke="#0891b2"
-                  strokeWidth={2}
-                  dot={false}
-                  connectNulls={true}
-                  animationDuration={150}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </section>
-    );
-  };
+  //               <Line
+  //                 type="monotone"
+  //                 name={`THD-I - ${activeDay}`}
+  //                 dataKey={`thd_i_${activeDay}`}
+  //                 stroke="#0891b2"
+  //                 strokeWidth={2}
+  //                 dot={false}
+  //                 connectNulls={true}
+  //                 animationDuration={150}
+  //               />
+  //             </LineChart>
+  //           </ResponsiveContainer>
+  //         </div>
+  //       </div>
+  //     </section>
+  //   );
+  // };
 
   // ── TRAZADO OFICIAL CURVA ITIC / CBEMA (COINCIDENTE CON METREL POWERVIEW) ──
+  
   const ITIC_UPPER_LINE = [
     { x: 0.0002, y: 400 },
     { x: 0.001, y: 200 },
@@ -2067,68 +2066,68 @@ const BoardDetailPage = () => {
     );
   };
 
-  interface IDocument {
-    _id: string;
-    title: string;
-    type: string;
-    cloudinaryUrl: string;
-  }
+  // interface IDocument {
+  //   _id: string;
+  //   title: string;
+  //   type: string;
+  //   cloudinaryUrl: string;
+  // }
 
   // Asumiendo que 'board' es el objeto que recibiste de tu API
-  const assignedDocs = board?.assignedDocuments || [];
+  // const assignedDocs = board?.assignedDocuments || [];
 
   // Filtrar documentos que vienen poblados desde el Tablero
-  const certificadosMantenimiento = assignedDocs.filter(
-    (doc: any) => typeof doc === "object" && doc.type === "MANTENIMIENTO"
-  );
+  // const certificadosMantenimiento = assignedDocs.filter(
+  //   (doc: any) => typeof doc === "object" && doc.type === "MANTENIMIENTO"
+  // );
 
-  const certificadosOperatividad = assignedDocs.filter(
-    (doc: any) => typeof doc === "object" && doc.type === "OPERATIVIDAD"
-  );
+  // const certificadosOperatividad = assignedDocs.filter(
+  //   (doc: any) => typeof doc === "object" && doc.type === "OPERATIVIDAD"
+  // );
 
-  const openPdfInNewTab = (url: string, title: string) => {
-    if (!url) return;
+  // const openPdfInNewTab = (url: string, title: string) => {
+  //   if (!url) return;
 
-    // Creamos una nueva ventana
-    const newWindow = window.open("", "_blank");
+  //   // Creamos una nueva ventana
+  //   const newWindow = window.open("", "_blank");
 
-    if (newWindow) {
-      // Inyectamos el HTML dinámico con el favicon y el título personalizado
-      // TODO: Este es el icono default de PDF => <link rel="icon" type="image/svg+xml" href="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg" />
-      newWindow.document.write(`
-      <!DOCTYPE html>
-      <html lang="es">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>${title} - Visor PDF</title>
+  //   if (newWindow) {
+  //     // Inyectamos el HTML dinámico con el favicon y el título personalizado
+  //     // TODO: Este es el icono default de PDF => <link rel="icon" type="image/svg+xml" href="https://upload.wikimedia.org/wikipedia/commons/8/87/PDF_file_icon.svg" />
+  //     newWindow.document.write(`
+  //     <!DOCTYPE html>
+  //     <html lang="es">
+  //       <head>
+  //         <meta charset="UTF-8" />
+  //         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  //         <title>${title} - Visor PDF</title>
           
-          <!-- Icono de PDF estándar o el favicon de tu app -->
-          <link rel="icon" type="image/svg+xml" href="/voltguard.png" />
+  //         <!-- Icono de PDF estándar o el favicon de tu app -->
+  //         <link rel="icon" type="image/svg+xml" href="/voltguard.png" />
           
-          <style>
-            body, html {
-              margin: 0;
-              padding: 0;
-              height: 100%;
-              overflow: hidden;
-              background-color: #525659;
-            }
-            iframe {
-              width: 100%;
-              height: 100%;
-              border: none;
-            }
-          </style>
-        </head>
-        <body>
-          <iframe src="${url}"></iframe>
-        </body>
-      </html>
-    `);
-      newWindow.document.close();
-    }
-  };
+  //         <style>
+  //           body, html {
+  //             margin: 0;
+  //             padding: 0;
+  //             height: 100%;
+  //             overflow: hidden;
+  //             background-color: #525659;
+  //           }
+  //           iframe {
+  //             width: 100%;
+  //             height: 100%;
+  //             border: none;
+  //           }
+  //         </style>
+  //       </head>
+  //       <body>
+  //         <iframe src="${url}"></iframe>
+  //       </body>
+  //     </html>
+  //   `);
+  //     newWindow.document.close();
+  //   }
+  // };
 
   const renderField = (label: string, data: unknown, index: number) => (
     <div style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${index * 30}ms` }} className="rounded-2xl bg-slate-50 p-4 transition-all hover:bg-slate-100/80">
@@ -2166,41 +2165,41 @@ const BoardDetailPage = () => {
     </section>
   );
 
-  const renderPdfSection = (title: string, description: string, documentsList: IDocument[]) => {
-    return (
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
-            <FileImage size={22} />
-          </div>
-          <div>
-            <h2 className="font-bold text-slate-950 text-base tracking-tight">{title}</h2>
-            <p className="text-xs text-slate-500 mt-0.5">{description}</p>
-          </div>
-        </div>
+  // const renderPdfSection = (title: string, description: string, documentsList: IDocument[]) => {
+  //   return (
+  //     <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
+  //       <div className="mb-5 flex items-center gap-3">
+  //         <div className="flex size-11 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+  //           <FileImage size={22} />
+  //         </div>
+  //         <div>
+  //           <h2 className="font-bold text-slate-950 text-base tracking-tight">{title}</h2>
+  //           <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+  //         </div>
+  //       </div>
 
-        {!documentsList || documentsList.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
-            <FileImage size={32} className="text-slate-300" />
-            <p className="mt-2 text-xs font-bold text-slate-500">Sin documentos registrados</p>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {documentsList.map((doc) => (
-              <button
-                key={doc._id}
-                onClick={() => openPdfInNewTab(doc.cloudinaryUrl, doc.title)} // 👈 Uso exacto del campo de MongoDB
-                className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer"
-              >
-                <FileImage size={15} />
-                {doc.title}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-    );
-  };
+  //       {!documentsList || documentsList.length === 0 ? (
+  //         <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+  //           <FileImage size={32} className="text-slate-300" />
+  //           <p className="mt-2 text-xs font-bold text-slate-500">Sin documentos registrados</p>
+  //         </div>
+  //       ) : (
+  //         <div className="flex flex-wrap gap-2">
+  //           {documentsList.map((doc) => (
+  //             <button
+  //               key={doc._id}
+  //               onClick={() => openPdfInNewTab(doc.cloudinaryUrl, doc.title)} // 👈 Uso exacto del campo de MongoDB
+  //               className="inline-flex items-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition-all duration-300 hover:bg-[#087fb3] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#0797d5]/20 cursor-pointer"
+  //             >
+  //               <FileImage size={15} />
+  //               {doc.title}
+  //             </button>
+  //           ))}
+  //         </div>
+  //       )}
+  //     </section>
+  //   );
+  // };
 
   const renderNfpaSection = () => {
     if (!board?.nfpa) {
@@ -2634,14 +2633,14 @@ const BoardDetailPage = () => {
           <>
             {renderDemandSection()}
             {renderReactivePowerSection()}
-            {renderCombinedDemandAndReactiveSection()}
+            {/* {renderCombinedDemandAndReactiveSection()} */}
             {renderThdVoltageSection()}
-            {renderThdCurrentSection()}
+            {/* {renderThdCurrentSection()} */}
             {renderIticCurveSection()}
             {renderEnergyBarSection()}
             {renderCarbonEmissionsSection()}
             {renderEnergyCostSection()}
-            {renderSolarEnergySection()}
+            {/* {renderSolarEnergySection()} */}
           </>
         )}
 
@@ -2752,7 +2751,7 @@ const BoardDetailPage = () => {
         )}
 
         {/* ── PLAN INTERMEDIO Y EMPRESARIAL: CERTIFICADOS Y MANTENIMIENTO ── */}
-        {isIntermedioOrSuperior && (
+        {/* {isIntermedioOrSuperior && (
           <>
             {
               renderPdfSection(
@@ -2768,7 +2767,7 @@ const BoardDetailPage = () => {
                 certificadosOperatividad
               )}
           </>
-        )}
+        )} */}
 
       </section>
 

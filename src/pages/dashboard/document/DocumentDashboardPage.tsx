@@ -121,20 +121,27 @@ const DocumentDashboardPage = () => {
     }
   };
 
-  const openPdfInNewTab = async (url: string, title: string) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const pdfBlob = new Blob([blob], { type: "application/pdf" });
-      const blobUrl = URL.createObjectURL(pdfBlob);
-      const newTab = window.open(blobUrl, "_blank");
-      if (newTab) {
-        newTab.document.title = title;
-      }
-    } catch (error) {
-      console.error("Error al interceptar y renderizar el PDF:", error);
-      window.open(url, "_blank");
-    }
+  // const openPdfInNewTab = async (url: string, title: string) => {
+  //   try {
+  //     const response = await fetch(url);
+  //     const blob = await response.blob();
+  //     const pdfBlob = new Blob([blob], { type: "application/pdf" });
+  //     const blobUrl = URL.createObjectURL(pdfBlob);
+  //     const newTab = window.open(blobUrl, "_blank");
+  //     if (newTab) {
+  //       newTab.document.title = title;
+  //     }
+  //   } catch (error) {
+  //     console.error("Error al interceptar y renderizar el PDF:", error);
+  //     window.open(url, "_blank");
+  //   }
+  // };
+
+  const openPdfInNewTab = (url: string) => {
+    if (!url) return;
+    // Si la URL tiene el flag de forzar descarga, lo removemos para visualizarlo en el visor nativo del navegador
+    const inlineUrl = url.replace("/fl_attachment", "");
+    window.open(inlineUrl, "_blank", "noopener,noreferrer");
   };
 
   const downloadPdfFile = async (url: string, filename: string) => {
@@ -341,13 +348,13 @@ const DocumentDashboardPage = () => {
                                 <Download size={16} />
                               </button>
                               <button
-                                type="button"
-                                onClick={() => openPdfInNewTab(doc.cloudinaryUrl, doc.title)}
-                                title="Visualizar certificado PDF"
-                                className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-950 cursor-pointer"
-                              >
-                                <Eye size={16} />
-                              </button>
+  type="button"
+  onClick={() => openPdfInNewTab(doc.cloudinaryUrl)}
+  title="Visualizar certificado PDF"
+  className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-950 cursor-pointer"
+>
+  <Eye size={16} />
+</button>
                               <button
                                 type="button"
                                 onClick={() => handleDelete(doc._id)}

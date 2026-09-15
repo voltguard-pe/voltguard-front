@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { 
-  Flame, 
-  Thermometer, 
-  UploadCloud, 
-  Crosshair, 
-  Sliders 
+import {
+  Flame,
+  Thermometer,
+  UploadCloud,
+  Crosshair,
+  Camera,
+  Layers
 } from "lucide-react";
 import { getThermographyInfo, fetchThermalMatrix } from "../../../services/thermography.service";
 
@@ -12,57 +13,24 @@ interface ThermographyViewerProps {
   boardId?: string;
   originalImageUrl?: string;
   title?: string;
-  onOpenImportModal: () => void; // 👈 Abre el modal desacoplado
-  reloadKey?: number; // Permite forzar recarga tras guardar con éxito en el modal
-}
-
-// ── PALETA DE COLORES "IRONBOW" OFICIAL DE FLIR ──
-const FLIR_IRONBOW: [number, number, number, number][] = [
-  [0.00, 0, 0, 4],
-  [0.10, 31, 0, 100],
-  [0.25, 90, 0, 140],
-  [0.40, 150, 0, 140],
-  [0.55, 210, 40, 50],
-  [0.70, 245, 120, 0],
-  [0.85, 255, 210, 0],
-  [0.95, 255, 250, 160],
-  [1.00, 255, 255, 255],
-];
-
-function getFlirColor(t: number): [number, number, number] {
-  const clamped = Math.max(0, Math.min(1, t));
-  for (let i = 0; i < FLIR_IRONBOW.length - 1; i++) {
-    const [t0, r0, g0, b0] = FLIR_IRONBOW[i];
-    const [t1, r1, g1, b1] = FLIR_IRONBOW[i + 1];
-    if (clamped >= t0 && clamped <= t1) {
-      const factor = (clamped - t0) / (t1 - t0);
-      return [
-        Math.round(r0 + (r1 - r0) * factor),
-        Math.round(g0 + (g1 - g0) * factor),
-        Math.round(b0 + (b1 - b0) * factor),
-      ];
-    }
-  }
-  return [255, 255, 255];
+  onOpenImportModal: () => void;
+  reloadKey?: number;
 }
 
 export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
   boardId,
-  originalImageUrl,
   title = "Inspección Termográfica Radiométrica (NFPA 70B)",
   onOpenImportModal,
   reloadKey = 0,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [matrix, setMatrix] = useState<Float32Array | null>(null);
-  const [dimensions, setDimensions] = useState<{ rows: number; cols: number }>({ rows: 0, cols: 0 });
+  const [dimensions, setDimensions] = useState<{ rows: number; cols: number }>({ rows: 640, cols: 480 });
   const [stats, setStats] = useState<{ min: number; max: number; avg: number; maxPos: [number, number]; minPos: [number, number] } | null>(null);
-  const [, setLoading] = useState(false);
-  const [bgImage, setBgImage] = useState<string | null>(originalImageUrl || null);
-  const [viewMode, setViewMode] = useState<"blended" | "thermal" | "visual">("blended");
-  const [edgeIntensity, setEdgeIntensity] = useState<number>(65);
+
+  const [thermalImage, setThermalImage] = useState<string | null>(null);
+  const [visualImage, setVisualImage] = useState<string | null>(null);
 
   const [hoverData, setHoverData] = useState<{
     x: number;
@@ -70,67 +38,32 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
     canvasX: number;
     canvasY: number;
     temp: number;
+    percentX: number;
+    percentY: number;
   } | null>(null);
 
-  // Consulta de la BD
   useEffect(() => {
     if (!boardId) return;
 
     const loadData = async () => {
       try {
-        setLoading(true);
         const res = await getThermographyInfo(boardId);
         if (res?.data) {
           setStats(res.data.stats);
-          setDimensions({ rows: res.data.rows, cols: res.data.cols });
-          if (res.data.originalImageUrl) {
-            setBgImage(res.data.originalImageUrl);
-          }
+          setDimensions({ rows: res.data.rows || 640, cols: res.data.cols || 480 });
+          setThermalImage(res.data.thermalImageUrl || null);
+          setVisualImage(res.data.originalImageUrl || null);
+
           const { matrix: loadedMatrix } = await fetchThermalMatrix(boardId);
           setMatrix(loadedMatrix);
         }
       } catch (err) {
         console.error("Error al cargar termografía:", err);
-      } finally {
-        setLoading(false);
       }
     };
 
     loadData();
   }, [boardId, reloadKey]);
-
-  // Dibujar Canvas
-  useEffect(() => {
-    if (!matrix || !canvasRef.current || !stats) return;
-    const { rows, cols } = dimensions;
-    if (!rows || !cols || isNaN(rows) || isNaN(cols) || rows <= 0 || cols <= 0) return;
-
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    canvas.width = cols;
-    canvas.height = rows;
-
-    const imgData = ctx.createImageData(cols, rows);
-    const data = imgData.data;
-    const { min, max } = stats;
-    const range = max - min || 1;
-
-    for (let i = 0; i < matrix.length; i++) {
-      const temp = matrix[i];
-      const norm = Math.pow(Math.max(0, Math.min(1, (temp - min) / range)), 0.85);
-      const [r, g, b] = getFlirColor(norm);
-
-      const p = i * 4;
-      data[p] = r;
-      data[p + 1] = g;
-      data[p + 2] = b;
-      data[p + 3] = 255;
-    }
-
-    ctx.putImageData(imgData, 0, 0);
-  }, [matrix, dimensions, stats]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!matrix || !containerRef.current || !stats) return;
@@ -156,6 +89,8 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
         canvasX: clientX,
         canvasY: clientY,
         temp,
+        percentX: (clientX / rect.width) * 100,
+        percentY: (clientY / rect.height) * 100,
       });
     }
   };
@@ -171,12 +106,11 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
           <div>
             <h2 className="font-bold text-slate-950 text-base">{title}</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Fusión Térmica MSX® y Matriz Radiométrica de {dimensions.cols || 480}×{dimensions.rows || 640} píxeles
+              Matriz Radiométrica de {dimensions.cols}×{dimensions.rows} píxeles | Sincronización Térmica y Visual
             </p>
           </div>
         </div>
 
-        {/* Botón que abre el modal independiente */}
         <button
           type="button"
           onClick={onOpenImportModal}
@@ -192,7 +126,7 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
           <Flame size={36} className="text-slate-300 animate-pulse" />
           <p className="mt-3 text-xs font-bold text-slate-600">No hay datos térmicos cargados en este tablero</p>
           <p className="mt-1 text-[11px] text-slate-400">
-            Importa el archivo CSV con la matriz radiométrica para habilitar la inspección
+            Importa la foto térmica, la foto normal y el archivo CSV para habilitar la inspección
           </p>
           <button
             type="button"
@@ -204,64 +138,7 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
         </div>
       ) : (
         <div className="space-y-5">
-          {/* Controles de visualización */}
-          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-slate-100/80 p-2.5 border border-slate-200/50">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-black uppercase text-slate-400 mr-2">MODO:</span>
-              <button
-                type="button"
-                onClick={() => setViewMode("blended")}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                  viewMode === "blended"
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-                }`}
-              >
-                Fusión MSX®
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("thermal")}
-                className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                  viewMode === "thermal"
-                    ? "bg-slate-900 text-white shadow-sm"
-                    : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-                }`}
-              >
-                Térmico Puro
-              </button>
-              {bgImage && (
-                <button
-                  type="button"
-                  onClick={() => setViewMode("visual")}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all ${
-                    viewMode === "visual"
-                      ? "bg-slate-900 text-white shadow-sm"
-                      : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-200"
-                  }`}
-                >
-                  Foto Original
-                </button>
-              )}
-            </div>
-
-            {viewMode === "blended" && bgImage && (
-              <div className="flex items-center gap-2">
-                <Sliders size={13} className="text-slate-500" />
-                <span className="text-[11px] font-bold text-slate-600">Nitidez Bordes:</span>
-                <input
-                  type="range"
-                  min="20"
-                  max="100"
-                  value={edgeIntensity}
-                  onChange={(e) => setEdgeIntensity(Number(e.target.value))}
-                  className="w-24 accent-orange-600 cursor-pointer"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Estadísticas de Temperatura */}
+          {/* Métricas de Temperatura */}
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-2xl border border-red-200 bg-red-50/50 p-4">
@@ -290,115 +167,161 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
             </div>
           )}
 
-          {/* Canvas Interactivo */}
-          <div className="flex flex-col lg:flex-row items-center justify-center gap-6 bg-slate-950 p-4 sm:p-8 rounded-3xl shadow-2xl">
-            <div
-              ref={containerRef}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={() => setHoverData(null)}
-              className="relative cursor-crosshair overflow-hidden rounded-2xl border border-slate-800 shadow-2xl bg-black"
-              style={{
-                width: "420px",
-                maxWidth: "100%",
-                aspectRatio: `${dimensions.cols || 480} / ${dimensions.rows || 640}`,
-              }}
-            >
-              <canvas
-                ref={canvasRef}
-                className={`absolute inset-0 w-full h-full object-fill ${
-                  viewMode === "visual" ? "opacity-0" : "opacity-100"
-                }`}
-              />
+          {/* Vistas Lado a Lado */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-slate-950 p-4 sm:p-7 rounded-3xl shadow-2xl">
+            {/* LADO IZQUIERDO: IMAGEN TÉRMICA FLIR */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-300 px-1">
+                <span className="flex items-center gap-1.5">
+                  <Layers size={14} className="text-orange-400" />
+                  Termografía Interactiva
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">
+                  {dimensions.cols}×{dimensions.rows} px
+                </span>
+              </div>
 
-              {bgImage && viewMode === "blended" && (
-                <img
-                  src={bgImage}
-                  alt="Relieve MSX"
-                  className="absolute inset-0 w-full h-full object-fill pointer-events-none"
-                  style={{
-                    mixBlendMode: "luminosity",
-                    opacity: edgeIntensity / 100,
-                    filter: "contrast(180%) brightness(95%)",
-                  }}
-                />
-              )}
-
-              {bgImage && viewMode === "visual" && (
-                <img
-                  src={bgImage}
-                  alt="Visual FLIR"
-                  className="absolute inset-0 w-full h-full object-fill pointer-events-none"
-                />
-              )}
-
-              {stats && (
+              <div className="flex items-center justify-center gap-3">
                 <div
-                  className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2 text-red-500 font-bold"
+                  ref={containerRef}
+                  onMouseMove={handleMouseMove}
+                  onMouseLeave={() => setHoverData(null)}
+                  className="relative w-full cursor-crosshair overflow-hidden rounded-2xl border border-slate-800 shadow-xl bg-black"
                   style={{
-                    left: `${(stats.maxPos[1] / dimensions.cols) * 100}%`,
-                    top: `${(stats.maxPos[0] / dimensions.rows) * 100}%`,
+                    aspectRatio: `${dimensions.cols} / ${dimensions.rows}`,
                   }}
                 >
-                  <div className="size-6 border-2 border-red-500 rounded-full animate-ping absolute" />
-                  <div className="size-6 border border-white rounded-full flex items-center justify-center bg-red-600/30">
-                    <div className="size-1.5 bg-white rounded-full" />
-                  </div>
-                  <span className="absolute top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow whitespace-nowrap">
-                    MAX {stats.max.toFixed(1)} °C
-                  </span>
-                </div>
-              )}
-
-              {hoverData && (
-                <div
-                  className="pointer-events-none absolute z-30 -translate-x-1/2 -translate-y-full pb-3"
-                  style={{ left: `${hoverData.canvasX}px`, top: `${hoverData.canvasY}px` }}
-                >
-                  <div className="flex flex-col items-center">
-                    <div className="rounded-xl border border-slate-700 bg-slate-900/95 px-3 py-1.5 shadow-2xl backdrop-blur-md text-center text-white">
-                      <div className="flex items-center justify-center gap-1 text-[12px] font-black text-amber-400">
-                        <Thermometer size={14} />
-                        {hoverData.temp.toFixed(2)} °C
-                      </div>
-                      <div className="text-[9px] text-slate-400 font-medium">
-                        Coord: [{hoverData.x}, {hoverData.y}]
-                      </div>
+                  {/* Foto Térmica FLIR nítida oficial */}
+                  {thermalImage ? (
+                    <img
+                      src={thermalImage}
+                      alt="Termografía FLIR"
+                      className="w-full h-full object-fill pointer-events-none"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-slate-600 text-xs">
+                      Sin imagen térmica
                     </div>
-                    <div className="size-2 rotate-45 bg-slate-900 border-r border-b border-slate-700 -mt-1" />
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {hoverData && (
-                <div
-                  className="pointer-events-none absolute size-6 -translate-x-1/2 -translate-y-1/2 border border-white rounded-full"
-                  style={{ left: `${hoverData.canvasX}px`, top: `${hoverData.canvasY}px` }}
-                >
-                  <div className="absolute top-1/2 left-0 w-full h-px bg-white/70 -translate-y-1/2" />
-                  <div className="absolute left-1/2 top-0 h-full w-px bg-white/70 -translate-x-1/2" />
+                  {/* Marcador Hotspot Máximo */}
+                  {stats && (
+                    <div
+                      className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2"
+                      style={{
+                        left: `${(stats.maxPos[1] / dimensions.cols) * 100}%`,
+                        top: `${(stats.maxPos[0] / dimensions.rows) * 100}%`,
+                      }}
+                    >
+                      <div className="size-6 border-2 border-red-500 rounded-full animate-ping absolute" />
+                      <div className="size-6 border border-white rounded-full flex items-center justify-center bg-red-600/40">
+                        <div className="size-1.5 bg-white rounded-full" />
+                      </div>
+                      <span className="absolute top-6 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+                        MAX {stats.max.toFixed(1)} °C
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Tooltip con temperatura en hover */}
+                  {/* Tooltip Térmico Inteligente (Anti-recorte en bordes) */}
+                  {hoverData && (() => {
+                    const isNearTop = hoverData.percentY < 15;
+                    const isNearLeft = hoverData.percentX < 18;
+                    const isNearRight = hoverData.percentX > 82;
+
+                    // Ajuste horizontal para no salirse de los lados
+                    const translateX = isNearLeft ? "0%" : isNearRight ? "-100%" : "-50%";
+                    // Invertir a posición inferior si está en la parte superior
+                    const translateY = isNearTop ? "0%" : "-100%";
+
+                    return (
+                      <>
+                        <div
+                          className="pointer-events-none absolute z-30 transition-transform duration-75"
+                          style={{
+                            left: `${hoverData.canvasX}px`,
+                            top: isNearTop ? `${hoverData.canvasY + 18}px` : `${hoverData.canvasY - 14}px`,
+                            transform: `translate(${translateX}, ${translateY})`,
+                          }}
+                        >
+                          <div className="rounded-xl border border-slate-700/80 bg-slate-950/95 px-2.5 py-1 text-center shadow-2xl backdrop-blur-md whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1 text-xs font-black text-amber-400">
+                              <Thermometer size={12} />
+                              {hoverData.temp.toFixed(2)} °C
+                            </div>
+                            <div className="text-[9px] text-slate-400 font-mono">
+                              [{hoverData.x}, {hoverData.y}]
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mira Láser Cruzada */}
+                        <div
+                          className="pointer-events-none absolute size-6 -translate-x-1/2 -translate-y-1/2 border border-white rounded-full"
+                          style={{ left: `${hoverData.canvasX}px`, top: `${hoverData.canvasY}px` }}
+                        >
+                          <div className="absolute top-1/2 left-0 w-full h-px bg-white/70 -translate-y-1/2" />
+                          <div className="absolute left-1/2 top-0 h-full w-px bg-white/70 -translate-x-1/2" />
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
-              )}
+
+                {/* Barra Térmica Lateral Oficial Ironbow */}
+                {stats && (
+                  <div className="flex flex-col items-center gap-2 text-white text-[11px] font-bold shrink-0">
+                    <span className="text-red-400 font-mono text-[10px]">{stats.max.toFixed(1)}°</span>
+                    <div
+                      className="w-3.5 h-64 sm:h-80 rounded-lg border border-slate-700 shadow-inner"
+                      style={{
+                        background:
+                          "linear-gradient(to top, #000004 0%, #1f0064 10%, #5a008c 25%, #96008c 40%, #d22832 55%, #f57800 70%, #ffd200 85%, #fffab4 95%, #ffffff 100%)",
+                      }}
+                    />
+                    <span className="text-blue-400 font-mono text-[10px]">{stats.min.toFixed(1)}°</span>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {stats && (
-              <div className="flex flex-row lg:flex-col items-center gap-3 text-white text-xs font-bold shrink-0">
-                <span className="text-red-400 font-mono text-xs">{stats.max.toFixed(1)} °C</span>
-                <div
-                  className="w-44 lg:w-5 h-5 lg:h-80 rounded-xl border border-slate-700 shadow-md"
-                  style={{
-                    background:
-                      "linear-gradient(to top, #000004 0%, #1f0064 10%, #5a008c 25%, #96008c 40%, #d22832 55%, #f57800 70%, #ffd200 85%, #fffab4 95%, #ffffff 100%)",
-                  }}
-                />
-                <span className="text-blue-400 font-mono text-xs">{stats.min.toFixed(1)} °C</span>
+            {/* LADO DERECHO: FOTO NORMAL DEL TABLERO */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-300 px-1">
+                <span className="flex items-center gap-1.5">
+                  <Camera size={14} className="text-sky-400" />
+                  Foto Normal del Tablero
+                </span>
+                <span className="text-[10px] text-slate-500 font-mono">Cámara Visual FLIR</span>
               </div>
-            )}
+
+              <div
+                className="relative w-full overflow-hidden rounded-2xl border border-slate-800 shadow-xl bg-slate-900"
+                style={{
+                  aspectRatio: `${dimensions.cols} / ${dimensions.rows}`,
+                }}
+              >
+                {visualImage ? (
+                  <img
+                    src={visualImage}
+                    alt="Foto Visual Tablero"
+                    className="w-full h-full object-fill select-none pointer-events-none"
+                  />
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center text-slate-500 gap-2 p-4 text-center">
+                    <Camera size={28} className="opacity-40" />
+                    <p className="text-xs">No hay foto normal disponible</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center justify-between text-xs text-slate-400 pt-1">
             <span className="flex items-center gap-1.5">
               <Crosshair size={14} className="text-orange-500" />
-              Pasa el cursor por cualquier punto del circuito para medir la temperatura puntual.
+              Pasa el cursor por la termografía para ubicar el elemento físico exacto en la fotografía del tablero.
             </span>
           </div>
         </div>

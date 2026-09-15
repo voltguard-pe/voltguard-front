@@ -22,12 +22,16 @@ export interface ThermographyData {
 export const uploadThermographyPackage = async (
   boardId: string,
   csvFile: File,
-  imageFile?: File | null
+  thermalImageFile: File | null,
+  visualImageFile: File | null
 ) => {
   const formData = new FormData();
   formData.append("csvFile", csvFile);
-  if (imageFile) {
-    formData.append("imageFile", imageFile);
+if (thermalImageFile) {
+    formData.append("thermalImage", thermalImageFile);
+  }
+  if (visualImageFile) {
+    formData.append("visualImage", visualImageFile);
   }
 
   const { data } = await clientAxios.post(`/thermography/${boardId}/upload`, formData, {

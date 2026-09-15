@@ -15,22 +15,35 @@ import {
   Zap,
   Activity,
   User2,
+  Plus,
+  MoreVertical,
+  ExternalLink,
+  Award,
 } from "lucide-react";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../shared/hooks/useAuth";
 import { getCompanies } from "../../services/company.service";
 import { publicGetCompanyBoards } from "../../services/board.service";
+import { getDocumentsByCompany } from "../../services/document.service";
 import type { CompanyResponseDTO } from "../../shared/types/CompanyProps";
-import type { PublicCompanyBoardsItemDTO } from "../../shared/types/BoardProps";
+import type { PublicCompanyBoardsItemDTO, DocumentResponseDTO } from "../../shared/types/BoardProps";
 
 interface SidebarComponentProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenCreateBoardModal?: (companyCode: string) => void;
+  onOpenCreateGroundingModal?: (companyCode: string) => void;
 }
 
-const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
+const SidebarComponent = ({
+  isOpen,
+  onClose,
+  onOpenCreateBoardModal,
+  onOpenCreateGroundingModal,
+}: SidebarComponentProps) => {
   const { auth, handleLogout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -38,63 +51,101 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
   const firstname = auth?.firstname || "Usuario";
   const lastname = auth?.lastname || "";
   const role = auth?.role || "USER";
+  const isSuperAdmin = role === "SUPERADMIN";
 
   const initials = `${firstname.trim().charAt(0)}${lastname.trim().charAt(0)}`.toUpperCase() || "U";
 
-  const profileRef = useRef<HTMLDivElement | null>(null);
-
   const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
-  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  // const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
+  
+  const SESSION_FOLDERS_KEY = "voltguard_sidebar_session_folders";
+  const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = sessionStorage.getItem(SESSION_FOLDERS_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
 
-  // Caché de tableros
+  // Caché de recursos
   const [companyBoards, setCompanyBoards] = useState<Record<string, PublicCompanyBoardsItemDTO[]>>({});
   const [loadingBoards, setLoadingBoards] = useState<Record<string, boolean>>({});
 
-  // Caché de Pozos a Tierra (SPAT)
   const [companyGrounding, setCompanyGrounding] = useState<Record<string, { code: string; name: string }[]>>({});
   const [loadingGrounding, setLoadingGrounding] = useState<Record<string, boolean>>({});
 
-  // Extraer el código público de la empresa del usuario (maneja string o tipo objeto)
-  // ✅ LECTURA ROBUSTA DEL CÓDIGO PÚBLICO DE LA EMPRESA:
+  const [companyDocuments, setCompanyDocuments] = useState<Record<string, DocumentResponseDTO[]>>({});
+  const [loadingDocuments, setLoadingDocuments] = useState<Record<string, boolean>>({});
+
   const userCompanyPublicCode =
     typeof auth?.companyPublicCode === "string"
       ? auth.companyPublicCode
       : auth?.companyPublicCode?.publicCode ||
       (typeof auth?.company === "object" && auth?.company !== null
-        ? // cast to any to avoid TS 'never' when company has a broad type
-        (auth.company as any).publicCode
+        ? (auth.company as any).publicCode
         : auth?.company);
 
-  // ✅ REEMPLAZAR ESTE EFFECT EN SidebarComponent.tsx:
-  // ✅ CÓDIGO CORREGIDO DEL EFFECT DE EMPRESAS Y TABLEROS EN EL SIDEBAR:
+  // Carga en paralelo todos los recursos de una empresa para disponer de los totales inmediatamente
+  const loadCompanyFullData = async (publicCode: string) => {
+    if (!publicCode) return;
+
+    // 1. Tableros
+    if (!companyBoards[publicCode]) {
+      setLoadingBoards((prev) => ({ ...prev, [publicCode]: true }));
+      publicGetCompanyBoards(publicCode)
+        .then((res) => {
+          setCompanyBoards((prev) => ({ ...prev, [publicCode]: res.boards || [] }));
+        })
+        .catch(() => setCompanyBoards((prev) => ({ ...prev, [publicCode]: [] })))
+        .finally(() => setLoadingBoards((prev) => ({ ...prev, [publicCode]: false })));
+    }
+
+    // 2. Pozos a Tierra (SPAT)
+    if (!companyGrounding[publicCode]) {
+      setLoadingGrounding((prev) => ({ ...prev, [publicCode]: true }));
+      const mockPozos = [
+        { code: "SPAT-01", name: "Pozo #01 - Patio Principal" },
+        { code: "SPAT-02", name: "Pozo #02 - Cuarto de Máquinas" },
+        { code: "SPAT-03", name: "Pozo #03 - Subestación" },
+      ];
+      setCompanyGrounding((prev) => ({ ...prev, [publicCode]: mockPozos }));
+      setLoadingGrounding((prev) => ({ ...prev, [publicCode]: false }));
+    }
+
+    // 3. Documentos ITSE
+    if (!companyDocuments[publicCode]) {
+      setLoadingDocuments((prev) => ({ ...prev, [publicCode]: true }));
+      getDocumentsByCompany(publicCode)
+        .then((docs) => {
+          setCompanyDocuments((prev) => ({ ...prev, [publicCode]: docs || [] }));
+        })
+        .catch(() => setCompanyDocuments((prev) => ({ ...prev, [publicCode]: [] })))
+        .finally(() => setLoadingDocuments((prev) => ({ ...prev, [publicCode]: false })));
+    }
+  };
+
   useEffect(() => {
     const fetchCompaniesData = async () => {
       if (!auth) return;
 
       try {
-        if (auth.role === "SUPERADMIN") {
+        if (isSuperAdmin) {
           const data = await getCompanies();
           setCompanies(data);
         } else if (userCompanyPublicCode) {
           let userCompany: CompanyResponseDTO | null = null;
-
           try {
-            // Intentamos obtener las empresas disponibles
             const data = await getCompanies();
             userCompany = data.find((c) => c.publicCode === userCompanyPublicCode) || null;
-          } catch (err) {
-            console.warn("getCompanies() no autorizado para rol secundario, construyendo fallback...");
+          } catch {
+            // Manejo fallback si no tiene permiso general
           }
 
-          // Si la API restringió getCompanies, construimos un registro visual para el sidebar
           if (!userCompany) {
             userCompany = {
               _id: userCompanyPublicCode,
-              // Safely derive a display name without relying on a non-existent companyName property
-              name:
-                (auth as any).companyName ||
-                (auth.company && typeof auth.company !== "string" ? (auth.company as any).name : auth.company) ||
-                "Mi Empresa",
+              name: (auth as any).companyName || "Mi Empresa",
               publicCode: userCompanyPublicCode,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -102,117 +153,402 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
           }
 
           setCompanies([userCompany]);
-
-          // 1. Desplegar automáticamente la carpeta de la empresa y la subcarpeta de tableros
-          setExpandedFolders((prev) => ({
-            ...prev,
-            [userCompanyPublicCode]: true,
-            [`${userCompanyPublicCode}-boards`]: true,
-          }));
-
-          // 2. Solicitar tableros usando el endpoint público libre de restricciones
-          setLoadingBoards((prev) => ({ ...prev, [userCompanyPublicCode]: true }));
-          const res = await publicGetCompanyBoards(userCompanyPublicCode);
-
-          setCompanyBoards((prev) => ({
-            ...prev,
-            [userCompanyPublicCode]: res.boards || [],
-          }));
+          // Cargar datos de la empresa asignada
+          loadCompanyFullData(userCompanyPublicCode);
         }
       } catch (error) {
-        console.error("Error cargando datos en el sidebar:", error);
-      } finally {
-        if (userCompanyPublicCode) {
-          setLoadingBoards((prev) => ({ ...prev, [userCompanyPublicCode]: false }));
-        }
+        console.error("Error cargando empresas:", error);
       }
     };
 
     fetchCompaniesData();
-  }, [auth, userCompanyPublicCode]);
+  }, [auth, userCompanyPublicCode, isSuperAdmin]);
+
+  // ── AUTO-EXPANSIÓN REACTIVA BASADA EN LA URL ──
+  // useEffect(() => {
+  //   const path = location.pathname;
+  //   const expansionUpdates: Record<string, boolean> = {};
+
+  //   // A. Para SUPERADMIN: detecta la empresa presente en la URL
+  //   companies.forEach((c) => {
+  //     const code = c.publicCode;
+  //     if (path.includes(code)) {
+  //       expansionUpdates[code] = true; // Despliega la empresa raíz
+  //       expansionUpdates[`${code}-boards`] = path.includes("/boards");
+  //       expansionUpdates[`${code}-grounding`] = path.includes("/grounding");
+  //       expansionUpdates[`${code}-documents`] = path.includes("/documents");
+
+  //       loadCompanyFullData(code);
+  //     }
+  //   });
+
+  //   // B. Para otros roles: mantiene desplegados los recursos de su empresa
+  //   if (!isSuperAdmin && userCompanyPublicCode) {
+  //     expansionUpdates[userCompanyPublicCode] = true;
+  //     expansionUpdates[`${userCompanyPublicCode}-boards`] = true;
+  //     expansionUpdates[`${userCompanyPublicCode}-grounding`] = path.includes("/grounding");
+  //     expansionUpdates[`${userCompanyPublicCode}-documents`] = path.includes("/documents");
+  //   }
+
+  //   const timeoutId = window.setTimeout(() => {
+  //     setExpandedFolders((prev) => ({ ...prev, ...expansionUpdates }));
+  //   }, 0);
+
+  //   return () => window.clearTimeout(timeoutId);
+  // }, [location.pathname, companies, isSuperAdmin, userCompanyPublicCode]);
+
+  useEffect(() => {
+    const path = location.pathname;
+
+    setExpandedFolders((prev) => {
+      const next = { ...prev };
+
+      // Si es Superadmin y la URL contiene una empresa, aseguramos que esa esté abierta
+      companies.forEach((c) => {
+        const code = c.publicCode;
+        if (path.includes(code)) {
+          next[code] = true;
+          if (path.includes("/boards")) next[`${code}-boards`] = true;
+          if (path.includes("/grounding")) next[`${code}-grounding`] = true;
+          if (path.includes("/documents")) next[`${code}-documents`] = true;
+        }
+
+        // Si la carpeta de la empresa está marcada como abierta (por URL o por sesión), precargar sus datos
+        if (next[code]) {
+          loadCompanyFullData(code);
+        }
+      });
+
+      // Si no es Superadmin, mantener siempre disponible la suya
+      if (!isSuperAdmin && userCompanyPublicCode) {
+        next[userCompanyPublicCode] = true;
+        if (next[`${userCompanyPublicCode}-boards`] === undefined) {
+          next[`${userCompanyPublicCode}-boards`] = true;
+        }
+        loadCompanyFullData(userCompanyPublicCode);
+      }
+
+      try {
+        sessionStorage.setItem(SESSION_FOLDERS_KEY, JSON.stringify(next));
+      } catch (e) {
+        // silencioso
+      }
+
+      return next;
+    });
+  }, [location.pathname, companies, isSuperAdmin, userCompanyPublicCode]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-        // Handle click outside profile menu if needed
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // const toggleFolder = (folderKey: string) => {
+  //   setExpandedFolders((prev) => ({
+  //     ...prev,
+  //     [folderKey]: !prev[folderKey],
+  //   }));
+  // };
+
   const toggleFolder = (folderKey: string) => {
-    setExpandedFolders((prev) => ({
-      ...prev,
-      [folderKey]: !prev[folderKey],
-    }));
+    setExpandedFolders((prev) => {
+      const next = {
+        ...prev,
+        [folderKey]: !prev[folderKey],
+      };
+      try {
+        sessionStorage.setItem(SESSION_FOLDERS_KEY, JSON.stringify(next));
+      } catch (e) {
+        console.error("Error guardando sesión de carpetas:", e);
+      }
+      return next;
+    });
   };
 
-  const toggleBoardsSubfolder = async (publicCode: string) => {
-    const key = `${publicCode}-boards`;
-    const isCurrentlyOpen = !!expandedFolders[key];
-
-    setExpandedFolders((prev) => ({
-      ...prev,
-      [key]: !isCurrentlyOpen,
-    }));
-
-    if (!isCurrentlyOpen && !companyBoards[publicCode]) {
-      try {
-        setLoadingBoards((prev) => ({ ...prev, [publicCode]: true }));
-        const res = await publicGetCompanyBoards(publicCode);
-        setCompanyBoards((prev) => ({
-          ...prev,
-          [publicCode]: res.boards || [],
-        }));
-      } catch (error) {
-        console.error("Error cargando tableros de empresa:", publicCode, error);
-        setCompanyBoards((prev) => ({ ...prev, [publicCode]: [] }));
-      } finally {
-        setLoadingBoards((prev) => ({ ...prev, [publicCode]: false }));
-      }
+  // Al desplegar una empresa en Superadmin, carga sus totales inmediatamente
+  const handleToggleCompany = (publicCode: string) => {
+    const nextState = !expandedFolders[publicCode];
+    toggleFolder(publicCode);
+    if (nextState) {
+      loadCompanyFullData(publicCode);
     }
   };
 
-  const toggleGroundingSubfolder = async (publicCode: string) => {
-    const key = `${publicCode}-grounding`;
-    const isCurrentlyOpen = !!expandedFolders[key];
-
-    setExpandedFolders((prev) => ({
-      ...prev,
-      [key]: !isCurrentlyOpen,
-    }));
-
-    if (!isCurrentlyOpen && !companyGrounding[publicCode]) {
-      try {
-        setLoadingGrounding((prev) => ({ ...prev, [publicCode]: true }));
-
-        const mockPozos = [
-          { code: "SPAT-01", name: "Pozo #01 - Patio Principal" },
-          { code: "SPAT-02", name: "Pozo #02 - Cuarto de Máquinas" },
-          { code: "SPAT-03", name: "Pozo #03 - Subestación" },
-        ];
-
-        setCompanyGrounding((prev) => ({
-          ...prev,
-          [publicCode]: mockPozos,
-        }));
-      } catch (error) {
-        console.error("Error cargando puestas a tierra:", publicCode, error);
-        setCompanyGrounding((prev) => ({ ...prev, [publicCode]: [] }));
-      } finally {
-        setLoadingGrounding((prev) => ({ ...prev, [publicCode]: false }));
-      }
-    }
+  const handleOpenPdf = (cloudinaryUrl: string) => {
+    if (!cloudinaryUrl) return;
+    const cleanUrl = cloudinaryUrl.replace("/fl_attachment", "");
+    window.open(cleanUrl, "_blank", "noopener,noreferrer");
   };
 
   if (!auth) return null;
+
+  // Renderizador de los tres folders de recursos
+  const renderResourceFolders = (company: CompanyResponseDTO, isNested: boolean) => {
+    const isBoardsOpen = Boolean(expandedFolders[`${company.publicCode}-boards`]);
+    const isGroundingOpen = Boolean(expandedFolders[`${company.publicCode}-grounding`]);
+    const isDocsOpen = Boolean(expandedFolders[`${company.publicCode}-documents`]);
+
+    const boards = companyBoards[company.publicCode] || [];
+    const isLoadingBoards = loadingBoards[company.publicCode];
+
+    const pozos = companyGrounding[company.publicCode] || [];
+    const isLoadingGrounding = loadingGrounding[company.publicCode];
+
+    const documents = companyDocuments[company.publicCode] || [];
+    const isLoadingDocs = loadingDocuments[company.publicCode];
+
+    return (
+      <div className={`${isNested ? "ml-3 border-l border-slate-200 pl-2 my-1" : ""} space-y-1`}>
+        {/* ⚡ TABLEROS */}
+        <div>
+          <div className="group flex items-center justify-between rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100">
+            <button
+              onClick={() => toggleFolder(`${company.publicCode}-boards`)}
+              className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left"
+            >
+              {isBoardsOpen ? (
+                <ChevronDown size={13} className="shrink-0 text-slate-400" />
+              ) : (
+                <ChevronRight size={13} className="shrink-0 text-slate-400" />
+              )}
+              {isBoardsOpen ? (
+                <FolderOpen size={15} className="shrink-0 text-[#0797d5]" />
+              ) : (
+                <Folder size={15} className="shrink-0 text-[#0797d5]" />
+              )}
+              <span className="truncate text-xs font-semibold text-slate-700">Tableros</span>
+              <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
+                {isLoadingBoards ? "..." : boards.length}
+              </span>
+            </button>
+
+            <button
+              title="Crear Nuevo Tablero"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenCreateBoardModal) {
+                  onOpenCreateBoardModal(company.publicCode);
+                } else {
+                  navigate(`/dashboard/boards/${company.publicCode}?action=new`);
+                }
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-[#0797d5] hover:bg-white rounded transition-all cursor-pointer"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+
+          {isBoardsOpen && (
+            <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+              {isSuperAdmin && (
+                <NavLink
+                  to={`/dashboard/boards/${company.publicCode}`}
+                  onClick={onClose}
+                  end
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
+                      ? "bg-[#0797d5]/10 text-[#0797d5] font-bold"
+                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                    }`
+                  }
+                >
+                  <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
+                  <span className="truncate italic">Ver todos ({boards.length})</span>
+                </NavLink>
+              )}
+
+              {isLoadingBoards ? (
+                <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando...</p>
+              ) : boards.length === 0 ? (
+                <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin tableros</p>
+              ) : (
+                boards.map((board) => (
+                  <div
+                    key={board.code}
+                    className="group/item flex items-center justify-between rounded-md text-slate-600 hover:bg-slate-100"
+                  >
+                    <NavLink
+                      to={`/dashboard/boards/${company.publicCode}/${board.code}`}
+                      onClick={onClose}
+                      className={({ isActive }) =>
+                        `flex flex-1 items-center gap-2 px-2 py-1 text-[11px] min-w-0 transition-colors cursor-pointer ${isActive ? "text-[#0797d5] font-bold" : "hover:text-slate-900"
+                        }`
+                      }
+                    >
+                      <Zap size={12} className="shrink-0 text-[#0797d5]" />
+                      <span className="truncate">{board.boardCode || board.name}</span>
+                    </NavLink>
+
+                    <button
+                      title="Opciones"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/dashboard/boards/${company.publicCode}/${board.code}/edit`);
+                      }}
+                      className="opacity-0 group/item:opacity-100 p-0.5 mr-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      <MoreVertical size={12} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 🎯 SPAT */}
+        <div>
+          <div className="group flex items-center justify-between rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100">
+            <button
+              onClick={() => toggleFolder(`${company.publicCode}-grounding`)}
+              className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left"
+            >
+              {isGroundingOpen ? (
+                <ChevronDown size={13} className="shrink-0 text-slate-400" />
+              ) : (
+                <ChevronRight size={13} className="shrink-0 text-slate-400" />
+              )}
+              {isGroundingOpen ? (
+                <FolderOpen size={15} className="shrink-0 text-emerald-500" />
+              ) : (
+                <Folder size={15} className="shrink-0 text-emerald-500" />
+              )}
+              <span className="truncate text-xs font-semibold text-slate-700">SPAT</span>
+              <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
+                {isLoadingGrounding ? "..." : pozos.length}
+              </span>
+            </button>
+
+            <button
+              title="Crear Pozo SPAT"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenCreateGroundingModal) {
+                  onOpenCreateGroundingModal(company.publicCode);
+                } else {
+                  navigate(`/dashboard/companies/${company.publicCode}/grounding?action=new`);
+                }
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-emerald-600 hover:bg-white rounded transition-all cursor-pointer"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+
+          {isGroundingOpen && (
+            <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+              {isLoadingGrounding ? (
+                <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando pozos...</p>
+              ) : pozos.length === 0 ? (
+                <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin pozos registrados</p>
+              ) : (
+                pozos.map((pozo) => (
+                  <NavLink
+                    key={pozo.code}
+                    to={`/dashboard/companies/${company.publicCode}/grounding/${pozo.code}`}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
+                        ? "text-emerald-600 font-bold bg-emerald-50"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      }`
+                    }
+                  >
+                    <Activity size={12} className="shrink-0 text-emerald-500" />
+                    <span className="truncate">{pozo.code}</span>
+                  </NavLink>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 📄 DOCUMENTOS ITSE */}
+        <div>
+          <div className="group flex items-center justify-between rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100">
+            <button
+              onClick={() => toggleFolder(`${company.publicCode}-documents`)}
+              className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left"
+            >
+              {isDocsOpen ? (
+                <ChevronDown size={13} className="shrink-0 text-slate-400" />
+              ) : (
+                <ChevronRight size={13} className="shrink-0 text-slate-400" />
+              )}
+              {isDocsOpen ? (
+                <FolderOpen size={15} className="shrink-0 text-amber-500" />
+              ) : (
+                <Folder size={15} className="shrink-0 text-amber-500" />
+              )}
+              <span className="truncate text-xs font-semibold text-slate-700">Documentos ITSE</span>
+              <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
+                {isLoadingDocs ? "..." : documents.length}
+              </span>
+            </button>
+
+            <button
+              title="Gestionar Documentos"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/dashboard/documents?company=${company.publicCode}`);
+              }}
+              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-amber-600 hover:bg-white rounded transition-all cursor-pointer"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+
+          {isDocsOpen && (
+            <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+              {isSuperAdmin && (
+                <NavLink
+                  to={`/dashboard/documents?company=${company.publicCode}`}
+                  onClick={onClose}
+                  end
+                  className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+                >
+                  <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
+                  <span className="truncate italic">Ver todos ({documents.length})</span>
+                </NavLink>
+              )}
+
+              {isLoadingDocs ? (
+                <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando documentos...</p>
+              ) : documents.length === 0 ? (
+                <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin documentos subidos</p>
+              ) : (
+                documents.map((doc) => (
+                  <button
+                    key={doc._id}
+                    onClick={() => handleOpenPdf(doc.cloudinaryUrl)}
+                    title={`Abrir ${doc.title}`}
+                    className="group/item flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-amber-50/70 hover:text-amber-900 cursor-pointer text-left transition-colors"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText size={12} className="shrink-0 text-amber-500" />
+                      <span className="truncate">{doc.title}</span>
+                    </div>
+                    <ExternalLink size={11} className="shrink-0 opacity-0 group-hover/item:opacity-100 text-slate-400 transition-opacity" />
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        className={`fixed inset-0 z-40 bg-black/40 backdrop-blur-xs transition-opacity duration-300 lg:hidden ${isOpen ? "opacity-100" : "pointer-events-none opacity-0"
           }`}
       />
 
@@ -223,15 +559,15 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
         <div className="flex h-full flex-col justify-between">
           <div className="flex flex-col min-h-0 flex-1">
             {/* Header */}
-            <div className="flex h-20 shrink-0 items-center justify-between border-b border-slate-200 px-5">
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-5">
               <Link to={"/"} className="group flex min-w-0 items-center gap-3">
                 <img
                   src="/voltguard.png"
                   alt="Voltguard"
-                  className="size-11 shrink-0 object-contain transition-transform duration-300 group-hover:scale-105"
+                  className="size-9 shrink-0 object-contain transition-transform duration-300 group-hover:scale-105"
                 />
                 <div className="min-w-0">
-                  <h1 className="truncate text-xl font-black tracking-tight text-slate-950 transition-colors duration-200 group-hover:text-[#0797d5]">
+                  <h1 className="truncate text-lg font-black tracking-tight text-slate-900 transition-colors duration-200 group-hover:text-[#0797d5]">
                     Voltguard
                   </h1>
                 </div>
@@ -239,44 +575,43 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
 
               <button
                 onClick={onClose}
-                className="cursor-pointer rounded-xl p-2 text-slate-500 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-950 lg:hidden"
+                className="cursor-pointer rounded-xl p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-800 lg:hidden"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            {/* Árbol de Navegación File Tree */}
-            <nav className="min-h-0 flex-1 overflow-y-auto p-3 custom-scrollbar text-xs font-semibold">
-              {/* Rutas Globales */}
+            {/* Navegación File Tree */}
+            <nav className="min-h-0 flex-1 overflow-y-auto p-3 custom-scrollbar text-xs font-medium">
               <div className="space-y-1">
                 <NavLink
                   to="/dashboard"
                   end
                   onClick={onClose}
                   className={({ isActive }) =>
-                    `flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all cursor-pointer ${isActive
-                      ? "bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white shadow-md shadow-[#0797d5]/15"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                    `flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all cursor-pointer ${isActive
+                      ? "bg-slate-900 text-white font-semibold shadow-xs"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`
                   }
                 >
-                  <LayoutDashboard size={17} />
+                  <LayoutDashboard size={16} />
                   <span>Inicio</span>
                 </NavLink>
 
-                {auth.role === "SUPERADMIN" && (
+                {isSuperAdmin && (
                   <>
                     <NavLink
                       to="/dashboard/users"
                       onClick={onClose}
                       className={({ isActive }) =>
-                        `flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all cursor-pointer ${isActive
-                          ? "bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white shadow-md shadow-[#0797d5]/15"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                        `flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all cursor-pointer ${isActive
+                          ? "bg-slate-900 text-white font-semibold shadow-xs"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         }`
                       }
                     >
-                      <Users size={17} />
+                      <Users size={16} />
                       <span>Usuarios</span>
                     </NavLink>
 
@@ -284,13 +619,13 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
                       to="/dashboard/admins"
                       onClick={onClose}
                       className={({ isActive }) =>
-                        `flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all cursor-pointer ${isActive
-                          ? "bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white shadow-md shadow-[#0797d5]/15"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                        `flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all cursor-pointer ${isActive
+                          ? "bg-slate-900 text-white font-semibold shadow-xs"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         }`
                       }
                     >
-                      <ShieldCheck size={17} />
+                      <ShieldCheck size={16} />
                       <span>Administradores</span>
                     </NavLink>
 
@@ -298,219 +633,59 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
                       to="/dashboard/companies"
                       onClick={onClose}
                       className={({ isActive }) =>
-                        `flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all cursor-pointer ${isActive
-                          ? "bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white shadow-md shadow-[#0797d5]/15"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
+                        `flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all cursor-pointer ${isActive
+                          ? "bg-slate-900 text-white font-semibold shadow-xs"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         }`
                       }
                     >
-                      <Building2 size={17} />
+                      <Building2 size={16} />
                       <span>Empresas</span>
-                    </NavLink>
-
-                    <NavLink
-                      to="/dashboard/documents"
-                      onClick={onClose}
-                      className={({ isActive }) =>
-                        `flex items-center gap-2.5 rounded-xl px-3 py-2.5 transition-all cursor-pointer ${isActive
-                          ? "bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white shadow-md shadow-[#0797d5]/15"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
-                        }`
-                      }
-                    >
-                      <FileText size={17} />
-                      <span>Documentos</span>
                     </NavLink>
                   </>
                 )}
               </div>
 
-              {/* Sección Empresas (Visible para todos los roles) */}
-              <div className="mt-4 pt-3 border-t border-slate-200">
-                <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-400">
-                  <Building2 size={15} />
-                  <span>{auth.role === "SUPERADMIN" ? "Empresas" : "Empresa"}</span>
+              {/* Sección Estructura / Empresas */}
+              <div className="mt-4 pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  <span>{isSuperAdmin ? "Empresas" : "Estructura"}</span>
                 </div>
 
                 <div className="mt-1 space-y-1">
                   {companies.map((company) => {
                     const isCompanyOpen = Boolean(expandedFolders[company.publicCode]);
-                    const isBoardsOpen = Boolean(expandedFolders[`${company.publicCode}-boards`]);
-                    const isGroundingOpen = Boolean(expandedFolders[`${company.publicCode}-grounding`]);
 
-                    const boards = companyBoards[company.publicCode] || [];
-                    const isLoadingBoards = loadingBoards[company.publicCode];
+                    // Vista para otros roles: Carpetas directas sin nivel raíz
+                    if (!isSuperAdmin) {
+                      return (
+                        <div key={company.publicCode} className="select-none">
+                          {renderResourceFolders(company, false)}
+                        </div>
+                      );
+                    }
 
-                    const pozos = companyGrounding[company.publicCode] || [];
-                    const isLoadingGrounding = loadingGrounding[company.publicCode];
-
+                    // Vista para SUPERADMIN: Mantiene el nodo raíz con el nombre de cada empresa
                     return (
                       <div key={company.publicCode} className="select-none">
-                        {/* Nivel 1: Carpeta Empresa */}
-                        <button
-                          onClick={() => toggleFolder(company.publicCode)}
-                          className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-slate-700 hover:bg-slate-100 cursor-pointer"
-                        >
-                          {isCompanyOpen ? (
-                            <ChevronDown size={14} className="shrink-0 text-slate-400" />
-                          ) : (
-                            <ChevronRight size={14} className="shrink-0 text-slate-400" />
-                          )}
-                          {isCompanyOpen ? (
-                            <FolderOpen size={16} className="shrink-0 text-amber-500" />
-                          ) : (
-                            <Folder size={16} className="shrink-0 text-amber-500" />
-                          )}
-                          <span className="truncate text-xs font-bold text-slate-800">
-                            {company.name}
-                          </span>
-                        </button>
+                        <div className="group flex items-center justify-between rounded-xl px-2 py-1.5 hover:bg-slate-100">
+                          <button
+                            onClick={() => handleToggleCompany(company.publicCode)}
+                            className="flex flex-1 items-center gap-2 text-slate-800 cursor-pointer text-left min-w-0"
+                          >
+                            {isCompanyOpen ? (
+                              <ChevronDown size={14} className="shrink-0 text-slate-400" />
+                            ) : (
+                              <ChevronRight size={14} className="shrink-0 text-slate-400" />
+                            )}
+                            <Building2 size={15} className="shrink-0 text-slate-700" />
+                            <span className="truncate text-xs font-bold text-slate-800">
+                              {company.name}
+                            </span>
+                          </button>
+                        </div>
 
-                        {/* Nivel 2: Subcarpetas */}
-                        {isCompanyOpen && (
-                          <div className="ml-3.5 border-l border-slate-200 pl-2 my-1 space-y-0.5">
-                            {/* 📂 /Tableros */}
-                            <div>
-                              <button
-                                onClick={() => toggleBoardsSubfolder(company.publicCode)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-slate-600 hover:bg-slate-100 cursor-pointer"
-                              >
-                                {isBoardsOpen ? (
-                                  <ChevronDown size={13} className="shrink-0 text-slate-400" />
-                                ) : (
-                                  <ChevronRight size={13} className="shrink-0 text-slate-400" />
-                                )}
-                                {isBoardsOpen ? (
-                                  <FolderOpen size={15} className="shrink-0 text-[#0797d5]" />
-                                ) : (
-                                  <Folder size={15} className="shrink-0 text-[#0797d5]" />
-                                )}
-                                <span className="truncate text-[11px] font-semibold">
-                                  Tableros
-                                </span>
-                              </button>
-
-                              {isBoardsOpen && (
-                                <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
-                                  <NavLink
-                                    to={`/dashboard/boards/${company.publicCode}`}
-                                    onClick={onClose}
-                                    end
-                                    className={({ isActive }) =>
-                                      `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
-                                        ? "bg-[#0797d5]/10 text-[#0797d5] font-bold"
-                                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                                      }`
-                                    }
-                                  >
-                                    <Zap size={12} className="shrink-0 text-slate-400" />
-                                    <span className="truncate italic">Ver todos los tableros</span>
-                                  </NavLink>
-
-                                  {isLoadingBoards ? (
-                                    <p className="px-2 py-1 text-[10px] italic text-slate-400">
-                                      Cargando tableros...
-                                    </p>
-                                  ) : boards.length === 0 ? (
-                                    <p className="px-2 py-1 text-[10px] italic text-slate-400">
-                                      Sin tableros registrados
-                                    </p>
-                                  ) : (
-                                    boards.map((board) => (
-                                      <NavLink
-                                        key={board.code}
-                                        to={`/dashboard/boards/${company.publicCode}/${board.code}`}
-                                        onClick={onClose}
-                                        className={({ isActive }) =>
-                                          `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
-                                            ? "bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white font-bold"
-                                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                                          }`
-                                        }
-                                      >
-                                        <Zap size={12} className="shrink-0" />
-                                        <span className="truncate">
-                                          {board.boardCode ? `${board.boardCode} - ` : ""}
-                                          {board.name}
-                                        </span>
-                                      </NavLink>
-                                    ))
-                                  )}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* ⚡ /Puestas a tierra */}
-                            <div>
-                              <button
-                                onClick={() => toggleGroundingSubfolder(company.publicCode)}
-                                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-slate-600 hover:bg-slate-100 cursor-pointer"
-                              >
-                                {isGroundingOpen ? (
-                                  <ChevronDown size={13} className="shrink-0 text-slate-400" />
-                                ) : (
-                                  <ChevronRight size={13} className="shrink-0 text-slate-400" />
-                                )}
-                                {isGroundingOpen ? (
-                                  <FolderOpen size={15} className="shrink-0 text-rose-500" />
-                                ) : (
-                                  <Folder size={15} className="shrink-0 text-rose-500" />
-                                )}
-                                <span className="truncate text-[11px] font-semibold">
-                                  Puestas a tierra
-                                </span>
-                              </button>
-
-                              {isGroundingOpen && (
-                                <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
-                                  <NavLink
-                                    to={`/dashboard/companies/${company.publicCode}/grounding`}
-                                    onClick={onClose}
-                                    end
-                                    className={({ isActive }) =>
-                                      `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
-                                        ? "bg-[#0797d5]/10 text-[#0797d5] font-bold"
-                                        : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                                      }`
-                                    }
-                                  >
-                                    <Activity size={12} className="shrink-0 text-slate-400" />
-                                    <span className="truncate italic">Ver resumen SPAT</span>
-                                  </NavLink>
-
-                                  {isLoadingGrounding ? (
-                                    <p className="px-2 py-1 text-[10px] italic text-slate-400">
-                                      Cargando pozos...
-                                    </p>
-                                  ) : pozos.length === 0 ? (
-                                    <p className="px-2 py-1 text-[10px] italic text-slate-400">
-                                      Sin pozos registrados
-                                    </p>
-                                  ) : (
-                                    pozos.map((pozo) => (
-                                      <NavLink
-                                        key={pozo.code}
-                                        to={`/dashboard/companies/${company.publicCode}/grounding/${pozo.code}`}
-                                        onClick={onClose}
-                                        className={({ isActive }) =>
-                                          `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
-                                            ? "bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] text-white font-bold"
-                                            : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                                          }`
-                                        }
-                                      >
-                                        <Activity size={12} className="shrink-0" />
-                                        <span className="truncate">
-                                          {pozo.code} - {pozo.name}
-                                        </span>
-                                      </NavLink>
-                                    ))
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                        {isCompanyOpen && renderResourceFolders(company, true)}
                       </div>
                     );
                   })}
@@ -519,9 +694,56 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
             </nav>
           </div>
 
-          {/* MENÚ DE PERFIL INTEGRADO CON DROPDOWN Y FLECHA */}
+          {/* Sección de Estándares / Normativas (Logos) */}
+          {!isSuperAdmin && (
+            <div className="border-t border-slate-100 p-3 bg-slate-50/40">
+              <div className="flex items-center gap-1.5 mb-2 px-0.5">
+                <Award size={13} className="text-[#0797d5]" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  Estándares Soportados
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1.5">
+                {/* Logo IEEE */}
+                <div
+                  title="Estándares IEEE"
+                  className="flex h-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white p-1 shadow-2xs transition-all hover:border-slate-300 hover:shadow-xs"
+                >
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg"
+                    alt="IEEE"
+                    className="h-4 max-w-full object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all"
+                  />
+                </div>
+
+                {/* Logo CBEMA / ITIC */}
+                <div
+                  title="Curva CBEMA / ITIC"
+                  className="flex h-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white px-1 shadow-2xs transition-all hover:border-slate-300 hover:shadow-xs"
+                >
+                  <span className="text-[10px] font-black tracking-tighter text-slate-500 hover:text-slate-800 transition-colors">
+                    CBEMA
+                  </span>
+                </div>
+
+                {/* Logo IEC */}
+                <div
+                  title="Normativa IEC"
+                  className="flex h-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white p-1 shadow-2xs transition-all hover:border-slate-300 hover:shadow-xs"
+                >
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/d/d8/IEC_logo.svg"
+                    alt="IEC"
+                    className="h-4 max-w-full object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Menú de Perfil */}
           <div className="relative border-t border-slate-200 bg-slate-50/50 p-3" ref={dropdownRef}>
-            {/* TRIGGER */}
             <button
               onClick={() => setIsMenuOpen((prev) => !prev)}
               className={`
@@ -529,37 +751,21 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
                 transition-all duration-300 cursor-pointer text-left
                 ${isMenuOpen
                   ? "border-[#0797d5]/30 ring-4 ring-[#0797d5]/10"
-                  : "border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-md"
+                  : "border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-xs"
                 }
               `}
             >
-              <div
-                className="relative flex size-11 items-center justify-center rounded-2xl
-                bg-gradient-to-br from-[#0797d5] to-[#8ccf2f]
-                text-sm font-bold text-white shadow-xs overflow-hidden shrink-0"
-              >
+              <div className="relative flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0797d5] to-[#8ccf2f] text-xs font-bold text-white shrink-0">
                 {initials}
-                {isMenuOpen && (
-                  <span
-                    className="absolute inset-0 rounded-2xl animate-ping
-                    bg-white/20 opacity-75"
-                  />
-                )}
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="truncate font-bold text-slate-950 text-xs">
+                <p className="truncate font-bold text-slate-900 text-xs">
                   {firstname} {lastname}
                 </p>
-                <div
-                  className="mt-1 inline-flex rounded-full bg-[#8ccf2f]/15
-                  px-2 py-0.5 text-[10px] font-semibold text-[#3aaa35]"
-                >
-                  {role}
-                </div>
+                <p className="truncate text-[10px] text-slate-500 font-medium">{role}</p>
               </div>
 
-              {/* FLECHA INDICADORA (ARROW) */}
               <ChevronUp
                 size={16}
                 className={`text-slate-400 transition-transform duration-300 shrink-0 ${isMenuOpen ? "rotate-180" : ""
@@ -567,104 +773,32 @@ const SidebarComponent = ({ isOpen, onClose }: SidebarComponentProps) => {
               />
             </button>
 
-            {/* DROPDOWN */}
-            <div
-              className={`
-                absolute left-3 right-3 bottom-[calc(100%+12px)] overflow-hidden
-                rounded-3xl border border-slate-200 bg-white shadow-2xl
-                transition-all duration-250 origin-bottom z-50
-                ${isMenuOpen
-                  ? "opacity-100 translate-y-0 scale-100"
-                  : "pointer-events-none opacity-0 translate-y-3 scale-95"
-                }
-              `}
-            >
-              {/* HEADER DROPDOWN */}
-              <div className="border-b border-slate-100 bg-slate-50 p-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex size-12 items-center justify-center rounded-2xl
-                    bg-gradient-to-br from-[#0797d5] to-[#8ccf2f]
-                    text-base font-bold text-white shadow-xs shrink-0"
-                  >
-                    {initials}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-bold text-slate-950 text-xs">
-                      {firstname} {lastname}
-                    </p>
-                    <div
-                      className="mt-1 inline-flex rounded-full bg-[#8ccf2f]/15
-                      px-2 py-0.5 text-[10px] font-semibold text-[#3aaa35]"
-                    >
-                      {role}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* MENU ITEMS */}
-              <div className="p-2">
-                {[
-                  {
-                    icon: LayoutDashboard,
-                    label: "Dashboard",
-                    path: "/dashboard",
-                    delay: "0ms",
-                  },
-                  {
-                    icon: User2,
-                    label: "Mi perfil",
-                    path: "/dashboard/profile",
-                    delay: "40ms",
-                  },
-                ].map(({ icon: Icon, label, path, delay }) => (
+            {isMenuOpen && (
+              <div className="absolute left-3 right-3 bottom-[calc(100%+8px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl z-50">
+                <div className="p-1">
                   <button
-                    key={path}
                     onClick={() => {
                       setIsMenuOpen(false);
-                      navigate(path);
+                      navigate("/dashboard/profile");
                     }}
-                    style={{
-                      opacity: isMenuOpen ? 1 : 0,
-                      transform: isMenuOpen ? "translateX(0)" : "translateX(-8px)",
-                      transition: `opacity 0.25s ease ${delay}, transform 0.25s ease ${delay}`,
-                    }}
-                    className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5
-                      text-xs font-medium text-slate-700
-                      hover:bg-slate-100 hover:text-slate-950
-                      hover:pl-4 transition-all duration-200 group cursor-pointer"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 cursor-pointer"
                   >
-                    <Icon
-                      size={16}
-                      className="text-slate-400 group-hover:text-[#0797d5] transition-colors duration-200"
-                    />
-                    {label}
+                    <User2 size={15} />
+                    <span>Mi Perfil</span>
                   </button>
-                ))}
-
-                <div className="my-1.5 border-t border-slate-100" />
-
-                <button
-                  onClick={handleLogout}
-                  style={{
-                    opacity: isMenuOpen ? 1 : 0,
-                    transform: isMenuOpen ? "translateX(0)" : "translateX(-8px)",
-                    transition: "opacity 0.25s ease 80ms, transform 0.25s ease 80ms",
-                  }}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5
-                    text-xs font-medium text-red-500
-                    hover:bg-red-50 hover:text-red-600
-                    hover:pl-4 transition-all duration-200 group cursor-pointer"
-                >
-                  <LogOut
-                    size={16}
-                    className="transition-transform duration-200 group-hover:translate-x-0.5"
-                  />
-                  Cerrar sesión
-                </button>
+                  <button
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      handleLogout();
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 cursor-pointer"
+                  >
+                    <LogOut size={15} />
+                    <span>Cerrar sesión</span>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </aside>

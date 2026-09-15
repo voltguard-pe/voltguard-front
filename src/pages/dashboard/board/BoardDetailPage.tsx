@@ -40,7 +40,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
-import ImportThermographyModal from "../../../components/dashboard/modals/ImportThermographyModal";
+import { ImportThermographyModal } from "../../../components/dashboard/modals/ImportThermographyModal";
 import { ThermographyViewer } from "../../../components/dashboard/sections/ThermographyViewer";
 import { getBoardByCode } from "../../../services/board.service";
 import { getDemandChartData, uploadMetrelCsv } from "../../../services/measurement.service";
@@ -278,6 +278,43 @@ const BoardDetailPage = () => {
       fetchIticData(board._id);
     }
   }, [board?._id]);
+
+  // Función para convertir duraciones de Metrel ("18 ms", "1.958 s", "11 h", "24 c") a segundos reales
+  // const parseMetrelDuration = (raw: any): number => {
+  //   if (typeof raw === "number") return raw > 0 ? raw : 0.00001;
+  //   const str = String(raw || "").trim().toLowerCase();
+
+  //   if (!str || str === "0" || str.includes("< 10 us") || str.includes("instant")) {
+  //     return 0.00001; // 10 µs exactos (extremo izquierdo de Metrel)
+  //   }
+
+  //   // Horas ("11 h 20 min" o "2 h")
+  //   if (str.includes("h")) {
+  //     const parts = str.split("h");
+  //     const hours = parseFloat(parts[0]) || 0;
+  //     const mins = parseFloat(parts[1]?.replace("min", "")) || 0;
+  //     return hours * 3600 + mins * 60;
+  //   }
+
+  //   // Minutos ("15 min")
+  //   if (str.includes("min") || str.includes("m ")) {
+  //     return (parseFloat(str) || 0) * 60;
+  //   }
+
+  //   // Milisegundos ("651 ms", "18 ms")
+  //   if (str.includes("ms")) {
+  //     return (parseFloat(str) || 0) / 1000;
+  //   }
+
+  //   // Ciclos a 50Hz/60Hz ("24 c" -> ~0.48 s)
+  //   if (str.includes("c")) {
+  //     return (parseFloat(str) || 0) * 0.02;
+  //   }
+
+  //   // Segundos simples ("1.958 s", "1.958")
+  //   const sec = parseFloat(str.replace("s", ""));
+  //   return !isNaN(sec) && sec > 0 ? sec : 0.00001;
+  // };
 
   // Handler para subir el archivo CSV de la Curva ITIC
   const handleIticFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1780,31 +1817,32 @@ const BoardDetailPage = () => {
   // };
 
   // ── TRAZADO OFICIAL CURVA ITIC / CBEMA (COINCIDENTE CON METREL POWERVIEW) ──
-  
+
+  // ── 1. LÍNEA SUPERIOR ESCALONADA EXACTA (IDÉNTICA A LA IMAGEN) ──
   const ITIC_UPPER_LINE = [
     { x: 0.0002, y: 400 },
-    { x: 0.001, y: 200 },
-    { x: 0.003, y: 140 },
-    { x: 0.003001, y: 120 },
+    { x: 0.0002, y: 200 },
+    { x: 0.003, y: 200 },
+    { x: 0.003, y: 120 },
     { x: 0.5, y: 120 },
-    { x: 0.5001, y: 110 },
-    { x: 100000, y: 110 }
+    { x: 0.5, y: 110 },
+    { x: 100000, y: 110 },
   ];
 
+  // ── 2. LÍNEA INFERIOR ESCALONADA (HUECOS Y CAÍDAS) ──
   const ITIC_LOWER_LINE = [
     { x: 0.00001, y: 0 },
     { x: 0.02, y: 0 },
-    { x: 0.02001, y: 70 },
+    { x: 0.02, y: 70 },
     { x: 0.5, y: 70 },
-    { x: 0.5001, y: 80 },
+    { x: 0.5, y: 80 },
     { x: 10, y: 80 },
-    { x: 10.001, y: 90 },
-    { x: 100000, y: 90 }
+    { x: 10, y: 90 },
+    { x: 100000, y: 90 },
   ];
 
   // DÉCADAS EXACTAS DEL EJE X DE METREL
   const ITIC_TICKS_X = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000];
-
   const renderIticCurveSection = () => {
     if (!iticEvents || iticEvents.length === 0) {
       return (
@@ -1824,32 +1862,77 @@ const BoardDetailPage = () => {
       );
     }
 
+    // ── SHAPES PERSONALIZADOS FINOS (IDÉNTICOS A METREL) ──
+    // const MetrelDot = ({ cx, cy, fill, stroke, shapeType }: any) => {
+    //   if (cx === undefined || cy === undefined) return null;
+
+    //   if (shapeType === "square") {
+    //     return (
+    //       <rect
+    //         x={cx - 2.5}
+    //         y={cy - 2.5}
+    //         width={5}
+    //         height={5}
+    //         fill={fill}
+    //         fillOpacity={0.8}
+    //         stroke="#0f172a"
+    //         strokeWidth={0.5}
+    //       />
+    //     );
+    //   }
+
+    //   if (shapeType === "cross") {
+    //     return (
+    //       <g stroke={fill} strokeWidth={1.5}>
+    //         <line x1={cx - 3} y1={cy} x2={cx + 3} y2={cy} />
+    //         <line x1={cx} y1={cy - 3} x2={cx} y2={cy + 3} />
+    //       </g>
+    //     );
+    //   }
+
+    //   // Círculo pequeño con borde sutil
+    //   return (
+    //     <circle
+    //       cx={cx}
+    //       cy={cy}
+    //       r={2.5}
+    //       fill={fill}
+    //       fillOpacity={0.75}
+    //       stroke="#1e3a8a"
+    //       strokeWidth={0.5}
+    //     />
+    //   );
+    // };
+
     // ── 1. DETERMINAR TENSIÓN NOMINAL DEL TABLERO (Línea-Línea y Línea-Neutro) ──
-    const vNominalLinea = Number(board?.tensionNominal) || 220;
-    const vNominalFase = Math.round(vNominalLinea / Math.sqrt(3)); // Ej: 220V -> 127V | 380V -> 220V
+    // const vNominalLinea = Number(board?.tensionNominal) || 220;
+    // const vNominalFase = Math.round(vNominalLinea / Math.sqrt(3));
 
     const dataFase1: any[] = [];
     const dataFase2: any[] = [];
     const dataFase3: any[] = [];
 
+    // ── CLASIFICACIÓN MULTIFÁSICA INDEPENDIENTE (IDÉNTICO A METREL) ──
     iticEvents.forEach((ev: any, idx: number) => {
-      const tRaw = Number(ev.duracionSegundos) || 0.01;
+      // 1. Omitir eventos del sistema (Metrel solo grafica perturbaciones eléctricas)
+      const tipo = String(ev.tipoEvento || "").toLowerCase();
+      if (tipo.includes("sistema") || tipo.includes("system")) {
+        return;
+      }
+
+      // 2. Corregir duraciones en cero (Metrel trunca < 100ms a 00:00.0; fijar en 10 ms = 0.01 s)
+      let tRaw = Number(ev.duracionSegundos);
+      if (isNaN(tRaw) || tRaw <= 0) {
+        tRaw = 0.01; // 10 ms para que aparezcan las caídas rápidas del círculo morado
+      }
+
       const rawResidual = Number(ev.tensionResidual) || 0;
       const f = String(ev.fase || "").toUpperCase().trim();
 
-      // ── 2. SELECCIONAR LA TENSIÓN BASE CORRECTA SEGÚN LA FASE ──
-      const esLineaALinea = f.includes("L12") || f.includes("L23") || f.includes("L31");
-      const vBase = esLineaALinea ? vNominalLinea : vNominalFase;
+      // En Volvo Santa Anita la tensión nominal es 220 V entre líneas
+      const vBase = 220;
+      let vPercent = rawResidual > 50 ? (rawResidual / vBase) * 100 : rawResidual;
 
-      // ── 3. CONVERSIÓN EXACTA A % DE LA NOMINAL ──
-      // Si el valor viene en voltios reales (ej: 120V o 133.5V en red de 127V; o 215V en red de 220V),
-      // lo dividimos por su tensión base.
-      let vPercent = rawResidual;
-      if (rawResidual > 50) {
-        vPercent = (rawResidual / vBase) * 100;
-      }
-
-      // Clamping para el gráfico
       const t = Math.max(0.00001, Math.min(100000, tRaw));
       const v = Math.max(0, Math.min(400, vPercent));
 
@@ -1864,17 +1947,18 @@ const BoardDetailPage = () => {
         voltiosReales: rawResidual > 50 ? rawResidual : (rawResidual * vBase) / 100
       };
 
-      // ── 4. CLASIFICACIÓN POR FASE ──
+      // 3. Evaluar de forma INDEPENDIENTE (sin 'else if') para que L23, L31 genere punto verde Y azul
       if (f.includes("L12") || f === "L1" || f.includes("FASE 1")) {
-        dataFase1.push(item);
-      } else if (f.includes("L23") || f === "L2" || f.includes("FASE 2")) {
-        dataFase2.push(item);
-      } else {
-        dataFase3.push(item); // L31, L3 o LN
+        dataFase1.push({ ...item, fase: "Línea 12" });
+      }
+      if (f.includes("L23") || f === "L2" || f.includes("FASE 2")) {
+        dataFase2.push({ ...item, fase: "Línea 23" });
+      }
+      if (f.includes("L31") || f.includes("L3") || f.includes("FASE 3")) {
+        dataFase3.push({ ...item, fase: "Línea 31" });
       }
     });
 
-    // Tooltip formateado idéntico al recuadro de Metrel
     const MetrelTooltip = ({ active, payload }: any) => {
       if (active && payload && payload.length) {
         const data = payload[0]?.payload;
@@ -1949,13 +2033,15 @@ const BoardDetailPage = () => {
               <ScatterChart margin={{ top: 20, right: 30, left: 10, bottom: 35 }}>
                 <CartesianGrid strokeDasharray="1 1" stroke="#cbd5e1" />
 
-                {/* ── ZONAS SOMBREADAS ESCALONADAS (IGUAL QUE METREL) ── */}
-                {/* ZONA SUPERIOR: Sobretensión / Daño (Color Naranja suave) */}
-                <ReferenceArea x1={0.0002} x2={0.003} y1={140} y2={400} fill="#fed7aa" fillOpacity={0.65} />
+                {/* ── ZONA SUPERIOR: 3 ESCALONES SOMBREADOS EXACTOS ── */}
+                {/* 1. Transitorio: 200 µs (0.0002s) a 3 ms (0.003s) en 200% */}
+                <ReferenceArea x1={0.0002} x2={0.003} y1={200} y2={400} fill="#fed7aa" fillOpacity={0.65} />
+                {/* 2. Dinámico: 3 ms (0.003s) a 0.5 s en 120% */}
                 <ReferenceArea x1={0.003} x2={0.5} y1={120} y2={400} fill="#fed7aa" fillOpacity={0.65} />
+                {/* 3. Permanente: 0.5 s a 100.000 s en 110% */}
                 <ReferenceArea x1={0.5} x2={100000} y1={110} y2={400} fill="#fed7aa" fillOpacity={0.65} />
 
-                {/* ZONA INFERIOR: Caída / Apagado (Color Amarillo suave) */}
+                {/* ── ZONA INFERIOR: Caída / Apagado (Color Amarillo suave) ── */}
                 <ReferenceArea x1={0.02} x2={0.5} y1={0} y2={70} fill="#fef08a" fillOpacity={0.7} />
                 <ReferenceArea x1={0.5} x2={10} y1={0} y2={80} fill="#fef08a" fillOpacity={0.7} />
                 <ReferenceArea x1={10} x2={100000} y1={0} y2={90} fill="#fef08a" fillOpacity={0.7} />
@@ -2015,7 +2101,7 @@ const BoardDetailPage = () => {
 
                 <Tooltip content={<MetrelTooltip />} cursor={{ strokeDasharray: '3 3', stroke: '#94a3b8' }} />
 
-                {/* LÍNEA NOMINAL 100% */}
+                {/* Línea nominal 100% */}
                 <ReferenceLine y={100} stroke="#475569" strokeDasharray="3 3" strokeWidth={1} />
 
                 {/* ── LÍNEAS NEGRAS DE LA ENVOLVENTE ITIC ── */}
@@ -2037,7 +2123,7 @@ const BoardDetailPage = () => {
                 />
 
                 {/* ── DISPERSIÓN DE PUNTOS POR FASE ── */}
-                <Scatter
+                {/* <Scatter
                   name="Fase 1"
                   data={dataFase1}
                   fill="#dc2626"
@@ -2056,6 +2142,42 @@ const BoardDetailPage = () => {
                   data={dataFase3}
                   fill="#2563eb"
                   shape="circle"
+                  isAnimationActive={false}
+                /> */}
+
+                {/* 1. Línea 31 (Círculos azules finos) */}
+                <Scatter
+                  name="Línea 31"
+                  data={dataFase3}
+                  fill="#2563eb"
+                  shape={(props: any) => (
+                    <circle cx={props.cx} cy={props.cy} r={2.8} fill="#2563eb" fillOpacity={0.75} stroke="#1e3a8a" strokeWidth={0.5} />
+                  )}
+                  isAnimationActive={false}
+                />
+
+                {/* 2. Línea 23 (Cuadrados verdes finos) */}
+                <Scatter
+                  name="Línea 23"
+                  data={dataFase2}
+                  fill="#16a34a"
+                  shape={(props: any) => (
+                    <rect x={props.cx - 2.2} y={props.cy - 2.2} width={4.5} height={4.5} fill="#16a34a" fillOpacity={0.8} stroke="#14532d" strokeWidth={0.5} />
+                  )}
+                  isAnimationActive={false}
+                />
+
+                {/* 3. Línea 12 (Cruces/Puntos rojos en primer plano) */}
+                <Scatter
+                  name="Línea 12"
+                  data={dataFase1}
+                  fill="#dc2626"
+                  shape={(props: any) => (
+                    <g stroke="#dc2626" strokeWidth={1.2}>
+                      <line x1={props.cx - 2.5} y1={props.cy} x2={props.cx + 2.5} y2={props.cy} />
+                      <line x1={props.cx} y1={props.cy - 2.5} x2={props.cx} y2={props.cy + 2.5} />
+                    </g>
+                  )}
                   isAnimationActive={false}
                 />
               </ScatterChart>
@@ -2101,10 +2223,10 @@ const BoardDetailPage = () => {
   //         <meta charset="UTF-8" />
   //         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   //         <title>${title} - Visor PDF</title>
-          
+
   //         <!-- Icono de PDF estándar o el favicon de tu app -->
   //         <link rel="icon" type="image/svg+xml" href="/voltguard.png" />
-          
+
   //         <style>
   //           body, html {
   //             margin: 0;

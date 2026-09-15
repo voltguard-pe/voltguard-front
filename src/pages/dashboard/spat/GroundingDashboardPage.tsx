@@ -17,6 +17,7 @@ import {
   YAxis,
 } from "recharts";
 import { useNavigate } from "react-router-dom";
+import { generateSpatPDF } from "../../../shared/utils/generateSpatPDF";
 
 // Datos históricos quinquenales (SPAT)
 const SPAT_HISTORICAL_DATA = [
@@ -31,6 +32,51 @@ const GroundingDashboardPage = () => {
   const navigate = useNavigate();
 
   const [selectedPozo, setSelectedPozo] = useState("SPAT-01");
+
+  //TODO: Son datos hardcodeados
+
+  const handlePrintSpatCertificate = () => {
+  generateSpatPDF({
+    certificateCode: "GES-SPAT-CERT-2026-0038",
+    revision: "00",
+    measurementDate: "16 de marzo de 2026",
+    issueDate: "20 de marzo de 2026",
+    validityDate: "16 de marzo de 2027",
+    globalResult: "CONFORME CON OBSERVACIONES · Alerta temprana emitida",
+
+    resistanceValue: 2.98,
+    resistanceLimit: 5.0,
+    leakageCurrent: 1.4,
+    leakageLimit: 5.0,
+    rodDiameter: 14.6,
+    rodNominal: 16.0,
+    healthIndex: 68,
+    healthStatus: "Observado",
+
+    clientData: {
+      businessName: "VOLVO PERÚ S.A.",
+      ruc: "20100070031",
+      facility: "Centro de Servicios Huachipa",
+      address: "Av. Ramiro Prialé Mz. G Lt. 1 – Lurigancho-Chosica, Lima",
+      coordinates: "11°58'42.6\"S · 76°53'11.4\"W",
+      spatId: "P1 (placa de identificación instalada)",
+      systemFunction: "Puesta a tierra de protección – tablero general TG-01",
+      configuration: "Electrodo vertical único + pozo con tratamiento electrolítico",
+      electrode: "Varilla de cobre puro Ø 16 mm × 2.40 m",
+      conductor: "Cu desnudo 25 mm²",
+      connectionType: "Conector mecánico tipo AB de cobre",
+      registerBox: "Concreto Ø 0.30 m con tapa removible",
+      installationDate: "Marzo 2019 (7 años de servicio)",
+      totalSpats: "6 (P1 a P6). Este certificado corresponde únicamente a P1.",
+    },
+
+    historicalYears: ["2022", "2023", "2024", "2025", "2026"],
+    resistanceHistory: [2.12, 2.38, 2.58, 2.71, 2.98],
+    leakageHistory: [0.8, 0.9, 1.1, 1.2, 1.4],
+    rodHistory: [15.8, 15.6, 15.3, 15.0, 14.6],
+    phHistory: [7.4, 7.1, 6.8, 6.5, 6.1],
+  });
+};
 
   return (
     <section className="space-y-6 animate-fade-up">
@@ -56,7 +102,8 @@ const GroundingDashboardPage = () => {
 
         <button
           type="button"
-          onClick={() => alert("Descargando informe consolidado SPAT...")}
+          // onClick={() => alert("Descargando informe consolidado SPAT...")}
+          onClick={handlePrintSpatCertificate}
           className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#0797d5] px-5 py-3 text-xs font-bold text-white transition hover:bg-[#087fb3] cursor-pointer shadow-sm"
         >
           <FileDown size={16} /> Exportar Reporte SPAT

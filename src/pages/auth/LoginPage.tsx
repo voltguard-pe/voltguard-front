@@ -2,7 +2,7 @@ import { AlertCircle, KeyRound, Loader2, Mail } from "lucide-react";
 import { useState, useMemo } from "react";
 import { NavLink, useNavigate, useSearchParams } from "react-router-dom";
 
-import { getProfile, login, type LoginData } from "../../services/auth.service";
+import { login, type LoginData } from "../../services/auth.service";
 import Input from "../../shared/components/Input";
 import { useAuth } from "../../shared/hooks/useAuth";
 
@@ -48,11 +48,19 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      // 1. Ejecutar el login en el backend
-      await login(formData);
+      // // 1. Ejecutar el login en el backend
+      // await login(formData);
       
-      // 2. Obtener los datos del perfil cargado
-      const user = await getProfile();
+      // // 2. Obtener los datos del perfil cargado
+      // const user = await getProfile();
+
+      // 1. Ejecutar el login (guarda el token internamente en localStorage)
+      const response = await login(formData);
+      
+      // 2. Extraer el usuario retornado directamente por el backend
+      const user = response.data.user;
+
+
       
       // 3. Impactar el contexto global de manera limpia y apagar loaders
       handleLoginSuccess(user);

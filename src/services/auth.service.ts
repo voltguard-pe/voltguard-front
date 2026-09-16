@@ -46,7 +46,12 @@ export const login = async (data: LoginData) => {
     try {
         console.log("Data enviada", data)
         const response = await clientAxios.post('/auth/login', data)
-        console.log("Respuesta", response)
+        
+        // Guardar el token devuelto por el servidor
+        if (response.data && response.data.token) {
+            localStorage.setItem("token", response.data.token);
+        }
+
         return response
     } catch (error) {
         console.error("LOGIN ERROR:", error);
@@ -58,7 +63,10 @@ export const logout = async () => {
     try {
         await clientAxios.post('/auth/logout')
     } catch (error) {
-        throw new Error('Error al cerrar sesión' + error)
+       console.error("LOGOUT ERROR:", error);
+    } finally {
+        // Remover el token siempre, incluso si falla la llamada de red
+        localStorage.removeItem("token");
     }
 }
 

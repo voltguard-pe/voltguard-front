@@ -24,10 +24,23 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const authentication = async () => {
+
+      const token = localStorage.getItem("token");
+
+      // Si no existe token guardado, cancela la consulta inicial
+      if (!token) {
+        setAuth(null);
+        setLoading(false);
+        return;
+      }
+
+
       try {
         const user = await getProfile();
         setAuth(user);
       } catch {
+        // Si el token expiró o es inválido, remuévelo
+        localStorage.removeItem("token");
         setAuth(null);
       } finally {
         setLoading(false);

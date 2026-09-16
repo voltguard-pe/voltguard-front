@@ -73,12 +73,39 @@ const formatMeasurementWithUnit = (
 };
 
 const BoardDetailPage = () => {
-  const { auth } = useAuth();
-  const userPlan = auth?.plan || "basico";
-  const isSuperAdmin = auth?.role === "SUPERADMIN";
+  // const { auth } = useAuth();
+  // const userPlan = auth?.plan || "basico";
+  // const isSuperAdmin = auth?.role === "SUPERADMIN";
 
-  const isIntermedioOrSuperior = isSuperAdmin || ["intermedio", "empresarial"].includes(userPlan);
-  const isEmpresarial = isSuperAdmin || userPlan === "empresarial";
+  // const isIntermedioOrSuperior = isSuperAdmin || ["intermedio", "empresarial"].includes(userPlan);
+  // const isEmpresarial = isSuperAdmin || userPlan === "empresarial";
+
+  const { auth } = useAuth();
+  const rawRole = auth?.role || "USER";
+  const rawPlan = auth?.plan || "basico";
+
+  // 1. Determinar el rol efectivo considerando la excepción del plan
+  const effectiveRole = rawRole === "SUPERADMIN"
+    ? "SUPERADMIN"
+    : rawPlan === "empresarial"
+      ? "ADMIN"
+      : "USER";
+
+  // 2. Control de banderas para permisos y vistas
+  const isSuperAdmin = effectiveRole === "SUPERADMIN";
+  // const isAdmin = effectiveRole === "ADMIN";
+  // const isUser = effectiveRole === "USER";
+
+  // Permisos de Acciones de Gestión (ej. importar CSVs, subir archivos, etc.)
+  // const canManage = isSuperAdmin || isUser;
+
+  // Acceso a visualizar más de 1 registro (múltiples tarjetas / historial amplio)
+  // const canViewMultipleRecords = isSuperAdmin || isAdmin;
+
+  // Acceso a visualizar secciones según plan/rol
+  const isEmpresarial = isSuperAdmin || rawPlan === "empresarial";
+
+
 
   const navigate = useNavigate();
   const { publicCode, code } = useParams();
@@ -2843,7 +2870,7 @@ const BoardDetailPage = () => {
         )}
 
         {/* ── PLAN INTERMEDIO Y EMPRESARIAL: DIAGRAMA UNIFILAR ── */}
-        {isIntermedioOrSuperior && board.images?.unifilar && board.images.unifilar.length > 0 && (
+        {board.images?.unifilar && board.images.unifilar.length > 0 && (
           renderImageSection("Diagrama unifilar", "Imágenes del diagrama unifilar registrado", board.images.unifilar)
         )}
 

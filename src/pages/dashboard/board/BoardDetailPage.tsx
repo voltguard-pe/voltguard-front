@@ -2741,14 +2741,14 @@ const BoardDetailPage = () => {
         </section>
 
         {/* ── GRILLA DE DETALLES (UBICACIÓN, TIPO, SISTEMA, ESTADO) ── */}
-        <div className="grid grid-cols-2 gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-3">
           {[
             { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             // { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-            { l: "Tensión", v: board.tensionNominal ? `${board.tensionNominal} V` : "220 V", icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+            // { l: "Tensión", v: board.tensionNominal ? `${board.tensionNominal} V` : "220 V", icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             { l: "Sistema", v: board.sistema, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-            // { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
-            { l: "Circuitos", v: board.circuits?.length ? `${board.circuits.length} SALIDAS` : "0 SALIDAS", icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#0797d5]" }
+            { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
+            // { l: "Circuitos", v: board.circuits?.length ? `${board.circuits.length} SALIDAS` : "0 SALIDAS", icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#0797d5]" }
           ].map((item, i) => {
             const CardIcon = item.icon;
             return (

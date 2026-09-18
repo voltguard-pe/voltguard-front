@@ -168,7 +168,7 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
           )}
 
           {/* Vistas Lado a Lado */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-slate-950 p-4 sm:p-7 rounded-3xl shadow-2xl">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 bg-slate-950 p-4 sm:p-6 rounded-3xl shadow-2xl">
             {/* LADO IZQUIERDO: IMAGEN TÉRMICA FLIR */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between text-xs font-bold text-slate-300 px-1">
@@ -181,22 +181,20 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
                 </span>
               </div>
 
-              <div className="flex items-center justify-center gap-3">
+              {/* Contenedor con altura fija unificada */}
+              <div className="flex items-center gap-3 w-full h-[520px] sm:h-[600px] lg:h-[680px]">
                 <div
                   ref={containerRef}
                   onMouseMove={handleMouseMove}
                   onMouseLeave={() => setHoverData(null)}
-                  className="relative w-full cursor-crosshair overflow-hidden rounded-2xl border border-slate-800 shadow-xl bg-black"
-                  style={{
-                    aspectRatio: `${dimensions.cols} / ${dimensions.rows}`,
-                  }}
+                  className="relative flex-1 h-full cursor-crosshair overflow-hidden rounded-2xl border border-slate-800 shadow-xl bg-black flex items-center justify-center"
                 >
-                  {/* Foto Térmica FLIR nítida oficial */}
+                  {/* Foto Térmica FLIR */}
                   {thermalImage ? (
                     <img
                       src={thermalImage}
                       alt="Termografía FLIR"
-                      className="w-full h-full object-fill pointer-events-none"
+                      className="w-full h-full object-contain pointer-events-none select-none"
                     />
                   ) : (
                     <div className="flex h-full items-center justify-center text-slate-600 text-xs">
@@ -207,7 +205,7 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
                   {/* Marcador Hotspot Máximo */}
                   {stats && (
                     <div
-                      className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2"
+                      className="absolute pointer-events-none -translate-x-1/2 -translate-y-1/2 z-20"
                       style={{
                         left: `${(stats.maxPos[1] / dimensions.cols) * 100}%`,
                         top: `${(stats.maxPos[0] / dimensions.rows) * 100}%`,
@@ -224,15 +222,12 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
                   )}
 
                   {/* Tooltip con temperatura en hover */}
-                  {/* Tooltip Térmico Inteligente (Anti-recorte en bordes) */}
                   {hoverData && (() => {
                     const isNearTop = hoverData.percentY < 15;
                     const isNearLeft = hoverData.percentX < 18;
                     const isNearRight = hoverData.percentX > 82;
 
-                    // Ajuste horizontal para no salirse de los lados
                     const translateX = isNearLeft ? "0%" : isNearRight ? "-100%" : "-50%";
-                    // Invertir a posición inferior si está en la parte superior
                     const translateY = isNearTop ? "0%" : "-100%";
 
                     return (
@@ -258,7 +253,7 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
 
                         {/* Mira Láser Cruzada */}
                         <div
-                          className="pointer-events-none absolute size-6 -translate-x-1/2 -translate-y-1/2 border border-white rounded-full"
+                          className="pointer-events-none absolute size-6 -translate-x-1/2 -translate-y-1/2 border border-white rounded-full z-20"
                           style={{ left: `${hoverData.canvasX}px`, top: `${hoverData.canvasY}px` }}
                         >
                           <div className="absolute top-1/2 left-0 w-full h-px bg-white/70 -translate-y-1/2" />
@@ -271,10 +266,10 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
 
                 {/* Barra Térmica Lateral Oficial Ironbow */}
                 {stats && (
-                  <div className="flex flex-col items-center gap-2 text-white text-[11px] font-bold shrink-0">
+                  <div className="flex flex-col items-center justify-between py-2 text-white text-[11px] font-bold shrink-0 h-full">
                     <span className="text-red-400 font-mono text-[10px]">{stats.max.toFixed(1)}°</span>
                     <div
-                      className="w-3.5 h-64 sm:h-80 rounded-lg border border-slate-700 shadow-inner"
+                      className="w-3.5 flex-1 my-2 rounded-lg border border-slate-700 shadow-inner"
                       style={{
                         background:
                           "linear-gradient(to top, #000004 0%, #1f0064 10%, #5a008c 25%, #96008c 40%, #d22832 55%, #f57800 70%, #ffd200 85%, #fffab4 95%, #ffffff 100%)",
@@ -296,17 +291,13 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
                 <span className="text-[10px] text-slate-500 font-mono">Cámara Visual FLIR</span>
               </div>
 
-              <div
-                className="relative w-full overflow-hidden rounded-2xl border border-slate-800 shadow-xl bg-slate-900"
-                style={{
-                  aspectRatio: `${dimensions.cols} / ${dimensions.rows}`,
-                }}
-              >
+              {/* Misma altura fija exacta que la columna izquierda */}
+              <div className="w-full h-[520px] sm:h-[600px] lg:h-[680px] overflow-hidden rounded-2xl border border-slate-800 shadow-xl bg-black flex items-center justify-center">
                 {visualImage ? (
                   <img
                     src={visualImage}
                     alt="Foto Visual Tablero"
-                    className="w-full h-full object-fill select-none pointer-events-none"
+                    className="w-full h-full object-contain select-none pointer-events-none"
                   />
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center text-slate-500 gap-2 p-4 text-center">

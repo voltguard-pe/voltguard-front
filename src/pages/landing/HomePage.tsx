@@ -104,29 +104,29 @@ const plans: Plan[] = [
         ],
         limits: { empresas: 1, tableros: 1, usuarios: 1, docs: 3 }
     },
-    {
-        id: "pyme",
-        name: "Plan Intermedio",
-        badge: "Recomendado PYME",
-        priceLabel: "S/ 350.00 + IGV",
-        subLabel: "01 a 04 Tableros Eléctricos",
-        sectorTag: "Comercial / Servicios / PYMEs",
-        sectorColor: "bg-[#0797d5]/15 text-[#0797d5]",
-        description: "Ideal para regularizar licencias ITSE y unifilares exigidos por ley.",
-        color: "blue",
-        featured: true,
-        cta: "Adquirir Plan Intermedio",
-        path: "/contact-sales?plan=pyme",
-        features: [
-            "De 01 a 04 Tableros eléctricos",
-            "Diagrama unifilar y leyenda CNE",
-            "Gestión de seguridad e inspección ITSE",
-            "Firma de Ingeniero Colegiado (CIP)",
-            "Mantenimiento preventivo de tableros",
-            "Certificados de operatividad oficiales"
-        ],
-        limits: { empresas: 1, tableros: 4, usuarios: 5, docs: "Ilimitados" }
-    },
+    // {
+    //     id: "pyme",
+    //     name: "Plan Intermedio",
+    //     badge: "Recomendado PYME",
+    //     priceLabel: "S/ 350.00 + IGV",
+    //     subLabel: "01 a 04 Tableros Eléctricos",
+    //     sectorTag: "Comercial / Servicios / PYMEs",
+    //     sectorColor: "bg-[#0797d5]/15 text-[#0797d5]",
+    //     description: "Ideal para regularizar licencias ITSE y unifilares exigidos por ley.",
+    //     color: "blue",
+    //     featured: true,
+    //     cta: "Adquirir Plan Intermedio",
+    //     path: "/contact-sales?plan=pyme",
+    //     features: [
+    //         "De 01 a 04 Tableros eléctricos",
+    //         "Diagrama unifilar y leyenda CNE",
+    //         "Gestión de seguridad e inspección ITSE",
+    //         "Firma de Ingeniero Colegiado (CIP)",
+    //         "Mantenimiento preventivo de tableros",
+    //         "Certificados de operatividad oficiales"
+    //     ],
+    //     limits: { empresas: 1, tableros: 4, usuarios: 5, docs: "Ilimitados" }
+    // },
     {
         id: "enterprise",
         name: "Plan Empresarial",
@@ -137,7 +137,7 @@ const plans: Plan[] = [
         sectorColor: "bg-[#8ccf2f]/20 text-[#528410]",
         description: "Solución integral de monitoreo, termografía y analítica energética.",
         color: "slate",
-        featured: false,
+        featured: true,
         cta: "Contactar Ventas",
         path: "/contact-sales?plan=enterprise",
         features: [
@@ -786,33 +786,30 @@ export default function HomePage() {
             </section>
 
             {/* ── PLANES Y LICENCIAS VOLTGUARD ────────────────────────────────── */}
-            <section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 size-96 rounded-full bg-[#0797d5]/5 blur-3xl pointer-events-none" style={{ animation: "blobMove 10s ease-in-out infinite" }} />
+<section id="pricing" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative">
+    <div className="absolute top-0 left-1/2 -translate-x-1/2 size-96 rounded-full bg-[#0797d5]/5 blur-3xl pointer-events-none" style={{ animation: "blobMove 10s ease-in-out infinite" }} />
 
-                <div ref={pricingHeadRef} style={{ opacity: pricingHeadVisible ? 1 : 0, transform: pricingHeadVisible ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.65s ease, transform 0.65s ease" }} className="text-center mb-14 relative z-10">
-                    <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0797d5]/10 text-[#0797d5] font-semibold text-xs tracking-widest uppercase mb-3 border border-[#0797d5]/20">
-                        Licenciamiento VoltGuard
-                    </span>
-                    <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
-                        Elige el plan adecuado según tus tableros y requisitos ITSE
-                    </h2>
-                </div>
+    <div ref={pricingHeadRef} style={{ opacity: pricingHeadVisible ? 1 : 0, transform: pricingHeadVisible ? "translateY(0)" : "translateY(24px)", transition: "opacity 0.65s ease, transform 0.65s ease" }} className="text-center mb-14 relative z-10">
+        <span className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0797d5]/10 text-[#0797d5] font-semibold text-xs tracking-widest uppercase mb-3 border border-[#0797d5]/20">
+            Licenciamiento VoltGuard
+        </span>
+        <h2 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight">
+            Elige el plan adecuado según tus tableros y requisitos ITSE
+        </h2>
+    </div>
 
-                <div ref={pricingRef} className="grid gap-8 md:grid-cols-3 max-w-6xl mx-auto relative z-10">
-                    {plans.map((plan, i) => (
-                        <PlanCard key={plan.id} plan={plan} index={i} active={pricingVisible} />
-                    ))}
-                </div>
+    <div ref={pricingRef} className="grid gap-8 md:grid-cols-2 max-w-4xl mx-auto relative z-10">
+        {plans.map((plan, i) => (
+            <PlanCard key={plan.id} plan={plan} index={i} active={pricingVisible} />
+        ))}
+    </div>
 
-                <div className="mt-10 text-center space-y-1 relative z-10">
-                    <p className="text-xs font-semibold text-slate-500">
-                        * La tarifa del Plan Intermedio aplica por tablero eléctrico registrado.
-                    </p>
-                    <p className="text-xs text-slate-400">
-                        La emisión de certificados con firma CIP está condicionada a los planes Intermedio y Empresarial.
-                    </p>
-                </div>
-            </section>
+    <div className="mt-10 text-center space-y-1 relative z-10">
+        <p className="text-xs text-slate-400">
+            La emisión de certificados con firma CIP está condicionada al Plan Empresarial.
+        </p>
+    </div>
+</section>
 
             {/* ── STRIP FOTOS: METODOLOGÍA DE INSPECCIÓN VOLTGUARD ───────────── */}
             <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

@@ -16,6 +16,7 @@ export interface ThermographyData {
   cols: number;
   originalImageUrl?: string;
   stats: ThermographyStats;
+  observation?: string;
 }
 
 // Subir CSV e imagen de termografía

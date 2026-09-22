@@ -5,7 +5,8 @@ import {
   UploadCloud,
   Crosshair,
   Camera,
-  Layers
+  Layers,
+  Sparkles
 } from "lucide-react";
 import { getThermographyInfo, fetchThermalMatrix } from "../../../services/thermography.service";
 
@@ -31,6 +32,7 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
 
   const [thermalImage, setThermalImage] = useState<string | null>(null);
   const [visualImage, setVisualImage] = useState<string | null>(null);
+  const [observation, setObservation] = useState<string | null>(null);
 
   const [hoverData, setHoverData] = useState<{
     x: number;
@@ -53,6 +55,7 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
           setDimensions({ rows: res.data.rows || 640, cols: res.data.cols || 480 });
           setThermalImage(res.data.thermalImageUrl || null);
           setVisualImage(res.data.originalImageUrl || null);
+          setObservation(res.data.observation || null);
 
           const { matrix: loadedMatrix } = await fetchThermalMatrix(boardId);
           setMatrix(loadedMatrix);
@@ -141,15 +144,22 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
           {/* Métricas de Temperatura */}
           {stats && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-2xl border border-red-200 bg-red-50/50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-wider text-red-700">Punto Caliente (Hotspot)</p>
-                <p className="mt-1 text-2xl font-black text-red-950">
-                  {stats.max.toFixed(2)} <span className="text-xs font-bold text-red-600">°C</span>
+              {/* 1 COLUMNA: Punto Caliente */}
+              <div className="rounded-2xl border border-red-200 bg-red-50/50 p-4 flex flex-col justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-red-700">
+                    Punto Caliente (Hotspot)
+                  </p>
+                  <p className="mt-1 text-4xl font-black text-red-950">
+                    {stats.max.toFixed(2)} <span className="text-xs font-bold text-red-600">°C</span>
+                  </p>
+                </div>
+                <p className="text-[10px] text-red-600/80 font-semibold mt-2">
+                  Crítico en conexiones
                 </p>
-                <p className="text-[10px] text-red-600/80 font-semibold">Crítico en conexiones</p>
               </div>
 
-              <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4">
+              {/* <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4">
                 <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Punto Frío</p>
                 <p className="mt-1 text-2xl font-black text-blue-950">
                   {stats.min.toFixed(2)} <span className="text-xs font-bold text-blue-600">°C</span>
@@ -163,6 +173,37 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
                   {(stats.max - stats.min).toFixed(2)} <span className="text-xs font-bold text-amber-600">°C</span>
                 </p>
                 <p className="text-[10px] text-amber-600/80 font-semibold">Promedio: {stats.avg.toFixed(2)} °C</p>
+              </div> */}
+
+              {/* 2 COLUMNAS: Observación Técnica de OpenAI */}
+              <div className="sm:col-span-2 rounded-2xl border border-amber-200/80 bg-amber-50/40 p-4 flex flex-col justify-between">
+                <div className="flex items-center justify-between pb-1.5 border-b border-amber-100">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles size={14} className="text-amber-600" />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">
+                      Observación Técnica
+                    </span>
+                  </div>
+                  <span className="inline-flex items-center rounded-md bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-800">
+                    NFPA 70B
+                  </span>
+                </div>
+
+                <div className="my-auto py-1">
+                  {observation ? (
+                    <p className="text-xs text-slate-700 font-medium leading-relaxed whitespace-pre-line">
+                      {observation}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">
+                      Generando observación técnica...
+                    </p>
+                  )}
+                </div>
+
+                <p className="text-[10px] text-slate-400 font-medium">
+                  Análisis automático basado en gradiente térmico
+                </p>
               </div>
             </div>
           )}
@@ -286,7 +327,7 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
               <div className="flex items-center justify-between text-xs font-bold text-slate-300 px-1">
                 <span className="flex items-center gap-1.5">
                   <Camera size={14} className="text-sky-400" />
-                  Foto Normal del Tablero
+                  Foto del Tablero
                 </span>
                 <span className="text-[10px] text-slate-500 font-mono">Cámara Visual FLIR</span>
               </div>

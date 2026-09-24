@@ -62,7 +62,7 @@ export interface InsulationManualResponse {
         boardId: string;
         code: string;
         boardCode: string;
-        sistema?: "MONOFASICO" | "TRIFASICO";
+        sistema?: "MONOFÁSICO" | "TRIFÁSICO";
         numeroFases?: number;
         bloqueaFase3Tierra: boolean;
         measurement: InsulationMeasurementRecord;

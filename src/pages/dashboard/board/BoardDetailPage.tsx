@@ -14,7 +14,9 @@ import {
   Hand,
   ImageIcon,
   Info,
+  Loader2,
   MapPin,
+  ReceiptText,
   Shield,
   UploadCloud,
   X,
@@ -29,6 +31,7 @@ import {
   BarChart,
   CartesianGrid,
   Label,
+  Legend,
   Line,
   LineChart,
   ReferenceArea,
@@ -48,6 +51,7 @@ import { getIticEvents, uploadIticCsv, type VoltageEventItem } from "../../../se
 import { useAuth } from "../../../shared/hooks/useAuth";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
+import { uploadReceiptBill } from "../../../services/bill.service";
 
 // ── CONSTANTES DE PALETAS DE COLORES ──
 const MAIN_COLORS = [
@@ -236,14 +240,57 @@ const BoardDetailPage = () => {
         return `${dia}/${mes} (${diaNombre})`;
       });
 
-      const barrasProcesadas = sortedCleanKeys.map(key => {
-        const totalPuntos = formattedData.filter(d => d[key] !== undefined && d[key] !== null).length;
-        const totalPromedioKw = totalPuntos > 0 ? (energiaAcumuladaAux[key] || 0) / totalPuntos : 0;
-        const totalKWh = totalPromedioKw * 24;
+      // const barrasProcesadas = sortedCleanKeys.map(key => {
+      //   const totalPuntos = formattedData.filter(d => d[key] !== undefined && d[key] !== null).length;
+      //   const totalPromedioKw = totalPuntos > 0 ? (energiaAcumuladaAux[key] || 0) / totalPuntos : 0;
+      //   const totalKWh = totalPromedioKw * 24;
+
+      //   return {
+      //     name: key,
+      //     kWh: Math.round(totalKWh * 10) / 10
+      //   };
+      // });
+
+      // En fetchChartData dentro de BoardDetailPage.tsx:
+      const barrasProcesadas = sortedCleanKeys.map((key) => {
+        // Filtrar las lecturas válidas del día
+        const puntosValidos = formattedData.filter(
+          (d) => d[key] !== undefined && d[key] !== null
+        );
+
+        let sumaKwFP = 0;
+        let countFP = 0;
+        let sumaKwHP = 0;
+        let countHP = 0;
+
+        puntosValidos.forEach((d) => {
+          const val = Number(d[key]) || 0;
+          const hora = d.horaMinuto; // Ej: "18:25"
+          if (!hora) return;
+
+          const [h] = hora.split(":").map(Number);
+          // Hora Punta (HP): 18:00 a 23:00 hrs (18, 19, 20, 21, 22)
+          const esHP = h >= 18 && h < 23;
+
+          if (esHP) {
+            sumaKwHP += val;
+            countHP++;
+          } else {
+            sumaKwFP += val;
+            countFP++;
+          }
+        });
+
+        // Cada punto equivale a un intervalo de 5 minutos (1/12 de hora)
+        const kwhHP = countHP > 0 ? (sumaKwHP / countHP) * 5 : 0;   // 5 horas de HP
+        const kwhFP = countFP > 0 ? (sumaKwFP / countFP) * 19 : 0; // 19 horas de FP
+        const totalKWh = kwhHP + kwhFP;
 
         return {
           name: key,
-          kWh: Math.round(totalKWh * 10) / 10
+          kWh: Math.round(totalKWh * 10) / 10,
+          kwhHP: Math.round(kwhHP * 10) / 10,
+          kwhFP: Math.round(kwhFP * 10) / 10,
         };
       });
 
@@ -283,6 +330,17 @@ const BoardDetailPage = () => {
       console.error("Error cargando curvas de demanda en Recharts:", err);
     }
   };
+
+  const getSistemaCompleto = (board: BoardResponseDTO) => {
+  if (!board) return "N/D";
+  
+  const sistema = board.sistema || "TRIFÁSICO";
+  const tension = board.tensionNominal ? `${board.tensionNominal}VAC` : "220VAC";
+  const fases = board.numeroFases || 3;
+  const neutro = board.incluyeNeutro ? " + NEUTRO" : "";
+  
+  return `${sistema} ${tension} DELTA (${fases} HILOS${neutro} + TIERRA)`;
+};
 
   const [iticEvents, setIticEvents] = useState<VoltageEventItem[]>([]);
   const [uploadingItic, setUploadingItic] = useState(false);
@@ -1289,45 +1347,129 @@ const BoardDetailPage = () => {
     );
   };
 
-  const TARIFO_KWH_PEN = 0.45;
+  // const TARIFO_KWH_PEN = 0.45;
   // const FACTOR_GENERACION_SOLAR_DIARIO = 0.15;
 
+  // ── ESTADOS PARA RECIBO Y COSTO DE ENERGÍA (HP / FP) ──
+  const [rates, setRates] = useState<{ hp: number; fp: number }>({
+    hp: 0.3095, // Tarifas iniciales del recibo de Luz del Sur[cite: 1, 2]
+    fp: 0.2616, //[cite: 1, 2]
+  });
+  const [isUploadingBill, setIsUploadingBill] = useState(false);
+  const billFileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  // Sincronizar tarifas si el tablero ya las tiene guardadas en MongoDB
+  useEffect(() => {
+    if ((board as any)?.energyRates?.tarifaHP && (board as any)?.energyRates?.tarifaFP) {
+      setRates({
+        hp: (board as any).energyRates.tarifaHP,
+        fp: (board as any).energyRates.tarifaFP,
+      });
+    }
+  }, [board]);
+
+  const handleBillUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !board?._id) return;
+
+    try {
+      setIsUploadingBill(true);
+      const res = await uploadReceiptBill(board._id, file);
+      if (res?.data) {
+        setRates({
+          hp: Number(res.data.tarifaHP) || 0.3095, //[cite: 1, 2]
+          fp: Number(res.data.tarifaFP) || 0.2616, //[cite: 1, 2]
+        });
+        alert("¡Tarifas extraídas y actualizadas correctamente con OpenAI!");
+      }
+    } catch (err: any) {
+      alert("Error al procesar recibo: " + (err.response?.data?.error || err.message));
+    } finally {
+      setIsUploadingBill(false);
+      if (billFileInputRef.current) billFileInputRef.current.value = "";
+    }
+  };
+
   const renderEnergyCostSection = () => {
+    // Calculamos el desglose de costos en FP y HP (70% FP y 30% HP si no vienen disgregados de Metrel)
     const costoData = energiaPorDiaData
       .filter(d => visibleCostSeries[d.name] !== false)
       .map(item => {
-        const costoSoles = (item.kWh || 0) * TARIFO_KWH_PEN;
+        const kwhFP = item.kwhFP ?? (item.kWh || 0) * 0.70;
+        const kwhHP = item.kwhHP ?? (item.kWh || 0) * 0.30;
+
+        const costoFP = kwhFP * rates.fp;
+        const costoHP = kwhHP * rates.hp;
+        const costoTotal = costoFP + costoHP;
+
         return {
           name: item.name,
-          costo: Number(costoSoles.toFixed(2)),
-          kWh: item.kWh
+          costoFP: Number(costoFP.toFixed(2)),
+          costoHP: Number(costoHP.toFixed(2)),
+          costoTotal: Number(costoTotal.toFixed(2)),
+          kWh: item.kWh || 0,
         };
       });
 
-    const totalCostoSemana = costoData.reduce((acc, curr) => acc + curr.costo, 0);
-    const promedioCostoDiario = costoData.length > 0 ? totalCostoSemana / costoData.length : 0;
+    const totalCostoPeriodo = costoData.reduce((acc, curr) => acc + curr.costoTotal, 0);
+    const promedioCostoDiario = costoData.length > 0 ? totalCostoPeriodo / costoData.length : 0;
 
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
+        {/* Input invisible para adjuntar recibo */}
+        <input
+          type="file"
+          ref={billFileInputRef}
+          onChange={handleBillUpload}
+          accept="image/*,application/pdf"
+          className="hidden"
+          disabled={isUploadingBill}
+        />
+
+        {/* Header con botón para adjuntar recibo */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
             <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-600">
               <Coins size={20} className="sm:size-[22px]" />
             </div>
             <div>
-              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">Costo de Energía Estimado (S/.)</h2>
-              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Estimación económica del consumo eléctrico diario en soles (S/.)</p>
+              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
+                Costo de Energía Estimado (HP / FP)
+              </h2>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+                Tarifas aplicadas: HP = <strong className="text-slate-800">S/. {rates.hp.toFixed(4)}</strong> | FP = <strong className="text-slate-800">S/. {rates.fp.toFixed(4)}</strong> por kWh
+              </p>
             </div>
           </div>
+
+          <button
+            type="button"
+            disabled={isUploadingBill}
+            onClick={() => billFileInputRef.current?.click()}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            {isUploadingBill ? (
+              <>
+                <Loader2 size={16} className="animate-spin text-amber-400" />
+                <span>Extrayendo con IA...</span>
+              </>
+            ) : (
+              <>
+                <ReceiptText size={16} className="text-amber-400" />
+                <span>Adjuntar Recibo de Luz</span>
+              </>
+            )}
+          </button>
         </div>
 
+        {/* Tarjetas Resumen */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
             <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Costo Total del Periodo</p>
             <p className="mt-1 text-2xl font-black text-amber-950">
-              S/. {totalCostoSemana.toFixed(2)}
+              S/. {totalCostoPeriodo.toFixed(2)}
             </p>
-            <p className="mt-1 text-[10px] text-amber-600">Basado en tarifa promediada de S/. {TARIFO_KWH_PEN} / kWh</p>
+            <p className="mt-1 text-[10px] text-amber-600">Suma combinada de Hora Punta y Fuera de Punta</p>
           </div>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
@@ -1339,6 +1481,7 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
+        {/* Selector de Días */}
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
           {seriesKeys.map((key) => (
@@ -1356,6 +1499,7 @@ const BoardDetailPage = () => {
           ))}
         </div>
 
+        {/* Gráfico Stacked Bar Chart */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
             {costoData.length === 0 ? (
@@ -1374,10 +1518,36 @@ const BoardDetailPage = () => {
                   </YAxis>
                   <Tooltip
                     cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
-                    formatter={(val: any) => [`S/. ${Number(val).toFixed(2)}`, 'Costo Estimado']}
+                    formatter={(val: any, name: any) => [
+                      `S/. ${Number(val).toFixed(2)}`,
+                      name === "costoHP" ? "Hora Punta (HP)" : "Fuera de Punta (FP)"
+                    ]}
                     contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
                   />
-                  <Bar dataKey="costo" fill="#f59e0b" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                  <Legend
+                    verticalAlign="top"
+                    align="right"
+                    iconType="circle"
+                    wrapperStyle={{ paddingBottom: '12px', fontSize: '11px', fontWeight: 600 }}
+                    formatter={(value) => (value === "costoHP" ? "Hora Punta (HP)" : "Fuera de Punta (FP)")}
+                  />
+
+                  {/* PARTE INFERIOR: Fuera de Punta (FP) - Tono azul/púrpura de la imagen de referencia */}
+                  <Bar
+                    dataKey="costoFP"
+                    stackId="costo"
+                    fill="#7c7bb5"
+                    maxBarSize={48}
+                  />
+
+                  {/* PARTE SUPERIOR: Hora Punta (HP) - Tono verde con esquinas superiores redondeadas */}
+                  <Bar
+                    dataKey="costoHP"
+                    stackId="costo"
+                    fill="#68b48f"
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={48}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -2746,7 +2916,7 @@ const BoardDetailPage = () => {
             { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             // { l: "Tipo", v: board.type, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             // { l: "Tensión", v: board.tensionNominal ? `${board.tensionNominal} V` : "220 V", icon: Zap, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-            { l: "Sistema", v: board.sistema, icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+            { l: "Sistema", v: getSistemaCompleto(board), icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
             // { l: "Circuitos", v: board.circuits?.length ? `${board.circuits.length} SALIDAS` : "0 SALIDAS", icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#0797d5]" }
           ].map((item, i) => {

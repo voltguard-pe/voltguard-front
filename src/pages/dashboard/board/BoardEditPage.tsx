@@ -160,7 +160,7 @@ const EditBoardPage = () => {
       [key]: value,
     }));
 
-    if (key === "sistema" && value === "MONOFASICO") {
+    if (key === "sistema" && value === "MONOFÁSICO") {
       setInsulationValues((prev) => ({
         ...prev,
         measurement_l3_g: null,

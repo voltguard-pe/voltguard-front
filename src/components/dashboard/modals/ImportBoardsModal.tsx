@@ -17,6 +17,7 @@ import {
   runImport,
   validateImport,
 } from "../../../services/import.service";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 type Props = {
   isOpen: boolean;
@@ -33,6 +34,7 @@ const ImportBoardsModal = ({
   companies,
   onSuccess,
 }: Props) => {
+  const { triggerRefresh } = useSidebar();
   const [file, setFile] = useState<File | null>(null);
   const [selectedCompany, setSelectedCompany] = useState("");
   const [result, setResult] = useState<any>(null);
@@ -134,6 +136,7 @@ const ImportBoardsModal = ({
 
       setTimeout(() => {
         toast.success("Tableros importados correctamente");
+        triggerRefresh(selectedCompany);
         handleClose();
         onSuccess();
       }, 700);

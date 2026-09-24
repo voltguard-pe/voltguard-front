@@ -42,6 +42,7 @@ import { generateBoardPDF } from "../../../shared/utils/generateBoardPDF";
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 import { generateQrPdf } from "../../../shared/utils/generateQrPdf";
 import ImportBoardsAndNfpaModal from "../../../components/dashboard/modals/ImportBoardsAndNfpaModal";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 type SortConfig = {
   key: "name" | "boardCode" | "location" | "nfpa";
@@ -50,6 +51,7 @@ type SortConfig = {
 
 const BoardDashboardPage = () => {
   const { auth } = useAuth();
+  const { triggerRefresh } = useSidebar();
   const navigate = useNavigate();
   const { publicCode } = useParams();
 
@@ -199,6 +201,7 @@ const BoardDashboardPage = () => {
 
     try {
       await deleteBoard(effectivePublicCode, code);
+      triggerRefresh(effectivePublicCode);
       setBoards((prev) => prev.filter((board) => board.code !== code));
     } catch (error) {
       console.error("Error al eliminar tablero", error);

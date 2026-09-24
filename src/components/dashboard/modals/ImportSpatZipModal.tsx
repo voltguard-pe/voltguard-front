@@ -13,6 +13,7 @@ import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 import { getCompanies } from "../../../services/company.service";
 import { importSpatZip } from "../../../services/spat.service";
 import { useAuth } from "../../../shared/hooks/useAuth";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 type Props = {
   isOpen: boolean;
@@ -28,6 +29,7 @@ export const ImportSpatZipModal: React.FC<Props> = ({
   onSuccess,
 }) => {
   const { auth } = useAuth();
+  const { triggerRefresh } = useSidebar();
   const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
   const [selectedCompany, setSelectedCompany] = useState<string>(defaultCompanyCode || "");
   const [location, setLocation] = useState<string>("");
@@ -102,6 +104,8 @@ export const ImportSpatZipModal: React.FC<Props> = ({
       setProgress(100);
       setStatus("success");
       toast.success("¡Pozos SPAT procesados y guardados con éxito!");
+
+      triggerRefresh(selectedCompany);
 
       setTimeout(() => {
         handleClose();

@@ -27,6 +27,8 @@ import { publicGetCompanyBoards } from "../../services/board.service";
 import { getDocumentsByCompany } from "../../services/document.service";
 import type { CompanyResponseDTO } from "../../shared/types/CompanyProps";
 import type { PublicCompanyBoardsItemDTO, DocumentResponseDTO } from "../../shared/types/BoardProps";
+import { getCompanyPozosList } from "../../services/spat.service";
+import { useSidebar } from "../../contexts/SidebarContext";
 
 interface SidebarComponentProps {
   isOpen: boolean;
@@ -42,6 +44,7 @@ const SidebarComponent = ({
   onOpenCreateGroundingModal,
 }: SidebarComponentProps) => {
   const { auth, handleLogout } = useAuth();
+  const { refreshKey, lastUpdatedCompany } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,7 +60,7 @@ const SidebarComponent = ({
 
   const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
   // const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
-  
+
   const SESSION_FOLDERS_KEY = "voltguard_sidebar_session_folders";
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>(() => {
     try {
@@ -87,43 +90,65 @@ const SidebarComponent = ({
         : auth?.company);
 
   // Carga en paralelo todos los recursos de una empresa para disponer de los totales inmediatamente
-  const loadCompanyFullData = async (publicCode: string) => {
+const loadCompanyFullData = async (publicCode: string, force: boolean = false) => {
     if (!publicCode) return;
 
     // 1. Tableros
-    if (!companyBoards[publicCode]) {
+    if (force || !companyBoards[publicCode]) {
       setLoadingBoards((prev) => ({ ...prev, [publicCode]: true }));
       publicGetCompanyBoards(publicCode)
         .then((res) => {
-          setCompanyBoards((prev) => ({ ...prev, [publicCode]: res.boards || [] }));
+          const list = res?.boards || [];
+          setCompanyBoards((prev) => ({ ...prev, [publicCode]: list }));
         })
-        .catch(() => setCompanyBoards((prev) => ({ ...prev, [publicCode]: [] })))
+        .catch((err) => console.error("Error cargando tableros:", err))
         .finally(() => setLoadingBoards((prev) => ({ ...prev, [publicCode]: false })));
     }
 
     // 2. Pozos a Tierra (SPAT)
-    if (!companyGrounding[publicCode]) {
+    if (force || !companyGrounding[publicCode]) {
       setLoadingGrounding((prev) => ({ ...prev, [publicCode]: true }));
-      const mockPozos = [
-        { code: "SPAT-01", name: "Pozo #01 - Patio Principal" },
-        { code: "SPAT-02", name: "Pozo #02 - Cuarto de Máquinas" },
-        { code: "SPAT-03", name: "Pozo #03 - Subestación" },
-      ];
-      setCompanyGrounding((prev) => ({ ...prev, [publicCode]: mockPozos }));
-      setLoadingGrounding((prev) => ({ ...prev, [publicCode]: false }));
+      getCompanyPozosList(publicCode)
+        .then((res) => {
+          const list = (res?.data || []).map((p: any) => ({
+            code: p.pozoCode,
+            name: p.name || p.pozoCode,
+          }));
+          setCompanyGrounding((prev) => ({ ...prev, [publicCode]: list }));
+        })
+        .catch((err) => console.error("Error cargando SPAT:", err))
+        .finally(() => setLoadingGrounding((prev) => ({ ...prev, [publicCode]: false })));
     }
 
     // 3. Documentos ITSE
-    if (!companyDocuments[publicCode]) {
+    if (force || !companyDocuments[publicCode]) {
       setLoadingDocuments((prev) => ({ ...prev, [publicCode]: true }));
       getDocumentsByCompany(publicCode)
         .then((docs) => {
           setCompanyDocuments((prev) => ({ ...prev, [publicCode]: docs || [] }));
         })
-        .catch(() => setCompanyDocuments((prev) => ({ ...prev, [publicCode]: [] })))
+        .catch((err) => console.error("Error cargando documentos:", err))
         .finally(() => setLoadingDocuments((prev) => ({ ...prev, [publicCode]: false })));
     }
   };
+
+// ❌ ELIMINA cualquier: delete next[lastUpdatedCompany];
+  // ✅ REEMPLÁZALO POR ESTO:
+  useEffect(() => {
+    if (refreshKey === 0) return;
+
+    if (lastUpdatedCompany) {
+      // Forzar recarga directa pasando true SIN borrar el estado anterior
+      loadCompanyFullData(lastUpdatedCompany, true);
+    } else {
+      // Si no se pasó empresa específica, recargar las que estén abiertas
+      Object.keys(expandedFolders).forEach((code) => {
+        if (expandedFolders[code]) {
+          loadCompanyFullData(code, true);
+        }
+      });
+    }
+  }, [refreshKey, lastUpdatedCompany]);
 
   useEffect(() => {
     const fetchCompaniesData = async () => {
@@ -452,6 +477,7 @@ const SidebarComponent = ({
                     key={pozo.code}
                     to={`/dashboard/companies/${company.publicCode}/grounding/${pozo.code}`}
                     onClick={onClose}
+                    end
                     className={({ isActive }) =>
                       `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
                         ? "text-emerald-600 font-bold bg-emerald-50"

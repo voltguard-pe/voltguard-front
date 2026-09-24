@@ -29,11 +29,14 @@ import {
 import { ImportSpatZipModal } from "../../../components/dashboard/modals/ImportSpatZipModal";
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 import { generateSpatPDF } from "../../../shared/utils/generateSpatPDF";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 const GroundingDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { auth } = useAuth();
-  const { publicCode } = useParams<{ publicCode: string }>();
+  const { triggerRefresh } = useSidebar();
+  // const { publicCode } = useParams<{ publicCode: string }>();
+  const { publicCode, pozoCode } = useParams<{ publicCode: string; pozoCode: string }>();
 
   // Empresas
   const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
@@ -89,13 +92,17 @@ const GroundingDashboardPage: React.FC = () => {
 
     try {
       const res = await getCompanyPozosList(effectivePublicCode);
-      if (res?.data && res.data.length > 0) {
-        setPozosList(res.data);
-        if (!res.data.some((p: SpatPozoItem) => p.pozoCode === selectedPozoCode)) {
-          setSelectedPozoCode(res.data[0].pozoCode);
-        }
+      const data = res?.data || [];
+      setPozosList(data);
+
+      if (data.length > 0) {
+        // Si la URL trae un pozo (:pozoCode), se selecciona ese; de lo contrario, el primero
+        const targetPozo = pozoCode && data.some((p: SpatPozoItem) => p.pozoCode === pozoCode)
+          ? pozoCode
+          : data[0].pozoCode;
+
+        setSelectedPozoCode(targetPozo);
       } else {
-        setPozosList([]);
         setSelectedPozoCode("");
         setSpatRecord(null);
       }
@@ -105,6 +112,13 @@ const GroundingDashboardPage: React.FC = () => {
       setSpatRecord(null);
     }
   };
+
+  // Cuando el usuario hace clic en otro pozo desde el sidebar, actualiza el pozo seleccionado
+  useEffect(() => {
+    if (pozoCode) {
+      setSelectedPozoCode(pozoCode);
+    }
+  }, [pozoCode]);
 
   useEffect(() => {
     loadPozos();
@@ -296,7 +310,12 @@ const GroundingDashboardPage: React.FC = () => {
         {pozosList.length > 0 && (
           <select
             value={selectedPozoCode}
-            onChange={(e) => setSelectedPozoCode(e.target.value)}
+            // onChange={(e) => setSelectedPozoCode(e.target.value)}
+            onChange={(e) => {
+              const newPozo = e.target.value;
+              setSelectedPozoCode(newPozo);
+              navigate(`/dashboard/companies/${effectivePublicCode}/grounding/${newPozo}`);
+            }}
             className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer"
           >
             {pozosList.map((p) => (
@@ -351,9 +370,8 @@ const GroundingDashboardPage: React.FC = () => {
                     Criterio ≤ 5.00 Ω &nbsp;·&nbsp; {rates.tasaResistencia}
                   </p>
                 </div>
-                <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider ${
-                  (latestMeasurement?.resistencia ?? 0) <= 5.0 ? "bg-amber-600 text-white" : "bg-rose-600 text-white"
-                }`}>
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider ${(latestMeasurement?.resistencia ?? 0) <= 5.0 ? "bg-amber-600 text-white" : "bg-rose-600 text-white"
+                  }`}>
                   {(latestMeasurement?.resistencia ?? 0) <= 5.0 ? "VIGILANCIA" : "CRÍTICO"}
                 </span>
               </div>
@@ -383,9 +401,8 @@ const GroundingDashboardPage: React.FC = () => {
                     Criterio ≤ 5.00 mA &nbsp;·&nbsp; {rates.tasaFuga}
                   </p>
                 </div>
-                <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider ${
-                  (latestMeasurement?.fuga ?? 0) <= 5.0 ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-                }`}>
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider ${(latestMeasurement?.fuga ?? 0) <= 5.0 ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
+                  }`}>
                   {(latestMeasurement?.fuga ?? 0) <= 5.0 ? "NORMAL" : "ALERTA"}
                 </span>
               </div>
@@ -474,7 +491,10 @@ const GroundingDashboardPage: React.FC = () => {
         isOpen={showZipModal}
         onClose={() => setShowZipModal(false)}
         defaultCompanyCode={effectivePublicCode}
-        onSuccess={() => loadPozos()}
+        onSuccess={() => {
+          loadPozos();
+          triggerRefresh(effectivePublicCode); // <-- Notifica al Sidebar
+        }}
       />
     </section>
   );

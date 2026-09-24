@@ -13,6 +13,7 @@ import { toast } from "react-toastify";
 
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 import { createBoardFromUnifilar } from "../../../services/board-ai.service";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 type Props = {
     isOpen: boolean;
@@ -29,6 +30,7 @@ const ImportUnifilarBoardModal = ({
     companies,
     onSuccess,
 }: Props) => {
+    const { triggerRefresh } = useSidebar();
     const [file, setFile] = useState<File | null>(null);
     const [selectedCompany, setSelectedCompany] = useState("");
     const [status, setStatus] = useState<Status>("idle");
@@ -119,6 +121,8 @@ const ImportUnifilarBoardModal = ({
             if (tablerosFallidos.length > 0) {
                 setStatus("error");
 
+                triggerRefresh(selectedCompany);
+
                 // 🚀 CAMBIO CLAVE: Refrescamos la tabla principal para que muestre los que SÍ pasaron, 
                 // pero dejamos el modal abierto para que vea la caja roja de los que fallaron.
                 onSuccess();
@@ -132,6 +136,7 @@ const ImportUnifilarBoardModal = ({
 
             setStatus("success");
             toast.success("Tableros importados correctamente desde el ZIP");
+            triggerRefresh(selectedCompany);
 
             setTimeout(() => {
                 handleClose();

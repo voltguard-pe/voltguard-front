@@ -13,6 +13,7 @@ import { toast } from "react-toastify";
 
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
 import { importBoardsWithNfpa, type ImportBoardsResponse } from "../../../services/importUnifilarNfpa-ai.service";
+import { useSidebar } from "../../../contexts/SidebarContext";
 // import {
 //   importBoardsWithNfpa,
 //   type ImportBoardsResponse,
@@ -33,6 +34,7 @@ const ImportBoardsAndNfpaModal = ({
   companies,
   onSuccess,
 }: Props) => {
+  const { triggerRefresh } = useSidebar();
   const [file, setFile] = useState<File | null>(null);
   const [selectedCompany, setSelectedCompany] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -116,6 +118,7 @@ const ImportBoardsAndNfpaModal = ({
 
       if (failedBoards.length > 0) {
         setStatus("error");
+        triggerRefresh(selectedCompany);
         onSuccess(); // Actualiza los tableros creados exitosamente en segundo plano
         toast.error("Proceso completado con algunas omisiones o errores.", {
           autoClose: 6000,
@@ -125,6 +128,8 @@ const ImportBoardsAndNfpaModal = ({
 
       setStatus("success");
       toast.success("Tableros y etiquetas NFPA registrados con éxito");
+
+      triggerRefresh(selectedCompany);
 
       setTimeout(() => {
         handleClose();

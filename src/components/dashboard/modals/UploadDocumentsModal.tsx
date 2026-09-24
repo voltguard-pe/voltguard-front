@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { uploadCompanyDocuments } from "../../../services/document.service";
 import type { CompanySummaryDTO } from "../../../shared/types/BoardProps";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 type Props = {
   isOpen: boolean;
@@ -14,6 +15,7 @@ type Props = {
 type Status = "idle" | "uploading" | "success" | "error";
 
 export const UploadDocumentsModal = ({ isOpen, onClose, companies, onSuccess }: Props) => {
+  const { triggerRefresh } = useSidebar();
   const [files, setFiles] = useState<File[]>([]);
   const [selectedCompany, setSelectedCompany] = useState("");
   const [docType, setDocType] = useState<"MANTENIMIENTO" | "OPERATIVIDAD">("MANTENIMIENTO");
@@ -72,6 +74,7 @@ export const UploadDocumentsModal = ({ isOpen, onClose, companies, onSuccess }: 
 
       setStatus("success");
       toast.success("Documentos almacenados con éxito");
+      triggerRefresh(selectedCompany);
       setTimeout(() => {
         onSuccess();
         handleClose();

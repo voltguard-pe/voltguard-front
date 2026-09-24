@@ -18,6 +18,7 @@ import {
   validateInsulationZip,
   type InsulationValidationResponse,
 } from "../../../services/insulation.service";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 type Props = {
   isOpen: boolean;
@@ -34,6 +35,7 @@ const ImportInsulationsModal = ({
   companies,
   onSuccess,
 }: Props) => {
+  const { triggerRefresh } = useSidebar();
   const [file, setFile] = useState<File | null>(null);
   const [selectedCompany, setSelectedCompany] = useState("");
   const [result, setResult] = useState<InsulationValidationResponse | null>(
@@ -158,6 +160,7 @@ const ImportInsulationsModal = ({
 
       setTimeout(() => {
         toast.success("Mediciones de aislamiento importadas correctamente");
+        triggerRefresh(selectedCompany);
         handleClose();
         onSuccess();
       }, 700);

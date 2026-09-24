@@ -39,84 +39,87 @@ import OnboardingPage from './pages/landing/OnboardingPage'
 import ContactSalesPage from './pages/contact-sales/ContactSalesPage'
 import ContactSalesLayout from './layouts/ContactSalesLayout'
 import GroundingDashboardPage from './pages/dashboard/spat/GroundingDashboardPage'
+import { SidebarProvider } from './contexts/SidebarContext'
 
 function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
       <AuthProvider>
-        <Routes>
-          <Route path='/' element={<LandingLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="success-stories" element={<SuccessStoriesPage />} />
-            <Route path="plans" element={<PlansPage />} />
-            <Route path="/onboarding" element={<OnboardingPage />} />
-            <Route path="/contact-sales" element={<ContactSalesPage />} />
-          </Route>
-
-          <Route path='/contact-sales' element={<ContactSalesLayout />}>
-            <Route index element={<ContactSalesPage />} />
-          </Route>
-
-          {/* RUTAS PÚBLICAS DE AUTENTICACIÓN */}
-          <Route element={<PublicRoute />}>
-            <Route path='/auth' element={<AuthLayout />}>
-              <Route index element={<LoginPage />} />
-              <Route path='register' element={<RegisterPage />} />
-
-              {/* 2. AÑADE ESTA RUTA DINÁMICA CON EL PARÁMETRO :token */}
-              <Route path='verify-email/:token' element={<VerifyEmailPage />} />
-
-              <Route path='forgot-password' element={<ForgotPasswordPage />} />
-              <Route path='reset-password' element={<ChangePasswordPage />} />
+        <SidebarProvider>
+          <Routes>
+            <Route path='/' element={<LandingLayout />}>
+              <Route index element={<HomePage />} />
+              <Route path="success-stories" element={<SuccessStoriesPage />} />
+              <Route path="plans" element={<PlansPage />} />
+              <Route path="/onboarding" element={<OnboardingPage />} />
+              <Route path="/contact-sales" element={<ContactSalesPage />} />
             </Route>
-          </Route>
 
-          {/* RUTAS PROTEGIDAS */}
-          <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN", "ADMIN", "USER"]} />}>
-            <Route path='/dashboard' element={<DashboardLayout />}>
-              <Route index element={<DashboardRouter />} />
-              <Route path="settings" element={<ConfigurationDashboardPage />} />
+            <Route path='/contact-sales' element={<ContactSalesLayout />}>
+              <Route index element={<ContactSalesPage />} />
+            </Route>
 
-              <Route path="profile">
-                <Route index element={<ProfileDashboardPage />} />
-                <Route path="edit" element={<EditProfilePage />} />
-              </Route>
+            {/* RUTAS PÚBLICAS DE AUTENTICACIÓN */}
+            <Route element={<PublicRoute />}>
+              <Route path='/auth' element={<AuthLayout />}>
+                <Route index element={<LoginPage />} />
+                <Route path='register' element={<RegisterPage />} />
 
-              {/* RUTAS DE TABLEROS VISIBLES PARA USER/ADMIN/SUPERADMIN */}
-              <Route path="boards" element={<BoardDashboardPage />} />
-              <Route path="boards/:publicCode" element={<BoardDashboardPage />} />
-              <Route path="boards/:publicCode/:code" element={<BoardDetailPage />} />
+                {/* 2. AÑADE ESTA RUTA DINÁMICA CON EL PARÁMETRO :token */}
+                <Route path='verify-email/:token' element={<VerifyEmailPage />} />
 
-              <Route path="grounding" element={<GroundingDashboardPage />} />
-              <Route path="companies/:publicCode/grounding" element={<GroundingDashboardPage />} />
-              <Route path="companies/:publicCode/grounding/:pozoCode" element={<GroundingDashboardPage />} />
-
-              <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
-                <Route path="users" element={<AdminDashboardPage />} />
-                <Route path="users/create" element={<AdminCreatePage />} />
-                <Route path="users/:id" element={<AdminDetailPage />} />
-
-                <Route path="admins" element={<CompanyDashboardPage />} />
-                <Route path="admins/create" element={<CompanyCreatePage />} />
-                <Route path="admins/:id/edit" element={<CompanyEditPage />} />
-
-                <Route path="companies" element={<CompaniesDashboardPages />} />
-                <Route path="companies/create" element={<CompaniesCreatePage />} />
-                <Route path="companies/:publicCode/edit" element={<CompaniesEditPage />} />
-
-                <Route path="documents" element={<DocumentDashboardPage />} />
-              </Route>
-
-              <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
-                <Route path="boards/create" element={<BoardsCreatePage />} />
-                <Route path="boards/:publicCode/:code/edit" element={<BoardsEditPage />} />
+                <Route path='forgot-password' element={<ForgotPasswordPage />} />
+                <Route path='reset-password' element={<ChangePasswordPage />} />
               </Route>
             </Route>
-          </Route>
 
-          <Route path='*' element={<NotFoundPage />} />
-        </Routes>
+            {/* RUTAS PROTEGIDAS */}
+            <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN", "ADMIN", "USER"]} />}>
+              <Route path='/dashboard' element={<DashboardLayout />}>
+                <Route index element={<DashboardRouter />} />
+                <Route path="settings" element={<ConfigurationDashboardPage />} />
+
+                <Route path="profile">
+                  <Route index element={<ProfileDashboardPage />} />
+                  <Route path="edit" element={<EditProfilePage />} />
+                </Route>
+
+                {/* RUTAS DE TABLEROS VISIBLES PARA USER/ADMIN/SUPERADMIN */}
+                <Route path="boards" element={<BoardDashboardPage />} />
+                <Route path="boards/:publicCode" element={<BoardDashboardPage />} />
+                <Route path="boards/:publicCode/:code" element={<BoardDetailPage />} />
+
+                <Route path="grounding" element={<GroundingDashboardPage />} />
+                <Route path="companies/:publicCode/grounding" element={<GroundingDashboardPage />} />
+                <Route path="companies/:publicCode/grounding/:pozoCode" element={<GroundingDashboardPage />} />
+
+                <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
+                  <Route path="users" element={<AdminDashboardPage />} />
+                  <Route path="users/create" element={<AdminCreatePage />} />
+                  <Route path="users/:id" element={<AdminDetailPage />} />
+
+                  <Route path="admins" element={<CompanyDashboardPage />} />
+                  <Route path="admins/create" element={<CompanyCreatePage />} />
+                  <Route path="admins/:id/edit" element={<CompanyEditPage />} />
+
+                  <Route path="companies" element={<CompaniesDashboardPages />} />
+                  <Route path="companies/create" element={<CompaniesCreatePage />} />
+                  <Route path="companies/:publicCode/edit" element={<CompaniesEditPage />} />
+
+                  <Route path="documents" element={<DocumentDashboardPage />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
+                  <Route path="boards/create" element={<BoardsCreatePage />} />
+                  <Route path="boards/:publicCode/:code/edit" element={<BoardsEditPage />} />
+                </Route>
+              </Route>
+            </Route>
+
+            <Route path='*' element={<NotFoundPage />} />
+          </Routes>
+        </SidebarProvider>
       </AuthProvider>
     </BrowserRouter>
   );

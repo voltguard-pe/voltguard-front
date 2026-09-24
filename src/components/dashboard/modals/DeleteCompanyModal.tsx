@@ -1,14 +1,24 @@
 import { Trash2 } from "lucide-react";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 interface DeleteCompanyModalProps {
+  companyPublicCode?: string;
   onClose: () => void;
   onConfirm: () => void;
 }
 
 const DeleteCompanyModal = ({
+  companyPublicCode,
   onClose,
   onConfirm,
 }: DeleteCompanyModalProps) => {
+  const { triggerRefresh } = useSidebar(); // 👈 Obtener función del context
+
+  const handleConfirmAction = () => {
+    onConfirm();
+    triggerRefresh(companyPublicCode); // 👈 Limpia y refresca el Sidebar
+  };
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-sm w-full max-w-md p-6">
@@ -34,7 +44,7 @@ const DeleteCompanyModal = ({
             Cancelar
           </button>
           <button
-            onClick={onConfirm}
+            onClick={handleConfirmAction}
             className="px-4 py-2 text-sm rounded-lg bg-red-600 text-white hover:bg-red-700"
           >
             Eliminar

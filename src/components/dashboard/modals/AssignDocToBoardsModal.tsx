@@ -3,6 +3,7 @@ import { X, Search, CheckSquare, Square, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { getBoards, assignSingleDocumentToMultipleBoards } from "../../../services/board.service";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 type Props = {
   isOpen: boolean;
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export const AssignDocToBoardsModal = ({ isOpen, onClose, companyPublicCode, documentId, documentTitle, onSuccess }: Props) => {
+  const { triggerRefresh } = useSidebar();
   const [boards, setBoards] = useState<BoardResponseDTO[]>([]);
   const [selectedBoardCodes, setSelectedBoardCodes] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -78,6 +80,7 @@ export const AssignDocToBoardsModal = ({ isOpen, onClose, companyPublicCode, doc
     try {
       await assignSingleDocumentToMultipleBoards(companyPublicCode, selectedBoardCodes, documentId);
       toast.success("Asignación masiva completada con éxito");
+      triggerRefresh(companyPublicCode);
       onSuccess();
       onClose();
     } catch (err) {

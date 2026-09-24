@@ -10,9 +10,7 @@ import {
   Coins,
   Container,
   FileDown,
-  FileImage,
   Hand,
-  ImageIcon,
   Info,
   Loader2,
   MapPin,
@@ -45,13 +43,13 @@ import {
 } from "recharts";
 import { ImportThermographyModal } from "../../../components/dashboard/modals/ImportThermographyModal";
 import { ThermographyViewer } from "../../../components/dashboard/sections/ThermographyViewer";
+import { uploadReceiptBill } from "../../../services/bill.service";
 import { getBoardByCode } from "../../../services/board.service";
 import { getDemandChartData, uploadMetrelCsv } from "../../../services/measurement.service";
 import { getIticEvents, uploadIticCsv, type VoltageEventItem } from "../../../services/voltageEvent.service";
 import { useAuth } from "../../../shared/hooks/useAuth";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
 import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
-import { uploadReceiptBill } from "../../../services/bill.service";
 
 // ── CONSTANTES DE PALETAS DE COLORES ──
 const MAIN_COLORS = [
@@ -332,15 +330,15 @@ const BoardDetailPage = () => {
   };
 
   const getSistemaCompleto = (board: BoardResponseDTO) => {
-  if (!board) return "N/D";
-  
-  const sistema = board.sistema || "TRIFÁSICO";
-  const tension = board.tensionNominal ? `${board.tensionNominal}VAC` : "220VAC";
-  const fases = board.numeroFases || 3;
-  const neutro = board.incluyeNeutro ? " + NEUTRO" : "";
-  
-  return `${sistema} ${tension} DELTA (${fases} HILOS${neutro} + TIERRA)`;
-};
+    if (!board) return "N/D";
+
+    const sistema = board.sistema || "TRIFÁSICO";
+    const tension = board.tensionNominal ? `${board.tensionNominal}VAC` : "220VAC";
+    const fases = board.numeroFases || 3;
+    const neutro = board.incluyeNeutro ? " + NEUTRO" : "";
+
+    return `${sistema} ${tension} DELTA (${fases} HILOS${neutro} + TIERRA)`;
+  };
 
   const [iticEvents, setIticEvents] = useState<VoltageEventItem[]>([]);
   const [uploadingItic, setUploadingItic] = useState(false);
@@ -2455,34 +2453,34 @@ const BoardDetailPage = () => {
     </div>
   );
 
-  const renderImageSection = (title: string, description: string, images: string[] = []) => (
-    <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
-      <div className="mb-5 flex items-center gap-3">
-        <div className="flex size-11 items-center justify-center rounded-2xl bg-[#8ccf2f]/12 text-[#3aaa35]"><ImageIcon size={22} /></div>
-        <div>
-          <h2 className="font-bold text-slate-950 text-base tracking-tight">{title}</h2>
-          <p className="text-xs text-slate-500 mt-0.5">{description}</p>
-        </div>
-      </div>
-      {images.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
-          <FileImage size={32} className="text-slate-300" />
-          <p className="mt-2 text-xs font-bold text-slate-500">Sin imágenes registradas</p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {images.map((img, index) => (
-            <button key={`${img}-${index}`} type="button" onClick={() => setSelectedImage(img)} className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 text-left cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm">
-              <div className="overflow-hidden h-44 w-full">
-                <img src={img} alt={`${title} ${index + 1}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-              </div>
-              <div className="p-3"><p className="truncate text-xs font-bold text-slate-600">Imagen {index + 1}</p></div>
-            </button>
-          ))}
-        </div>
-      )}
-    </section>
-  );
+  // const renderImageSection = (title: string, description: string, images: string[] = []) => (
+  //   <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:border-slate-300">
+  //     <div className="mb-5 flex items-center gap-3">
+  //       <div className="flex size-11 items-center justify-center rounded-2xl bg-[#8ccf2f]/12 text-[#3aaa35]"><ImageIcon size={22} /></div>
+  //       <div>
+  //         <h2 className="font-bold text-slate-950 text-base tracking-tight">{title}</h2>
+  //         <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+  //       </div>
+  //     </div>
+  //     {images.length === 0 ? (
+  //       <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+  //         <FileImage size={32} className="text-slate-300" />
+  //         <p className="mt-2 text-xs font-bold text-slate-500">Sin imágenes registradas</p>
+  //       </div>
+  //     ) : (
+  //       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+  //         {images.map((img, index) => (
+  //           <button key={`${img}-${index}`} type="button" onClick={() => setSelectedImage(img)} className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 text-left cursor-pointer transition-all hover:border-slate-300 hover:shadow-sm">
+  //             <div className="overflow-hidden h-44 w-full">
+  //               <img src={img} alt={`${title} ${index + 1}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+  //             </div>
+  //             <div className="p-3"><p className="truncate text-xs font-bold text-slate-600">Imagen {index + 1}</p></div>
+  //           </button>
+  //         ))}
+  //       </div>
+  //     )}
+  //   </section>
+  // );
 
   // const renderPdfSection = (title: string, description: string, documentsList: IDocument[]) => {
   //   return (
@@ -2925,7 +2923,8 @@ const BoardDetailPage = () => {
               <div key={i} className="rounded-2xl border border-transparent bg-slate-50/70 p-4 transition-colors hover:border-slate-200/50">
                 <CardIcon className={item.iconCls} size={20} />
                 <p className="mt-2.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">{item.l}</p>
-                <p className={`mt-0.5 truncate text-xs font-bold sm:text-sm ${item.textCls}`}>{value(item.v)}</p>
+                {/* <p className={`mt-0.5 truncate text-xs font-bold sm:text-sm ${item.textCls}`}>{value(item.v)}</p> */}
+                <p className={`mt-0.5 text-xs font-bold sm:text-sm ${item.textCls}`}>{value(item.v)}</p>
               </div>
             );
           })}
@@ -3037,19 +3036,19 @@ const BoardDetailPage = () => {
         )}
 
         {/* ── IMÁGENES DEL TABLERO ── */}
-        {board.images?.tablero && board.images.tablero.length > 0 && (
+        {/* {board.images?.tablero && board.images.tablero.length > 0 && (
           renderImageSection("Imágenes del tablero", "Fotografías generales del tablero eléctrico", board.images.tablero)
-        )}
+        )} */}
 
         {/* ── PLAN INTERMEDIO Y EMPRESARIAL: DIAGRAMA UNIFILAR ── */}
-        {board.images?.unifilar && board.images.unifilar.length > 0 && (
+        {/* {board.images?.unifilar && board.images.unifilar.length > 0 && (
           renderImageSection("Diagrama unifilar", "Imágenes del diagrama unifilar registrado", board.images.unifilar)
-        )}
+        )} */}
 
         {/* ── PLAN EMPRESARIAL: INSPECCIÓN TERMOGRÁFICA (NFPA 70B) ── */}
-        {isEmpresarial && board.images?.termografia && board.images.termografia.length > 0 && (
+        {/* {isEmpresarial && board.images?.termografia && board.images.termografia.length > 0 && (
           renderImageSection("Termografía", "Imágenes termográficas asociadas al tablero", board.images.termografia)
-        )}
+        )} */}
 
         {/* ── PLAN EMPRESARIAL: INSPECCIÓN TERMOGRÁFICA (NFPA 70B) ── */}
         {isEmpresarial && (

@@ -1,34 +1,33 @@
-import { useEffect, useRef, useState } from "react";
 import {
+  Activity,
   Building2,
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  ExternalLink,
   FileText,
   Folder,
   FolderOpen,
   LayoutDashboard,
   LogOut,
+  MoreVertical,
+  Plus,
   ShieldCheck,
+  User2,
   Users,
   X,
-  Zap,
-  Activity,
-  User2,
-  Plus,
-  MoreVertical,
-  ExternalLink,
-  Award,
+  Zap
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../shared/hooks/useAuth";
-import { getCompanies } from "../../services/company.service";
-import { publicGetCompanyBoards } from "../../services/board.service";
-import { getDocumentsByCompany } from "../../services/document.service";
-import type { CompanyResponseDTO } from "../../shared/types/CompanyProps";
-import type { PublicCompanyBoardsItemDTO, DocumentResponseDTO } from "../../shared/types/BoardProps";
-import { getCompanyPozosList } from "../../services/spat.service";
 import { useSidebar } from "../../contexts/SidebarContext";
+import { publicGetCompanyBoards } from "../../services/board.service";
+import { getCompanies } from "../../services/company.service";
+import { getDocumentsByCompany } from "../../services/document.service";
+import { getCompanyPozosList } from "../../services/spat.service";
+import { useAuth } from "../../shared/hooks/useAuth";
+import type { DocumentResponseDTO, PublicCompanyBoardsItemDTO } from "../../shared/types/BoardProps";
+import type { CompanyResponseDTO } from "../../shared/types/CompanyProps";
 
 interface SidebarComponentProps {
   isOpen: boolean;
@@ -722,50 +721,107 @@ const SidebarComponent = ({
             </nav>
           </div>
 
-          {/* Sección de Estándares / Normativas (Logos) */}
+          {/* ── SECCIÓN DESTACADA DE NORMATIVAS & LOGOS (SHOWCASE PUBLICITARIO) ── */}
           {!isSuperAdmin && (
-            <div className="border-t border-slate-100 p-3 bg-slate-50/40">
-              <div className="flex items-center gap-1.5 mb-2 px-0.5">
-                <Award size={13} className="text-[#0797d5]" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  Estándares Soportados
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-1.5">
-                {/* Logo IEEE */}
-                <div
-                  title="Estándares IEEE"
-                  className="flex h-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white p-1 shadow-2xs transition-all hover:border-slate-300 hover:shadow-xs"
-                >
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg"
-                    alt="IEEE"
-                    className="h-4 max-w-full object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all"
-                  />
+            <div className="mx-2.5 my-3 overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50 via-white to-slate-50 p-3.5 shadow-sm">
+              {/* Encabezado de certificación */}
+              <div className="flex items-center justify-between mb-3 px-0.5">
+                <div className="flex items-center gap-2">
+                  <div className="flex size-6 items-center justify-center rounded-lg bg-[#0797d5]/15 text-[#0797d5] shadow-2xs">
+                    <ShieldCheck size={14} className="stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <span className="block text-[11px] font-black uppercase tracking-wider text-slate-800 leading-tight">
+                      Normativas
+                    </span>
+                    <span className="block text-[9px] font-medium text-slate-400 leading-tight">
+                      Estándares aplicados
+                    </span>
+                  </div>
                 </div>
 
-                {/* Logo CBEMA / ITIC */}
+                {/* <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 shadow-2xs">
+                  <span className="relative flex size-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[9.5px] font-black text-emerald-700 tracking-tight">
+                    ACTIVO
+                  </span>
+                </div> */}
+              </div>
+
+              {/* Grid de Logos en gran tamaño */}
+              <div className="grid grid-cols-3 gap-2">
+                {/* 1. Logo NFPA 70E */}
                 <div
-                  title="Curva CBEMA / ITIC"
-                  className="flex h-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white px-1 shadow-2xs transition-all hover:border-slate-300 hover:shadow-xs"
+                  title="Normativa NFPA 70E - Seguridad Eléctrica y Arc Flash"
+                  className="group relative flex h-16 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-2 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-amber-400 hover:shadow-md hover:shadow-amber-500/15 cursor-default"
                 >
-                  <span className="text-[10px] font-black tracking-tighter text-slate-500 hover:text-slate-800 transition-colors">
-                    CBEMA
+                  <img
+                    src="/logos/nfpa-70e.png" // 👈 Pon aquí la ruta de tu logo (o url externa)
+                    alt="NFPA 70E"
+                    className="max-h-9 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-110"
+                    onError={(e) => {
+                      // Fallback si la imagen aún no está en tu carpeta
+                      e.currentTarget.style.display = "none";
+                      e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                    }}
+                  />
+                  {/* Respaldo provisional mientras colocas tus imágenes */}
+                  <div className="hidden flex-col items-center">
+                    <span className="text-[11px] font-black text-amber-700">NFPA</span>
+                    <span className="text-[9px] font-black text-slate-800">70E</span>
+                  </div>
+                  <span className="mt-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-tight group-hover:text-amber-600 transition-colors">
+                    Seguridad
                   </span>
                 </div>
 
-                {/* Logo IEC */}
+                {/* 2. Logo NFPA 70B */}
                 <div
-                  title="Normativa IEC"
-                  className="flex h-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white p-1 shadow-2xs transition-all hover:border-slate-300 hover:shadow-xs"
+                  title="Normativa NFPA 70B - Mantenimiento Predictivo & Termografía"
+                  className="group relative flex h-16 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-2 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-rose-400 hover:shadow-md hover:shadow-rose-500/15 cursor-default"
                 >
                   <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/d/d8/IEC_logo.svg"
-                    alt="IEC"
-                    className="h-4 max-w-full object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all"
+                    src="/logos/nfpa-70b.png" // 👈 Pon aquí la ruta de tu logo (o url externa)
+                    alt="NFPA 70B"
+                    className="max-h-9 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-110"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                      e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                    }}
                   />
+                  <div className="hidden flex-col items-center">
+                    <span className="text-[11px] font-black text-rose-700">NFPA</span>
+                    <span className="text-[9px] font-black text-slate-800">70B</span>
+                  </div>
+                  <span className="mt-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-tight group-hover:text-rose-600 transition-colors">
+                    Térmico
+                  </span>
                 </div>
+
+                {/* 3. Logo IEEE */}
+                <div
+                  title="Estándares IEEE - Calidad de Potencia y Armónicos"
+                  className="group relative flex h-16 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-2 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#0797d5] hover:shadow-md hover:shadow-[#0797d5]/15 cursor-default"
+                >
+                  <img
+                    src="https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg" // 👈 Logo oficial IEEE en SVG
+                    alt="IEEE"
+                    className="max-h-8 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-110"
+                  />
+                  <span className="mt-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-tight group-hover:text-[#0797d5] transition-colors">
+                    Potencia
+                  </span>
+                </div>
+              </div>
+
+              {/* Leyenda publicitaria inferior */}
+              <div className="mt-2.5 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-2 text-center">
+                <span className="text-[9px] font-semibold text-slate-500">
+                  Cumplimiento técnico bajo estándar internacional
+                </span>
               </div>
             </div>
           )}

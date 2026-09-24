@@ -2,23 +2,29 @@ import React, { createContext, useContext, useState, useCallback } from "react";
 
 interface SidebarContextType {
   refreshKey: number;
-  triggerRefresh: (companyCode?: string) => void;
-  lastUpdatedCompany: string | null;
+  triggerRefresh: (companyCode?: string | string[]) => void;
+  lastUpdatedCompanies: string[];
 }
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
 
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [refreshKey, setRefreshKey] = useState(0);
-  const [lastUpdatedCompany, setLastUpdatedCompany] = useState<string | null>(null);
+  const [lastUpdatedCompanies, setLastUpdatedCompanies] = useState<string[]>([]);
 
-  const triggerRefresh = useCallback((companyCode?: string) => {
-    setLastUpdatedCompany(companyCode || null);
+  const triggerRefresh = useCallback((companyCode?: string | string[]) => {
+    if (Array.isArray(companyCode)) {
+      setLastUpdatedCompanies(companyCode);
+    } else if (companyCode) {
+      setLastUpdatedCompanies([companyCode]);
+    } else {
+      setLastUpdatedCompanies([]);
+    }
     setRefreshKey((prev) => prev + 1);
   }, []);
 
   return (
-    <SidebarContext.Provider value={{ refreshKey, triggerRefresh, lastUpdatedCompany }}>
+    <SidebarContext.Provider value={{ refreshKey, triggerRefresh, lastUpdatedCompanies }}>
       {children}
     </SidebarContext.Provider>
   );

@@ -44,7 +44,7 @@ const SidebarComponent = ({
   onOpenCreateGroundingModal,
 }: SidebarComponentProps) => {
   const { auth, handleLogout } = useAuth();
-  const { refreshKey, lastUpdatedCompany } = useSidebar();
+  const { refreshKey, lastUpdatedCompanies } = useSidebar();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -90,7 +90,7 @@ const SidebarComponent = ({
         : auth?.company);
 
   // Carga en paralelo todos los recursos de una empresa para disponer de los totales inmediatamente
-const loadCompanyFullData = async (publicCode: string, force: boolean = false) => {
+  const loadCompanyFullData = async (publicCode: string, force: boolean = false) => {
     if (!publicCode) return;
 
     // 1. Tableros
@@ -132,23 +132,25 @@ const loadCompanyFullData = async (publicCode: string, force: boolean = false) =
     }
   };
 
-// ❌ ELIMINA cualquier: delete next[lastUpdatedCompany];
+  // ❌ ELIMINA cualquier: delete next[lastUpdatedCompany];
   // ✅ REEMPLÁZALO POR ESTO:
   useEffect(() => {
     if (refreshKey === 0) return;
 
-    if (lastUpdatedCompany) {
-      // Forzar recarga directa pasando true SIN borrar el estado anterior
-      loadCompanyFullData(lastUpdatedCompany, true);
+    if (lastUpdatedCompanies && lastUpdatedCompanies.length > 0) {
+      // Forzar la recarga de cada empresa afectada (origen y destino)
+      lastUpdatedCompanies.forEach((code) => {
+        loadCompanyFullData(code, true);
+      });
     } else {
-      // Si no se pasó empresa específica, recargar las que estén abiertas
+      // Si no se pasaron códigos, recargar las que estén abiertas
       Object.keys(expandedFolders).forEach((code) => {
         if (expandedFolders[code]) {
           loadCompanyFullData(code, true);
         }
       });
     }
-  }, [refreshKey, lastUpdatedCompany]);
+  }, [refreshKey, lastUpdatedCompanies]);
 
   useEffect(() => {
     const fetchCompaniesData = async () => {

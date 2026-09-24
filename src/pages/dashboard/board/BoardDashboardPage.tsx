@@ -7,7 +7,6 @@ import {
   Building2,
   ChevronDown,
   Download,
-  Eye,
   FileDown,
   Import,
   Pencil,
@@ -19,6 +18,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
+  ArrowRightLeft,
 } from "lucide-react";
 
 import ImportBoardsModal from "../../../components/dashboard/modals/ImportBoardsModal";
@@ -43,6 +43,8 @@ import { generateNfpaPDF } from "../../../shared/utils/generateNfpaPDF";
 import { generateQrPdf } from "../../../shared/utils/generateQrPdf";
 import ImportBoardsAndNfpaModal from "../../../components/dashboard/modals/ImportBoardsAndNfpaModal";
 import { useSidebar } from "../../../contexts/SidebarContext";
+import { MoveBoardModal } from "../../../components/dashboard/modals/MoveBoardModal";
+import { BulkMoveBoardsModal } from "../../../components/dashboard/modals/BulkMoveBoardsModal";
 
 type SortConfig = {
   key: "name" | "boardCode" | "location" | "nfpa";
@@ -76,6 +78,9 @@ const BoardDashboardPage = () => {
 
   const [selectedBoardCodes, setSelectedBoardCodes] = useState<string[]>([]);
   const [sortConfig, setSortConfig] = useState<SortConfig>(null);
+
+  const [boardToMove, setBoardToMove] = useState<PublicCompanyBoardsItemDTO | null>(null);
+  const [showBulkMoveModal, setShowBulkMoveModal] = useState(false);
 
   const effectivePublicCode =
     auth?.role === "ADMIN"
@@ -513,7 +518,7 @@ const BoardDashboardPage = () => {
                         onChange={() => handleSelectRow(board.code)}
                       />
                     </td>
-                    <td className="px-6 py-3.5">
+                    <td className="px-6 py-3.5 cursor-pointer" onClick={() => navigate(`/dashboard/boards/${effectivePublicCode}/${board.code}`)}>
                       <div className="flex items-center gap-3">
                         <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#0797d5] to-[#8ccf2f] text-white shadow-xs">
                           <Zap size={16} />
@@ -564,17 +569,26 @@ const BoardDashboardPage = () => {
                           <FileDown size={15} />
                         </button>
 
-                        <button
+                        {/* <button
                           type="button"
                           onClick={() => navigate(`/dashboard/boards/${effectivePublicCode}/${board.code}`)}
                           className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-[#0797d5]/10 hover:text-[#0797d5] transition-colors cursor-pointer"
                           title="Ver detalle de lecturas"
                         >
                           <Eye size={15} />
-                        </button>
+                        </button> */}
 
                         {auth?.role === "SUPERADMIN" && (
                           <>
+                            <button
+                              type="button"
+                              onClick={() => setBoardToMove(board)}
+                              className="flex size-8 items-center justify-center rounded-xl text-slate-400 hover:bg-sky-50 hover:text-sky-600 transition-colors cursor-pointer"
+                              title="Mover a otra empresa"
+                            >
+                              <ArrowRightLeft size={15} />
+                            </button>
+
                             <button
                               type="button"
                               onClick={() => navigate(`/dashboard/boards/${effectivePublicCode}/${board.code}/edit`)}
@@ -633,6 +647,15 @@ const BoardDashboardPage = () => {
 
           {auth?.role === "SUPERADMIN" && (
             <>
+              <button
+                type="button"
+                onClick={() => setShowBulkMoveModal(true)}
+                className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20 transition-all cursor-pointer"
+              >
+                <ArrowRightLeft size={14} />
+                Mover a otra empresa
+              </button>
+
               <button
                 type="button"
                 onClick={async () => {
@@ -706,6 +729,32 @@ const BoardDashboardPage = () => {
         onClose={() => setShowImportBoardsAndNfpaModal(false)}
         companies={companies}
         onSuccess={refreshBoards}
+      />
+
+      {boardToMove && (
+        <MoveBoardModal
+          isOpen={Boolean(boardToMove)}
+          onClose={() => setBoardToMove(null)}
+          boardCode={boardToMove.code}
+          boardName={boardToMove.name || boardToMove.boardCode}
+          currentCompanyCode={effectivePublicCode || ""}
+          companies={companies}
+          onSuccess={() => {
+            refreshBoards(); // Actualiza la tabla local
+          }}
+        />
+      )}
+
+      <BulkMoveBoardsModal
+        isOpen={showBulkMoveModal}
+        onClose={() => setShowBulkMoveModal(false)}
+        selectedBoardCodes={selectedBoardCodes}
+        currentCompanyCode={effectivePublicCode || ""}
+        companies={companies}
+        onSuccess={() => {
+          setSelectedBoardCodes([]);
+          refreshBoards();
+        }}
       />
 
       <QRModal

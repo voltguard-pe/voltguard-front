@@ -10,9 +10,7 @@ import type {
 // =========================
 // 📥 GET BOARDS
 // =========================
-export const getBoards = async (
-  publicCode: string
-): Promise<{
+export const getBoards = async (publicCode: string): Promise<{
   company: { name: string; publicCode: string };
   boards: BoardResponseDTO[];
 }> => {
@@ -89,10 +87,7 @@ export const createBoard = async (data: BoardCreateDTO) => {
 // =========================
 // 🔍 GET BOARD BY CODE
 // =========================
-export const getBoardByCode = async (
-  publicCode: string,
-  code: string
-): Promise<BoardResponseDTO> => {
+export const getBoardByCode = async (publicCode: string, code: string): Promise<BoardResponseDTO> => {
   const res = await clientAxios.get(
     `/board/${publicCode}/${code}`
   );
@@ -102,11 +97,7 @@ export const getBoardByCode = async (
 // =========================
 // ✏️ UPDATE BOARD
 // =========================
-export const updateBoard = async (
-  publicCode: string,
-  code: string,
-  data: BoardUpdateDTO
-) => {
+export const updateBoard = async (publicCode: string, code: string, data: BoardUpdateDTO) => {
   const formData = new FormData();
 
   if (data.boardCode !== undefined) formData.append("boardCode", data.boardCode);
@@ -221,41 +212,44 @@ export const updateBoard = async (
 // =========================
 // 🗑 DELETE
 // =========================
-export const deleteBoard = async (
-  publicCode: string,
-  code: string
-) => {
+export const deleteBoard = async (publicCode: string, code: string) => {
   const res = await clientAxios.delete(
     `/board/${publicCode}/${code}`
   );
   return res.data;
 };
 
+export const bulkMoveBoards = async (boardCodes: string[], targetCompanyPublicCode: string) => {
+  const { data } = await clientAxios.post("/board/bulk-move", {
+    boardCodes,
+    targetCompanyPublicCode,
+  });
+  return data;
+};
+
+// Reutiliza la misma función masiva para mover uno solo:
+export const moveBoardToCompany = async (boardCode: string, targetCompanyPublicCode: string) => {
+  return bulkMoveBoards([boardCode], targetCompanyPublicCode);
+};
+
 // =========================
 // 🌐 PUBLIC
 // =========================
-export const publicGetCompanyBoards = async (
-  publicCode: string
-): Promise<PublicCompanyBoardsResponseDTO> => {
+export const publicGetCompanyBoards = async (publicCode: string): Promise<PublicCompanyBoardsResponseDTO> => {
   const { data } = await clientAxios.get(
     `/board/public/company/${publicCode}`
   );
   return data;
 };
 
-export const publicGetCompanyBoardByCode = async (
-  publicCode: string,
-  code: string
-): Promise<PublicBoardByCodeResponseDTO> => {
+export const publicGetCompanyBoardByCode = async (publicCode: string, code: string): Promise<PublicBoardByCodeResponseDTO> => {
   const { data } = await clientAxios.get(
     `/board/public/${publicCode}/${code}`
   );
   return data;
 };
 
-export const getCompanyBoards = async (): Promise<{
-  boards: BoardResponseDTO[];
-}> => {
+export const getCompanyBoards = async (): Promise<{ boards: BoardResponseDTO[] }> => {
   const res = await clientAxios.get("/board");
   console.log(res)
   return res.data;
@@ -264,10 +258,7 @@ export const getCompanyBoards = async (): Promise<{
 // =========================
 // 📤 UPLOAD FILE
 // =========================
-export const uploadFile = async (
-  file: File,
-  userId: string
-): Promise<{ url: string }> => {
+export const uploadFile = async (file: File, userId: string): Promise<{ url: string }> => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("userId", userId);
@@ -300,23 +291,19 @@ export const uploadFile = async (
 // =========================
 // 🚀 ASIGNACIÓN MASIVA DE UN DOCUMENTO A MÚLTIPLES TABLEROS
 // =========================
-export const assignSingleDocumentToMultipleBoards = async (
-  publicCode: string,
-  boardCodes: string[], // Array de UUIDs de los tableros seleccionados
-  documentId: string
-): Promise<void> => {
-  
+export const assignSingleDocumentToMultipleBoards = async (publicCode: string, boardCodes: string[], documentId: string): Promise<void> => {
+
   // Mapeamos cada tablero para meterle el documento sin borrar los que ya tiene
   const promises = boardCodes.map(async (code) => {
     // 1. Primero obtenemos el tablero actual para no pisar/borrar sus otros documentos asignados
     const resGet = await clientAxios.get(`/board/${publicCode}/${code}`);
     const currentAssignedIds: string[] = resGet.data.assignedDocuments?.map((d: any) => d._id) || [];
-    
+
     // 2. Si el documento no está en el array, lo agregamos
     if (!currentAssignedIds.includes(documentId)) {
       currentAssignedIds.push(documentId);
     }
-    
+
     // 3. Guardamos la nueva lista en el tablero
     return clientAxios.put(`/board/${publicCode}/${code}/assign-documents`, {
       documentIds: currentAssignedIds,

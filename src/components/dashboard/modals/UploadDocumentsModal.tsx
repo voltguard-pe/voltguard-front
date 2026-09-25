@@ -18,14 +18,14 @@ export const UploadDocumentsModal = ({ isOpen, onClose, companies, onSuccess }: 
   const { triggerRefresh } = useSidebar();
   const [files, setFiles] = useState<File[]>([]);
   const [selectedCompany, setSelectedCompany] = useState("");
-  const [docType, setDocType] = useState<"MANTENIMIENTO" | "OPERATIVIDAD">("MANTENIMIENTO");
+  // const [docType, setDocType] = useState<"MANTENIMIENTO" | "OPERATIVIDAD">("MANTENIMIENTO");
   const [status, setStatus] = useState<Status>("idle");
   const [progress, setProgress] = useState(0);
 
   const resetState = () => {
     setFiles([]);
     setSelectedCompany("");
-    setDocType("MANTENIMIENTO");
+    // setDocType("MANTENIMIENTO");
     setStatus("idle");
     setProgress(0);
   };
@@ -67,7 +67,7 @@ export const UploadDocumentsModal = ({ isOpen, onClose, companies, onSuccess }: 
         companyPublicCode: selectedCompany,
         uploadedBy: "60d5ecb8b39d1c123456789a", // ID del usuario auth
         files,
-        types: files.map(() => docType)
+        // types: files.map(() => docType)
       }, (percent) => {
         setProgress(percent);
       });
@@ -108,7 +108,7 @@ export const UploadDocumentsModal = ({ isOpen, onClose, companies, onSuccess }: 
         </div>
 
         <div className="max-h-[70vh] space-y-5 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="text-sm font-semibold text-slate-700">Empresa destino</label>
               <select
@@ -123,7 +123,7 @@ export const UploadDocumentsModal = ({ isOpen, onClose, companies, onSuccess }: 
                 ))}
               </select>
             </div>
-
+            {/* 
             <div>
               <label className="text-sm font-semibold text-slate-700">Tipo de Certificado</label>
               <select
@@ -136,15 +136,14 @@ export const UploadDocumentsModal = ({ isOpen, onClose, companies, onSuccess }: 
                 <option value="OPERATIVIDAD">Certificado de Operatividad</option>
                 <option value="POZO_A_TIERRA">Protocolo / Certificado de Pozo a Tierra (SPAT)</option>
               </select>
-            </div>
+            </div> */}
           </div>
 
           <label
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
-            className={`flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed p-8 text-center transition ${
-              status === "uploading" ? "pointer-events-none bg-slate-50 opacity-60" : "border-slate-200 bg-slate-50 hover:border-[#0797d5]"
-            }`}
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed p-8 text-center transition ${status === "uploading" ? "pointer-events-none bg-slate-50 opacity-60" : "border-slate-200 bg-slate-50 hover:border-[#0797d5]"
+              }`}
           >
             <div className="flex size-14 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
               <FileText size={28} />

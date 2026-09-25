@@ -126,7 +126,7 @@ export interface BoardResponseDTO {
   // certificadoMantenimiento?: string;
   // certificadoOperatividad?: string;
 
-  assignedDocuments?: DocumentResponseDTO[];
+  // assignedDocuments?: DocumentResponseDTO[];
 
   // Últimos o históricos registros de mediciones de aislamiento.
   // Normalmente el backend puede devolver el último registro como [0].
@@ -313,7 +313,7 @@ export interface BoardNfpaData {
 export interface DocumentResponseDTO {
   _id: string;
   title: string;
-  type: "MANTENIMIENTO" | "OPERATIVIDAD";
+  // type: "MANTENIMIENTO" | "OPERATIVIDAD";
   cloudinaryUrl: string;
   cloudinaryPublicId: string;
   companyPublicCode: string;
@@ -327,5 +327,5 @@ export interface UploadDocumentsDTO {
   uploadedBy: string;
   files: File[];
   titles?: string[];
-  types?: ("MANTENIMIENTO" | "OPERATIVIDAD")[];
+  // types?: ("MANTENIMIENTO" | "OPERATIVIDAD")[];
 }

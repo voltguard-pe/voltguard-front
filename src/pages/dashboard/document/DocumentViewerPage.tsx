@@ -88,7 +88,6 @@ const DocumentViewerPage = () => {
                     </div>
                     <div className="min-w-0">
                         <h1 className="truncate text-sm font-bold text-slate-900">{document.title}</h1>
-                        <p className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">{document.type}</p>
                     </div>
                 </div>
 

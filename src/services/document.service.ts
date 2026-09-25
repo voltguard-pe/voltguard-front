@@ -11,9 +11,9 @@ export const uploadCompanyDocuments = async (
 
   data.files.forEach((file) => formData.append("files", file));
 
-  if (data.types) {
-    data.types.forEach((type) => formData.append("types", type));
-  }
+  // if (data.types) {
+  //   data.types.forEach((type) => formData.append("types", type));
+  // }
 
   const res = await clientAxios.post("/document", formData, {
     headers: { "Content-Type": "multipart/form-data" },

@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Building2, Eye, FileText, Plus, Search, Trash2, UploadCloud, Loader2, Link, Download } from "lucide-react";
+import { Building2, Eye, FileText, Plus, Search, Trash2, Loader2, Download } from "lucide-react";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom";
 
-// Servicios reales
+// Servicios
 import { getDocumentsByCompany, deleteDocument } from "../../../services/document.service";
-import { getBoards } from "../../../services/board.service";
 import { getCompanies } from "../../../services/company.service";
 import type { DocumentResponseDTO, CompanySummaryDTO } from "../../../shared/types/BoardProps";
 import { UploadDocumentsModal } from "../../../components/dashboard/modals/UploadDocumentsModal";
-import { AssignDocToBoardsModal } from "../../../components/dashboard/modals/AssignDocToBoardsModal";
-import { useNavigate } from "react-router-dom";
 import { useSidebar } from "../../../contexts/SidebarContext";
 
 interface CompanyGroup {
@@ -25,9 +23,6 @@ const DocumentDashboardPage = () => {
   const [selectedCompany, setSelectedCompany] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-  const [activeDocForAssign, setActiveDocForAssign] = useState<{ id: string; title: string; companyCode: string } | null>(null);
-
   const [companiesList, setCompaniesList] = useState<CompanySummaryDTO[]>([]);
   const [groupedData, setGroupedData] = useState<CompanyGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,51 +33,33 @@ const DocumentDashboardPage = () => {
       try {
         const companies = await getCompanies();
         setCompaniesList(companies);
-      } catch (error) {
+      } catch {
         toast.error("Error al cargar el catálogo de empresas");
       }
     };
     loadInitialCompanies();
   }, []);
 
-  // Sincronizar documentos y mapeo de tableros cuando cambie la lista de empresas
+  // Cargar documentos directamente por empresa (sin consultar tableros)
   const fetchAllData = async () => {
     if (companiesList.length === 0) return;
     setLoading(true);
     try {
-      const activeCompanies = companiesList.filter(c => c.publicCode);
+      const activeCompanies = companiesList.filter((c) => c.publicCode);
 
       const promises = activeCompanies.map(async (company) => {
         const docs = await getDocumentsByCompany(company.publicCode!);
-        const boardData = await getBoards(company.publicCode!);
-
-        const documentsWithCount = docs.map(doc => {
-          const docIdStr = String(doc._id);
-
-          const matchedBoards = boardData.boards.filter(b => {
-            return b.assignedDocuments?.some(ad => {
-              const assignedIdStr = typeof ad === 'object' && ad !== null && '_id' in ad
-                ? String((ad as any)._id)
-                : String(ad);
-
-              return assignedIdStr === docIdStr;
-            });
-          }).length;
-
-          return { ...doc, linkedBoards: matchedBoards };
-        });
-
         return {
           publicCode: company.publicCode!,
           name: company.name,
-          documents: documentsWithCount as any[]
+          documents: docs || [],
         };
       });
 
       const results = await Promise.all(promises);
       setGroupedData(results);
-    } catch (error) {
-      toast.error("Error al sincronizar el estado documental");
+    } catch {
+      toast.error("Error al sincronizar los documentos");
     } finally {
       setLoading(false);
     }
@@ -92,7 +69,7 @@ const DocumentDashboardPage = () => {
     fetchAllData();
   }, [companiesList]);
 
-  // Filtros en memoria dinámicos
+  // Filtros en memoria
   const filteredCompanies = useMemo(() => {
     return groupedData
       .filter((company) => (selectedCompany ? company.publicCode === selectedCompany : true))
@@ -105,81 +82,43 @@ const DocumentDashboardPage = () => {
       .filter((company) => company.documents.length > 0);
   }, [search, selectedCompany, groupedData]);
 
-  // KPIs calculados en tiempo real
-  const totalDocuments = useMemo(() =>
-    groupedData.reduce((acc, c) => acc + c.documents.length, 0), [groupedData]
+  // Total global de documentos
+  const totalDocuments = useMemo(
+    () => groupedData.reduce((acc, c) => acc + c.documents.length, 0),
+    [groupedData]
   );
 
-  const totalLinkedBoards = useMemo(() =>
-    groupedData.reduce((acc, c) => acc + c.documents.reduce((sum: number, d: any) => sum + (d.linkedBoards || 0), 0), 0), [groupedData]
-  );
-
-  const handleDelete = async (docId: string, companyPublicCode: string) => {
-    if (!confirm("¿Deseas remover este documento permanentemente? Se desvinculará de todos los tableros.")) return;
+  const handleDelete = async (docId: string, companyPublicCode?: string) => {
+    if (!confirm("¿Deseas remover este documento permanentemente?")) return;
     try {
       await deleteDocument(docId);
       toast.success("Documento eliminado correctamente");
-      triggerRefresh(companyPublicCode);
+      if (companyPublicCode) {
+        triggerRefresh(companyPublicCode);
+      }
       fetchAllData();
-    } catch (err) {
+    } catch {
       toast.error("Imposible eliminar el documento");
     }
   };
 
-  // const openPdfInNewTab = async (url: string, title: string) => {
-  //   try {
-  //     const response = await fetch(url);
-  //     const blob = await response.blob();
-  //     const pdfBlob = new Blob([blob], { type: "application/pdf" });
-  //     const blobUrl = URL.createObjectURL(pdfBlob);
-  //     const newTab = window.open(blobUrl, "_blank");
-  //     if (newTab) {
-  //       newTab.document.title = title;
-  //     }
-  //   } catch (error) {
-  //     console.error("Error al interceptar y renderizar el PDF:", error);
-  //     window.open(url, "_blank");
-  //   }
-  // };
-
-  // const openPdfInNewTab = (url: string) => {
-  //   if (!url) return;
-  //   // Si la URL tiene el flag de forzar descarga, lo removemos para visualizarlo en el visor nativo del navegador
-  //   const inlineUrl = url.replace("/fl_attachment", "");
-  //   window.open(inlineUrl, "_blank", "noopener,noreferrer");
-  // };
-
-  const downloadPdfFile = async (url: string, filename: string) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
-
-      document.body.appendChild(link);
-      link.click();
-
-      document.body.removeChild(link);
-      URL.revokeObjectURL(blobUrl);
-    } catch (error) {
-      console.error("Error al descargar:", error);
-    }
+  const downloadPdfFile = (url: string) => {
+    if (!url) return;
+    const downloadUrl = url.includes("/upload/")
+      ? url.replace("/upload/", "/upload/fl_attachment/")
+      : url;
+    window.location.assign(downloadUrl);
   };
 
   return (
     <div className="space-y-6">
-
       {/* ── ENCABEZADO PRINCIPAL ── */}
-      <div
-        style={{ animation: "fadeUp 0.4s ease both" }}
-        className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center"
-      >
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
           <h1 className="text-2xl font-black text-slate-950 tracking-tight">Documentos por Empresa</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Gestiona múltiples certificados PDF por lote y coordina su despliegue en tableros.</p>
+          <p className="mt-0.5 text-sm text-slate-500">
+            Gestiona certificados y documentos ITSE almacenados por cada empresa.
+          </p>
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
@@ -190,45 +129,45 @@ const DocumentDashboardPage = () => {
       </div>
 
       {/* ── TARJETAS DE INDICADORES (KPIs) ── */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {[
-          { title: "Documentos Globales", value: loading ? "..." : totalDocuments, icon: FileText, bg: "bg-[#0797d5]/10 text-[#0797d5]", delay: "40ms" },
-          { title: "Empresas en la BD", value: companiesList.length, icon: Building2, bg: "bg-[#8ccf2f]/15 text-[#3aaa35]", delay: "80ms" },
-          { title: "Instancias Vinculadas", value: loading ? "..." : totalLinkedBoards, icon: UploadCloud, bg: "bg-slate-100 text-slate-700", delay: "120ms" }
-        ].map((card, i) => {
-          const CardIcon = card.icon;
-          return (
-            <div
-              key={i}
-              style={{ animation: "fadeUp 0.4s ease both", animationDelay: card.delay }}
-              className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="flex items-center gap-4">
-                <div className={`flex size-12 shrink-0 items-center justify-center rounded-2xl ${card.bg}`}>
-                  <CardIcon size={22} />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-slate-500">{card.title}</p>
-                  <h2 className="text-2xl font-black text-slate-950 tracking-tight mt-0.5">{card.value}</h2>
-                </div>
-              </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs">
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#0797d5]/10 text-[#0797d5]">
+              <FileText size={22} />
             </div>
-          );
-        })}
+            <div>
+              <p className="text-xs font-medium text-slate-500">Documentos Totales</p>
+              <h2 className="text-2xl font-black text-slate-950 tracking-tight mt-0.5">
+                {loading ? "..." : totalDocuments}
+              </h2>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-xs">
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-[#8ccf2f]/15 text-[#3aaa35]">
+              <Building2 size={22} />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-slate-500">Empresas Registradas</p>
+              <h2 className="text-2xl font-black text-slate-950 tracking-tight mt-0.5">
+                {companiesList.length}
+              </h2>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── BARRA DE CONTROL DE FILTROS ── */}
-      <div
-        style={{ animation: "fadeUp 0.4s ease 160ms both" }}
-        className="rounded-3xl border border-slate-200 bg-white shadow-xs"
-      >
+      <div className="rounded-3xl border border-slate-200 bg-white shadow-xs">
         <div className="flex flex-col gap-3 border-b border-slate-200 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-sm">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar certificado por título..."
+              placeholder="Buscar documento por título..."
               className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-sm text-slate-700 outline-none transition focus:border-[#0797d5]"
             />
           </div>
@@ -240,28 +179,26 @@ const DocumentDashboardPage = () => {
           >
             <option value="">Todas las empresas</option>
             {companiesList.map((company) => (
-              <option key={company.publicCode} value={company.publicCode}>{company.name}</option>
+              <option key={company.publicCode} value={company.publicCode}>
+                {company.name}
+              </option>
             ))}
           </select>
         </div>
 
-        {/* ── SECCIÓN CENTRAL / LISTADO PRINCIPAL DE EMPRESAS Y TABLAS ── */}
+        {/* ── SECCIÓN CENTRAL / TABLAS POR EMPRESA ── */}
         <div className="space-y-5 p-5">
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="animate-spin text-[#0797d5]" size={32} />
             </div>
           ) : (
-            filteredCompanies.map((company, companyIndex) => (
+            filteredCompanies.map((company) => (
               <section
                 key={company.publicCode}
-                style={{
-                  animation: "fadeUp 0.45s ease both",
-                  animationDelay: `${companyIndex * 50}ms` // Cascada suave por bloque corporativo
-                }}
-                className="overflow-hidden rounded-3xl border border-slate-200 bg-white transition-all duration-200 hover:border-slate-300 shadow-xs"
+                className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xs"
               >
-                {/* Cabecera del bloque de la empresa */}
+                {/* Cabecera de la empresa */}
                 <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex items-center gap-3">
                     <div className="flex size-10 items-center justify-center rounded-xl bg-[#0797d5]/10 text-[#0797d5]">
@@ -277,28 +214,19 @@ const DocumentDashboardPage = () => {
                   </span>
                 </div>
 
-                {/* Tabla de documentos correspondientes */}
+                {/* Tabla simplificada (sin type ni asignaciones de tableros) */}
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[800px] text-left border-collapse">
+                  <table className="w-full min-w-[650px] text-left border-collapse">
                     <thead className="text-[11px] font-bold uppercase text-slate-400 bg-slate-50/30 border-b border-slate-100 tracking-wider">
                       <tr>
                         <th className="px-5 py-3.5">Documento</th>
-                        <th className="px-5 py-3.5">Categoría</th>
                         <th className="px-5 py-3.5">Fecha de Carga</th>
-                        <th className="px-5 py-3.5">Asignaciones</th>
                         <th className="px-5 py-3.5 text-right">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 text-sm">
-                      {company.documents.map((doc: any, docIndex: number) => (
-                        <tr
-                          key={doc._id}
-                          style={{
-                            animation: "fadeUp 0.35s ease both",
-                            animationDelay: `${docIndex * 25}ms` // Despliegue ultra veloz secuencial en filas
-                          }}
-                          className="transition-colors duration-150 hover:bg-slate-50/50"
-                        >
+                      {company.documents.map((doc) => (
+                        <tr key={doc._id} className="transition-colors hover:bg-slate-50/50">
                           <td className="px-5 py-3.5">
                             <div className="flex items-center gap-3">
                               <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
@@ -310,63 +238,37 @@ const DocumentDashboardPage = () => {
                               </div>
                             </div>
                           </td>
-                          <td className="px-5 py-3.5">
-                            <span
-                              className={`px-2.5 py-0.5 rounded-lg text-[11px] font-bold 
-                              ${doc.type === 'OPERATIVIDAD'
-                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                                  : doc.type === 'POZO_A_TIERRA'
-                                    ? 'bg-sky-50 text-sky-700 border border-sky-100' // 👈 Color distintivo para SPAT
-                                    : 'bg-amber-50 text-amber-700 border border-amber-100'
-                                }`}
-                            >
-                              {doc.type === 'POZO_A_TIERRA' ? 'POZO A TIERRA (SPAT)' : doc.type}
-                            </span>
-                          </td>
                           <td className="px-5 py-3.5 text-xs font-medium text-slate-500">
                             {new Date(doc.createdAt).toLocaleDateString()}
                           </td>
                           <td className="px-5 py-3.5">
-                            <span className="rounded-xl bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-                              {doc.linkedBoards || 0} tableros
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <div className="flex justify-end gap-0.5">
+                            <div className="flex justify-end gap-1">
+                              {/* Descargar */}
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setActiveDocForAssign({ id: doc._id, title: doc.title, companyCode: company.publicCode });
-                                  setIsAssignModalOpen(true);
-                                }}
-                                title="Asignar a múltiples tableros"
-                                className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-[#0797d5]/10 hover:text-[#0797d5] cursor-pointer"
-                              >
-                                <Link size={16} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => downloadPdfFile(doc.cloudinaryUrl, doc.title)}
+                                onClick={() => downloadPdfFile(doc.cloudinaryUrl)}
                                 title="Descargar archivo PDF"
-                                className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-950 cursor-pointer"
+                                className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-950 cursor-pointer"
                               >
                                 <Download size={16} />
                               </button>
-                              {/* Botón Ver: Redirige al visor interno */}
+
+                              {/* Ver visor interno */}
                               <button
                                 type="button"
                                 onClick={() => navigate(`/dashboard/documents/view/${doc._id}`)}
-                                title="Visualizar certificado PDF"
-                                className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-950 cursor-pointer"
+                                title="Visualizar documento"
+                                className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-950 cursor-pointer"
                               >
                                 <Eye size={16} />
                               </button>
 
-                              {/* Botón Eliminar: Pasa doc._id y company.publicCode */}
+                              {/* Eliminar */}
                               <button
                                 type="button"
                                 onClick={() => handleDelete(doc._id, company.publicCode)}
-                                className="flex size-9 items-center justify-center rounded-xl text-red-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-600 cursor-pointer"
+                                title="Eliminar documento"
+                                className="flex size-9 items-center justify-center rounded-xl text-red-400 transition-colors hover:bg-red-50 hover:text-red-600 cursor-pointer"
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -381,17 +283,16 @@ const DocumentDashboardPage = () => {
             ))
           )}
 
-          {/* Estado de Vacío Interactivo */}
+          {/* Estado vacío */}
           {!loading && filteredCompanies.length === 0 && (
-            <div
-              style={{ animation: "fadeUp 0.4s ease both" }}
-              className="px-5 py-16 text-center"
-            >
+            <div className="px-5 py-16 text-center">
               <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-slate-50 text-slate-300">
                 <FileText size={26} />
               </div>
               <h3 className="mt-4 font-bold text-slate-950">Sin coincidencias documentales</h3>
-              <p className="mt-1 text-xs text-slate-400 max-w-xs mx-auto">No se detectaron registros para el criterio ingresado o debes registrar nuevos documentos.</p>
+              <p className="mt-1 text-xs text-slate-400 max-w-xs mx-auto">
+                No se detectaron registros para el criterio ingresado.
+              </p>
             </div>
           )}
         </div>
@@ -406,20 +307,6 @@ const DocumentDashboardPage = () => {
           fetchAllData();
         }}
       />
-
-      {activeDocForAssign && (
-        <AssignDocToBoardsModal
-          isOpen={isAssignModalOpen}
-          onClose={() => {
-            setIsAssignModalOpen(false);
-            setActiveDocForAssign(null);
-          }}
-          companyPublicCode={activeDocForAssign.companyCode}
-          documentId={activeDocForAssign.id}
-          documentTitle={activeDocForAssign.title}
-          onSuccess={() => fetchAllData()}
-        />
-      )}
     </div>
   );
 };

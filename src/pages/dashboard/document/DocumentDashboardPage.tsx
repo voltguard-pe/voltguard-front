@@ -9,6 +9,8 @@ import { getCompanies } from "../../../services/company.service";
 import type { DocumentResponseDTO, CompanySummaryDTO } from "../../../shared/types/BoardProps";
 import { UploadDocumentsModal } from "../../../components/dashboard/modals/UploadDocumentsModal";
 import { AssignDocToBoardsModal } from "../../../components/dashboard/modals/AssignDocToBoardsModal";
+import { useNavigate } from "react-router-dom";
+import { useSidebar } from "../../../contexts/SidebarContext";
 
 interface CompanyGroup {
   publicCode: string;
@@ -17,6 +19,8 @@ interface CompanyGroup {
 }
 
 const DocumentDashboardPage = () => {
+  const navigate = useNavigate();
+  const { triggerRefresh } = useSidebar();
   const [search, setSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -110,11 +114,12 @@ const DocumentDashboardPage = () => {
     groupedData.reduce((acc, c) => acc + c.documents.reduce((sum: number, d: any) => sum + (d.linkedBoards || 0), 0), 0), [groupedData]
   );
 
-  const handleDelete = async (docId: string) => {
+  const handleDelete = async (docId: string, companyPublicCode: string) => {
     if (!confirm("¿Deseas remover este documento permanentemente? Se desvinculará de todos los tableros.")) return;
     try {
       await deleteDocument(docId);
       toast.success("Documento eliminado correctamente");
+      triggerRefresh(companyPublicCode);
       fetchAllData();
     } catch (err) {
       toast.error("Imposible eliminar el documento");
@@ -137,12 +142,12 @@ const DocumentDashboardPage = () => {
   //   }
   // };
 
-  const openPdfInNewTab = (url: string) => {
-    if (!url) return;
-    // Si la URL tiene el flag de forzar descarga, lo removemos para visualizarlo en el visor nativo del navegador
-    const inlineUrl = url.replace("/fl_attachment", "");
-    window.open(inlineUrl, "_blank", "noopener,noreferrer");
-  };
+  // const openPdfInNewTab = (url: string) => {
+  //   if (!url) return;
+  //   // Si la URL tiene el flag de forzar descarga, lo removemos para visualizarlo en el visor nativo del navegador
+  //   const inlineUrl = url.replace("/fl_attachment", "");
+  //   window.open(inlineUrl, "_blank", "noopener,noreferrer");
+  // };
 
   const downloadPdfFile = async (url: string, filename: string) => {
     try {
@@ -347,17 +352,20 @@ const DocumentDashboardPage = () => {
                               >
                                 <Download size={16} />
                               </button>
-                              <button
-  type="button"
-  onClick={() => openPdfInNewTab(doc.cloudinaryUrl)}
-  title="Visualizar certificado PDF"
-  className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-950 cursor-pointer"
->
-  <Eye size={16} />
-</button>
+                              {/* Botón Ver: Redirige al visor interno */}
                               <button
                                 type="button"
-                                onClick={() => handleDelete(doc._id)}
+                                onClick={() => navigate(`/dashboard/documents/view/${doc._id}`)}
+                                title="Visualizar certificado PDF"
+                                className="flex size-9 items-center justify-center rounded-xl text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-950 cursor-pointer"
+                              >
+                                <Eye size={16} />
+                              </button>
+
+                              {/* Botón Eliminar: Pasa doc._id y company.publicCode */}
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(doc._id, company.publicCode)}
                                 className="flex size-9 items-center justify-center rounded-xl text-red-400 transition-colors duration-200 hover:bg-red-50 hover:text-red-600 cursor-pointer"
                               >
                                 <Trash2 size={16} />

@@ -36,3 +36,8 @@ export const deleteDocument = async (id: string): Promise<{ message: string }> =
   const res = await clientAxios.delete(`/document/${id}`);
   return res.data;
 };
+
+export const getDocumentById = async (documentId: string): Promise<DocumentResponseDTO> => {
+  const { data } = await clientAxios.get(`/document/${documentId}`);
+  return data;
+};

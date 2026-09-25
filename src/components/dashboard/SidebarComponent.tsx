@@ -4,7 +4,6 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  ExternalLink,
   FileText,
   Folder,
   FolderOpen,
@@ -305,11 +304,11 @@ const SidebarComponent = ({
     }
   };
 
-  const handleOpenPdf = (cloudinaryUrl: string) => {
-    if (!cloudinaryUrl) return;
-    const cleanUrl = cloudinaryUrl.replace("/fl_attachment", "");
-    window.open(cleanUrl, "_blank", "noopener,noreferrer");
-  };
+  // const handleOpenPdf = (cloudinaryUrl: string) => {
+  //   if (!cloudinaryUrl) return;
+  //   const cleanUrl = cloudinaryUrl.replace("/fl_attachment", "");
+  //   window.open(cleanUrl, "_blank", "noopener,noreferrer");
+  // };
 
   if (!auth) return null;
 
@@ -550,18 +549,33 @@ const SidebarComponent = ({
                 <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin documentos subidos</p>
               ) : (
                 documents.map((doc) => (
-                  <button
+                  // <button
+                  //   key={doc._id}
+                  //   onClick={() => handleOpenPdf(doc.cloudinaryUrl)}
+                  //   title={`Abrir ${doc.title}`}
+                  //   className="group/item flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-amber-50/70 hover:text-amber-900 cursor-pointer text-left transition-colors"
+                  // >
+                  //   <div className="flex items-center gap-2 min-w-0">
+                  //     <FileText size={12} className="shrink-0 text-amber-500" />
+                  //     <span className="truncate">{doc.title}</span>
+                  //   </div>
+                  //   <ExternalLink size={11} className="shrink-0 opacity-0 group-hover/item:opacity-100 text-slate-400 transition-opacity" />
+                  // </button>
+
+                  <NavLink
                     key={doc._id}
-                    onClick={() => handleOpenPdf(doc.cloudinaryUrl)}
-                    title={`Abrir ${doc.title}`}
-                    className="group/item flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-amber-50/70 hover:text-amber-900 cursor-pointer text-left transition-colors"
+                    to={`/dashboard/documents/view/${doc._id}`}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
+                        ? "text-amber-600 font-bold bg-amber-50"
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      }`
+                    }
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText size={12} className="shrink-0 text-amber-500" />
-                      <span className="truncate">{doc.title}</span>
-                    </div>
-                    <ExternalLink size={11} className="shrink-0 opacity-0 group-hover/item:opacity-100 text-slate-400 transition-opacity" />
-                  </button>
+                    <FileText size={12} className="shrink-0 text-amber-500" />
+                    <span className="truncate">{doc.title}</span>
+                  </NavLink>
                 ))
               )}
             </div>

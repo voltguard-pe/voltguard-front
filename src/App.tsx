@@ -40,6 +40,7 @@ import ContactSalesPage from './pages/contact-sales/ContactSalesPage'
 import ContactSalesLayout from './layouts/ContactSalesLayout'
 import GroundingDashboardPage from './pages/dashboard/spat/GroundingDashboardPage'
 import { SidebarProvider } from './contexts/SidebarContext'
+import DocumentViewerPage from './pages/dashboard/document/DocumentViewerPage'
 
 function App() {
   return (
@@ -93,6 +94,8 @@ function App() {
                 <Route path="grounding" element={<GroundingDashboardPage />} />
                 <Route path="companies/:publicCode/grounding" element={<GroundingDashboardPage />} />
                 <Route path="companies/:publicCode/grounding/:pozoCode" element={<GroundingDashboardPage />} />
+
+                <Route path="documents/view/:id" element={<DocumentViewerPage />} />
 
                 <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                   <Route path="users" element={<AdminDashboardPage />} />

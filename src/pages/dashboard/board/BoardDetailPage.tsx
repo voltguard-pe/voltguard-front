@@ -124,6 +124,13 @@ const BoardDetailPage = () => {
   const [selectedThdUDay, setSelectedThdUDay] = useState<string | null>(null);
   // const [selectedThdIDay, setSelectedThdIDay] = useState<string | null>(null);
 
+  // Agrega este estado cerca de visibleDemandSeries / visibleReactiveSeries:
+  const [visibleThdFases, setVisibleThdFases] = useState<{ [key: string]: boolean }>({
+    u12: true,
+    u23: true,
+    u31: true,
+  });
+
   // Dentro de tu componente BoardDetailPage:
   const [showThermographyModal, setShowThermographyModal] = useState(false);
   const [thermographyReloadKey, setThermographyReloadKey] = useState(0);
@@ -205,14 +212,24 @@ const BoardDetailPage = () => {
           const valP = typeof punto === 'number' ? punto : (punto?.p ?? 0);
           const valInd = typeof punto === 'object' ? (punto?.ind ?? 0) : 0;
           const valCap = typeof punto === 'object' ? (punto?.cap ?? 0) : 0;
+          // ✅ CÓDIGO CORREGIDO:
           const valThdV = typeof punto === 'object' ? (punto?.thd_v ?? 0) : 0;
           const valThdI = typeof punto === 'object' ? (punto?.thd_i ?? 0) : 0;
+          // Leemos las tres fases individuales que envía el nuevo backend:
+          const valU12 = typeof punto === 'object' ? (punto?.thd_u12 ?? 0) : 0;
+          const valU23 = typeof punto === 'object' ? (punto?.thd_u23 ?? 0) : 0;
+          const valU31 = typeof punto === 'object' ? (punto?.thd_u31 ?? 0) : 0;
 
           row[labelCorto] = valP;
           row[`inductiva_${labelCorto}`] = valInd;
           row[`capacitiva_${labelCorto}`] = valCap;
           row[`thd_v_${labelCorto}`] = valThdV;
           row[`thd_i_${labelCorto}`] = valThdI;
+
+          // Inyectamos las tres líneas trifásicas por día:
+          row[`thd_u12_${labelCorto}`] = valU12;
+          row[`thd_u23_${labelCorto}`] = valU23;
+          row[`thd_u31_${labelCorto}`] = valU31;
 
           sumaP += valP;
           sumaInd += valInd;
@@ -440,6 +457,10 @@ const BoardDetailPage = () => {
   // const toggleSolarDay = (key: string) => {
   //   setVisibleSolarSeries(prev => ({ ...prev, [key]: !prev[key] }));
   // };
+
+  const toggleThdFase = (fase: string) => {
+    setVisibleThdFases(prev => ({ ...prev, [fase]: !prev[fase] }));
+  };
 
   const handleThermographySuccess = () => {
     // Dispara la recarga de datos en el visor
@@ -1349,22 +1370,20 @@ const BoardDetailPage = () => {
   // const FACTOR_GENERACION_SOLAR_DIARIO = 0.15;
 
   // ── ESTADOS PARA RECIBO Y COSTO DE ENERGÍA (HP / FP) ──
-  const [rates, setRates] = useState<{ hp: number; fp: number }>({
-    hp: 0.3095, // Tarifas iniciales del recibo de Luz del Sur[cite: 1, 2]
-    fp: 0.2616, //[cite: 1, 2]
-  });
+  // Inicia en null para que NO dibuje nada hasta que se suba el recibo
+  const [rates, setRates] = useState<{ hp: number; fp: number } | null>(null);
   const [isUploadingBill, setIsUploadingBill] = useState(false);
   const billFileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  // Sincronizar tarifas si el tablero ya las tiene guardadas en MongoDB
-  useEffect(() => {
-    if ((board as any)?.energyRates?.tarifaHP && (board as any)?.energyRates?.tarifaFP) {
-      setRates({
-        hp: (board as any).energyRates.tarifaHP,
-        fp: (board as any).energyRates.tarifaFP,
-      });
-    }
-  }, [board]);
+  // // Sincronizar tarifas SOLO si el tablero ya las tiene guardadas previamente en MongoDB
+  // useEffect(() => {
+  //   if ((board as any)?.energyRates?.tarifaHP && (board as any)?.energyRates?.tarifaFP) {
+  //     setRates({
+  //       hp: Number((board as any).energyRates.tarifaHP),
+  //       fp: Number((board as any).energyRates.tarifaFP),
+  //     });
+  //   }
+  // }, [board]);
 
   const handleBillUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1388,8 +1407,107 @@ const BoardDetailPage = () => {
     }
   };
 
+  // ── COMPONENTE TOOLTIP PERSONALIZADO PARA COSTO DE ENERGÍA ──
+  const CostTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const costHP = Number(payload.find((p: any) => p.dataKey === 'costoHP')?.value || 0);
+      const costFP = Number(payload.find((p: any) => p.dataKey === 'costoFP')?.value || 0);
+      const totalDia = costHP + costFP;
+
+      return (
+        <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[220px] backdrop-blur-sm">
+          {/* Cabecera con día y total consolidado */}
+          <div className="border-b border-slate-100 pb-2 mb-2.5 flex items-center justify-between">
+            <span className="font-bold text-slate-800 text-xs">{label}</span>
+            <span className="font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 text-[11px]">
+              S/. {totalDia.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            {/* Superior en la barra apilada: Hora Punta (HP) */}
+            {/* Superior: Hora Punta (HP) */}
+<div className="flex items-center justify-between">
+  <span className="flex items-center gap-1.5 font-bold text-amber-900">
+    <span className="size-2.5 rounded-full bg-[#d97706] inline-block shadow-sm" />
+    Hora Punta (HP):
+  </span>
+  <span className="font-black text-slate-900 tabular-nums">
+    S/. {costHP.toFixed(2)}
+  </span>
+</div>
+
+{/* Inferior: Fuera de Punta (FP) */}
+<div className="flex items-center justify-between">
+  <span className="flex items-center gap-1.5 font-bold text-amber-700">
+    <span className="size-2.5 rounded-full bg-[#fbbf24] border border-amber-400 inline-block shadow-sm" />
+    Fuera de Punta (FP):
+  </span>
+  <span className="font-black text-slate-900 tabular-nums">
+    S/. {costFP.toFixed(2)}
+  </span>
+</div>
+          </div>
+
+          <div className="mt-2.5 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400 flex justify-between font-medium">
+            <span>HP: 18:00 a 23:00 hrs</span>
+            <span className="font-bold text-amber-600">Voltguard</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const COST_COLOR_HP = "#d97706"; // Ámbar intenso (Hora Punta)
+const COST_COLOR_FP = "#fbbf24"; // Amarillo dorado (Fuera de Punta)
+
+  // ── SECCIÓN COMPLETA DE COSTO DE ENERGÍA ESTIMADO ──
   const renderEnergyCostSection = () => {
-    // Calculamos el desglose de costos en FP y HP (70% FP y 30% HP si no vienen disgregados de Metrel)
+    // 1. Estado de espera: si no se ha subido ningún recibo o no hay tarifas
+    if (!rates) {
+      return (
+        <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-6 shadow-sm font-sans mt-6">
+          <input
+            type="file"
+            ref={billFileInputRef}
+            onChange={handleBillUpload}
+            accept="image/*,application/pdf"
+            className="hidden"
+            disabled={isUploadingBill}
+          />
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-amber-200 bg-amber-50/30 px-4 py-12 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 mb-3">
+              <ReceiptText size={28} />
+            </div>
+            <h3 className="font-extrabold text-slate-900 text-base">Costo de Energía Estimado (HP / FP)</h3>
+            <p className="mt-1 text-xs text-slate-500 max-w-md">
+              Adjunta una fotografía o documento de tu recibo de luz para que la Inteligencia Artificial extraiga automáticamente las tarifas de <strong>Hora Punta (HP)</strong> y <strong>Fuera de Punta (FP)</strong> y genere la proyección de costos[cite: 9, 18].
+            </p>
+            <button
+              type="button"
+              disabled={isUploadingBill}
+              onClick={() => billFileInputRef.current?.click()}
+              className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 text-xs font-black transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isUploadingBill ? (
+                <>
+                  <Loader2 size={16} className="animate-spin text-amber-400" />
+                  <span>Analizando recibo con IA...</span>
+                </>
+              ) : (
+                <>
+                  <UploadCloud size={16} className="text-amber-400" />
+                  <span>Adjuntar Recibo de Luz</span>
+                </>
+              )}
+            </button>
+          </div>
+        </section>
+      );
+    }
+
+    // 2. Procesamiento diario de costos
     const costoData = energiaPorDiaData
       .filter(d => visibleCostSeries[d.name] !== false)
       .map(item => {
@@ -1409,12 +1527,16 @@ const BoardDetailPage = () => {
         };
       });
 
+    // 3. Cálculos de Totales y Proyecciones
     const totalCostoPeriodo = costoData.reduce((acc, curr) => acc + curr.costoTotal, 0);
+    const totalCostoHP = costoData.reduce((acc, curr) => acc + curr.costoHP, 0);
+    const totalCostoFP = costoData.reduce((acc, curr) => acc + curr.costoFP, 0);
+
     const promedioCostoDiario = costoData.length > 0 ? totalCostoPeriodo / costoData.length : 0;
+    const proyeccionMes30Dias = promedioCostoDiario * 30;
 
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
-        {/* Input invisible para adjuntar recibo */}
         <input
           type="file"
           ref={billFileInputRef}
@@ -1424,7 +1546,7 @@ const BoardDetailPage = () => {
           disabled={isUploadingBill}
         />
 
-        {/* Header con botón para adjuntar recibo */}
+        {/* Encabezado con tarifas aplicadas y botón de cambio */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
           <div className="flex items-center gap-3">
             <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-600">
@@ -1435,7 +1557,7 @@ const BoardDetailPage = () => {
                 Costo de Energía Estimado (HP / FP)
               </h2>
               <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-                Tarifas aplicadas: HP = <strong className="text-slate-800">S/. {rates.hp.toFixed(4)}</strong> | FP = <strong className="text-slate-800">S/. {rates.fp.toFixed(4)}</strong> por kWh
+                Tarifas aplicadas del recibo: HP = <strong className="text-slate-800">S/. {rates.hp.toFixed(4)}</strong> | FP = <strong className="text-slate-800">S/. {rates.fp.toFixed(4)}</strong> por kWh[cite: 9, 18]
               </p>
             </div>
           </div>
@@ -1444,7 +1566,7 @@ const BoardDetailPage = () => {
             type="button"
             disabled={isUploadingBill}
             onClick={() => billFileInputRef.current?.click()}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             {isUploadingBill ? (
               <>
@@ -1454,28 +1576,54 @@ const BoardDetailPage = () => {
             ) : (
               <>
                 <ReceiptText size={16} className="text-amber-400" />
-                <span>Adjuntar Recibo de Luz</span>
+                <span>Cambiar Recibo de Luz</span>
               </>
             )}
           </button>
         </div>
 
-        {/* Tarjetas Resumen */}
-        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Costo Total del Periodo</p>
+        {/* ── 4 TARJETAS KPI UNIFICADAS EN TONOS ÁMBAR Y DORADO ── */}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Tarjeta 1: Total Periodo */}
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Total Periodo Filtrado</p>
             <p className="mt-1 text-2xl font-black text-amber-950">
               S/. {totalCostoPeriodo.toFixed(2)}
             </p>
-            <p className="mt-1 text-[10px] text-amber-600">Suma combinada de Hora Punta y Fuera de Punta</p>
+            <p className="mt-1 text-[10px] text-amber-600/90">Suma total de días seleccionados</p>
           </div>
 
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
-            <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Gasto Diario Promedio</p>
+          {/* Tarjeta 2: Proyección Mensual */}
+          <div className="rounded-2xl border border-amber-300 bg-amber-100/40 p-4">
+            <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">Proyección Mensual (30d)</p>
             <p className="mt-1 text-2xl font-black text-amber-950">
-              S/. {promedioCostoDiario.toFixed(2)} <span className="text-xs font-bold text-amber-600">/ día</span>
+              S/. {proyeccionMes30Dias.toFixed(2)}
             </p>
-            <p className="mt-1 text-[10px] text-amber-600">Promedio sobre días seleccionados</p>
+            <p className="mt-1 text-[10px] text-amber-700 font-semibold">Promedio: S/. {promedioCostoDiario.toFixed(2)} / día</p>
+          </div>
+
+          {/* Tarjeta 3: Fuera de Punta */}
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
+            <div className="flex items-center gap-1.5 text-amber-800">
+              <span className="size-2 rounded-full bg-[#fbbf24] border border-amber-400 inline-block shadow-sm" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">Fuera de Punta (FP)</p>
+            </div>
+            <p className="mt-1 text-2xl font-black text-slate-900">
+              S/. {totalCostoFP.toFixed(2)}
+            </p>
+            <p className="mt-1 text-[10px] text-amber-600/90">Horario base económico (19 horas)</p>
+          </div>
+
+          {/* Tarjeta 4: Hora Punta */}
+          <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-4">
+            <div className="flex items-center gap-1.5 text-orange-800">
+              <span className="size-2 rounded-full bg-[#d97706] inline-block shadow-sm" />
+              <p className="text-[10px] font-black uppercase tracking-wider text-orange-800">Hora Punta (HP)</p>
+            </div>
+            <p className="mt-1 text-2xl font-black text-slate-900">
+              S/. {totalCostoHP.toFixed(2)}
+            </p>
+            <p className="mt-1 text-[10px] text-orange-700/90">Horario crítico (18:00 a 23:00 hrs)</p>
           </div>
         </div>
 
@@ -1488,8 +1636,8 @@ const BoardDetailPage = () => {
               type="button"
               onClick={() => toggleCostDay(key)}
               className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleCostSeries[key] !== false
-                ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
-                : 'bg-white border-slate-200 text-slate-400'
+                  ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                  : 'bg-white border-slate-200 text-slate-400'
                 }`}
             >
               {key}
@@ -1497,7 +1645,7 @@ const BoardDetailPage = () => {
           ))}
         </div>
 
-        {/* Gráfico Stacked Bar Chart */}
+        {/* Gráfico Stacked Bar Chart con Tooltip Optimizado */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
           <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
             {costoData.length === 0 ? (
@@ -1506,7 +1654,7 @@ const BoardDetailPage = () => {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={costoData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
+                <BarChart data={costoData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
                     <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
@@ -1514,14 +1662,10 @@ const BoardDetailPage = () => {
                   <YAxis tickLine={false} stroke="#94a3b8" width={60} tick={{ fontSize: '10px' }} tickFormatter={(val) => `S/. ${val}`}>
                     <Label value="Costo (S/.)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
                   </YAxis>
-                  <Tooltip
-                    cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
-                    formatter={(val: any, name: any) => [
-                      `S/. ${Number(val).toFixed(2)}`,
-                      name === "costoHP" ? "Hora Punta (HP)" : "Fuera de Punta (FP)"
-                    ]}
-                    contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                  />
+
+                  {/* Tooltip personalizado con HP arriba, FP abajo y total consolidado */}
+                  <Tooltip content={<CostTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.6 }} />
+
                   <Legend
                     verticalAlign="top"
                     align="right"
@@ -1530,22 +1674,10 @@ const BoardDetailPage = () => {
                     formatter={(value) => (value === "costoHP" ? "Hora Punta (HP)" : "Fuera de Punta (FP)")}
                   />
 
-                  {/* PARTE INFERIOR: Fuera de Punta (FP) - Tono azul/púrpura de la imagen de referencia */}
-                  <Bar
-                    dataKey="costoFP"
-                    stackId="costo"
-                    fill="#7c7bb5"
-                    maxBarSize={48}
-                  />
-
-                  {/* PARTE SUPERIOR: Hora Punta (HP) - Tono verde con esquinas superiores redondeadas */}
-                  <Bar
-                    dataKey="costoHP"
-                    stackId="costo"
-                    fill="#68b48f"
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={48}
-                  />
+                  {/* Fuera de Punta (FP) - Parte inferior de la barra apilada */}
+                  <Bar dataKey="costoFP" stackId="costo" fill={COST_COLOR_FP} maxBarSize={48} />
+                  {/* Hora Punta (HP) - Parte superior de la barra apilada */}
+                  <Bar dataKey="costoHP" stackId="costo" fill={COST_COLOR_HP} radius={[6, 6, 0, 0]} maxBarSize={48} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -1660,13 +1792,20 @@ const BoardDetailPage = () => {
     let horaPicoThdV = "--:--";
 
     rawChartData.forEach(row => {
-      const val = Number(row[`thd_v_${activeDay}`] || 0);
-      if (val > 0) {
-        if (val > maxThdV) {
-          maxThdV = val;
+      const u12 = Number(row[`thd_u12_${activeDay}`] || 0);
+      const u23 = Number(row[`thd_u23_${activeDay}`] || 0);
+      const u31 = Number(row[`thd_u31_${activeDay}`] || 0);
+      const avg = Number(row[`thd_v_${activeDay}`] || 0);
+
+      // El pico máximo registrado evalúa la fase más exigida (como hace Metrel)
+      const picoPunto = Math.max(u12, u23, u31);
+
+      if (picoPunto > 0) {
+        if (picoPunto > maxThdV) {
+          maxThdV = picoPunto;
           horaPicoThdV = row.horaMinuto;
         }
-        sumThdV += val;
+        sumThdV += (avg > 0 ? avg : (u12 + u23 + u31) / 3);
         countThdV++;
       }
     });
@@ -1676,9 +1815,13 @@ const BoardDetailPage = () => {
 
     const VoltageTooltip = ({ active, label, payload }: any) => {
       if (active && payload && payload.length) {
-        const val = payload[0]?.value ?? 0;
+        const rowData = payload[0]?.payload || {};
+        const u12 = Number(rowData[`thd_u12_${activeDay}`] || 0);
+        const u23 = Number(rowData[`thd_u23_${activeDay}`] || 0);
+        const u31 = Number(rowData[`thd_u31_${activeDay}`] || 0);
+
         return (
-          <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl font-sans text-xs min-w-[210px]">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xl font-sans text-xs min-w-[220px]">
             <div className="mb-2 border-b border-slate-100 pb-1.5 flex justify-between items-center">
               <span className="font-bold text-slate-400 uppercase text-[9px] tracking-wider">Distorsión THD-U</span>
               <span className="font-black text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md text-[10px]">{label} hrs</span>
@@ -1686,19 +1829,49 @@ const BoardDetailPage = () => {
             <p className="text-[11px] font-bold text-slate-700 mb-2">
               Día: <span className="text-slate-900">{activeDay}</span>
             </p>
-            <div className="flex items-center justify-between font-semibold">
-              <span className="flex items-center gap-1.5 text-purple-700 font-bold">
-                <span className="size-2 rounded-full bg-purple-600 inline-block"></span>
-                THD Tensión:
-              </span>
-              <span className={`font-black tabular-nums text-sm ${val > 5.0 ? 'text-rose-600' : 'text-slate-900'}`}>
-                {Number(val).toFixed(2)}%
-              </span>
+
+            <div className="space-y-1.5 font-semibold">
+              {visibleThdFases.u12 && (
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-blue-600 font-bold">
+                    <span className="size-2 rounded-full bg-blue-600 inline-block"></span>
+                    THD U12:
+                  </span>
+                  <span className={`font-black tabular-nums ${u12 > 5.0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                    {u12.toFixed(2)}%
+                  </span>
+                </div>
+              )}
+
+              {visibleThdFases.u23 && (
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-red-600 font-bold">
+                    <span className="size-2 rounded-full bg-red-600 inline-block"></span>
+                    THD U23:
+                  </span>
+                  <span className={`font-black tabular-nums ${u23 > 5.0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                    {u23.toFixed(2)}%
+                  </span>
+                </div>
+              )}
+
+              {visibleThdFases.u31 && (
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-emerald-600 font-bold">
+                    <span className="size-2 rounded-full bg-emerald-600 inline-block"></span>
+                    THD U31:
+                  </span>
+                  <span className={`font-black tabular-nums ${u31 > 5.0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                    {u31.toFixed(2)}%
+                  </span>
+                </div>
+              )}
             </div>
-            <div className="mt-2 border-t border-slate-100 pt-1.5 text-[9px] flex justify-between text-slate-400">
-              <span>Límite IEEE 519: <strong>5.0%</strong></span>
-              <span className={val <= 5.0 ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>
-                {val <= 5.0 ? "Conforme" : "No conforme"}
+
+            <div className="mt-2.5 border-t border-slate-100 pt-1.5 text-[9px] flex justify-between text-slate-400">
+              <span>Límite IEEE 519: <strong>5.00%</strong></span>
+              <span className={maxThdV <= 5.0 ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>
+                {maxThdV <= 5.0 ? "Conforme" : "No conforme"}
               </span>
             </div>
           </div>
@@ -1770,30 +1943,65 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* Selector de Días */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 mb-5 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
-          <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
-            SELECCIONAR DÍA:
-          </span>
-          {seriesKeys.map((key) => {
-            const isSelected = activeDay === key;
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setSelectedThdUDay(key)}
-                className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
-                  ? 'bg-purple-700 border-purple-700 text-white shadow-md'
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-              >
-                {key}
-              </button>
-            );
-          })}
+        {/* Selector de Días y Selector de Fases */}
+        <div className="space-y-3 mb-5">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
+            <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
+              SELECCIONAR DÍA:
+            </span>
+            {seriesKeys.map((key) => {
+              const isSelected = activeDay === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedThdUDay(key)}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
+                    ? 'bg-purple-700 border-purple-700 text-white shadow-md'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                >
+                  {key}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Botones de Fases tipo Metrel (Azul, Rojo, Verde) */}
+          <div className="flex gap-2 overflow-x-auto pb-1 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
+            <button
+              type="button"
+              onClick={() => toggleThdFase("u12")}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleThdFases.u12 ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'
+                }`}
+            >
+              <span className={`size-2.5 rounded-full inline-block ${visibleThdFases.u12 ? 'bg-white' : 'bg-blue-600'}`} />
+              THD U12 (Fase 1)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toggleThdFase("u23")}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleThdFases.u23 ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'
+                }`}
+            >
+              <span className={`size-2.5 rounded-full inline-block ${visibleThdFases.u23 ? 'bg-white' : 'bg-red-600'}`} />
+              THD U23 (Fase 2)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toggleThdFase("u31")}
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleThdFases.u31 ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200'
+                }`}
+            >
+              <span className={`size-2.5 rounded-full inline-block ${visibleThdFases.u31 ? 'bg-white' : 'bg-emerald-600'}`} />
+              THD U31 (Fase 3)
+            </button>
+          </div>
         </div>
 
-        {/* Gráfico THD-U */}
+        {/* Gráfico THD-U con Curvas Trifásicas */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
           <div className="h-72 sm:h-80 md:h-[360px] w-[850px] sm:w-full text-xs select-none">
             <ResponsiveContainer width="100%" height="100%">
@@ -1821,7 +2029,7 @@ const BoardDetailPage = () => {
 
                 <Tooltip content={<VoltageTooltip />} shared={true} />
 
-                {/* Límite 5% IEEE */}
+                {/* Línea normativa IEEE 519 (5.0%) */}
                 <ReferenceLine y={5.0} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={2}>
                   <Label
                     value="LÍMITE MÁXIMO IEEE 519 (5.0%)"
@@ -1831,16 +2039,47 @@ const BoardDetailPage = () => {
                   />
                 </ReferenceLine>
 
-                <Line
-                  type="monotone"
-                  name={`THD-U - ${activeDay}`}
-                  dataKey={`thd_v_${activeDay}`}
-                  stroke="#9333ea"
-                  strokeWidth={2.5}
-                  dot={false}
-                  connectNulls={true}
-                  animationDuration={150}
-                />
+                {/* Curva Fase 12 (Azul) */}
+                {visibleThdFases.u12 && (
+                  <Line
+                    type="monotone"
+                    name="THD U12"
+                    dataKey={`thd_u12_${activeDay}`}
+                    stroke="#2563eb"
+                    strokeWidth={1.8}
+                    dot={false}
+                    connectNulls={true}
+                    animationDuration={150}
+                  />
+                )}
+
+                {/* Curva Fase 23 (Rojo) */}
+                {visibleThdFases.u23 && (
+                  <Line
+                    type="monotone"
+                    name="THD U23"
+                    dataKey={`thd_u23_${activeDay}`}
+                    stroke="#dc2626"
+                    strokeWidth={1.8}
+                    dot={false}
+                    connectNulls={true}
+                    animationDuration={150}
+                  />
+                )}
+
+                {/* Curva Fase 31 (Verde) */}
+                {visibleThdFases.u31 && (
+                  <Line
+                    type="monotone"
+                    name="THD U31"
+                    dataKey={`thd_u31_${activeDay}`}
+                    stroke="#16a34a"
+                    strokeWidth={1.8}
+                    dot={false}
+                    connectNulls={true}
+                    animationDuration={150}
+                  />
+                )}
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -2014,15 +2253,15 @@ const BoardDetailPage = () => {
   // ── TRAZADO OFICIAL CURVA ITIC / CBEMA (COINCIDENTE CON METREL POWERVIEW) ──
 
   // ── 1. LÍNEA SUPERIOR ESCALONADA EXACTA (IDÉNTICA A LA IMAGEN) ──
-  const ITIC_UPPER_LINE = [
-    { x: 0.0002, y: 400 },
-    { x: 0.0002, y: 200 },
-    { x: 0.003, y: 200 },
-    { x: 0.003, y: 120 },
-    { x: 0.5, y: 120 },
-    { x: 0.5, y: 110 },
-    { x: 100000, y: 110 },
-  ];
+  // const ITIC_UPPER_LINE = [
+  //   { x: 0.0002, y: 400 },
+  //   { x: 0.0002, y: 200 },
+  //   { x: 0.003, y: 200 },
+  //   { x: 0.003, y: 120 },
+  //   { x: 0.5, y: 120 },
+  //   { x: 0.5, y: 110 },
+  //   { x: 100000, y: 110 },
+  // ];
 
   // ── 2. LÍNEA INFERIOR ESCALONADA (HUECOS Y CAÍDAS) ──
   const ITIC_LOWER_LINE = [
@@ -2038,6 +2277,9 @@ const BoardDetailPage = () => {
 
   // DÉCADAS EXACTAS DEL EJE X DE METREL
   const ITIC_TICKS_X = [0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000];
+  // Agrega este estado arriba junto a los otros estados de tu componente:
+  const [selectedIticPoint, setSelectedIticPoint] = useState<any | null>(null);
+
   const renderIticCurveSection = () => {
     if (!iticEvents || iticEvents.length === 0) {
       return (
@@ -2057,122 +2299,127 @@ const BoardDetailPage = () => {
       );
     }
 
-    // ── SHAPES PERSONALIZADOS FINOS (IDÉNTICOS A METREL) ──
-    // const MetrelDot = ({ cx, cy, fill, stroke, shapeType }: any) => {
-    //   if (cx === undefined || cy === undefined) return null;
-
-    //   if (shapeType === "square") {
-    //     return (
-    //       <rect
-    //         x={cx - 2.5}
-    //         y={cy - 2.5}
-    //         width={5}
-    //         height={5}
-    //         fill={fill}
-    //         fillOpacity={0.8}
-    //         stroke="#0f172a"
-    //         strokeWidth={0.5}
-    //       />
-    //     );
-    //   }
-
-    //   if (shapeType === "cross") {
-    //     return (
-    //       <g stroke={fill} strokeWidth={1.5}>
-    //         <line x1={cx - 3} y1={cy} x2={cx + 3} y2={cy} />
-    //         <line x1={cx} y1={cy - 3} x2={cx} y2={cy + 3} />
-    //       </g>
-    //     );
-    //   }
-
-    //   // Círculo pequeño con borde sutil
-    //   return (
-    //     <circle
-    //       cx={cx}
-    //       cy={cy}
-    //       r={2.5}
-    //       fill={fill}
-    //       fillOpacity={0.75}
-    //       stroke="#1e3a8a"
-    //       strokeWidth={0.5}
-    //     />
-    //   );
-    // };
-
-    // ── 1. DETERMINAR TENSIÓN NOMINAL DEL TABLERO (Línea-Línea y Línea-Neutro) ──
-    // const vNominalLinea = Number(board?.tensionNominal) || 220;
-    // const vNominalFase = Math.round(vNominalLinea / Math.sqrt(3));
-
     const dataFase1: any[] = [];
     const dataFase2: any[] = [];
     const dataFase3: any[] = [];
 
-    // ── CLASIFICACIÓN MULTIFÁSICA INDEPENDIENTE (IDÉNTICO A METREL) ──
-    iticEvents.forEach((ev: any, idx: number) => {
-      // 1. Omitir eventos del sistema (Metrel solo grafica perturbaciones eléctricas)
-      const tipo = String(ev.tipoEvento || "").toLowerCase();
-      if (tipo.includes("sistema") || tipo.includes("system")) {
-        return;
-      }
+    const vBase = Number(board?.tensionNominal) || 220;
 
-      // 2. Corregir duraciones en cero (Metrel trunca < 100ms a 00:00.0; fijar en 10 ms = 0.01 s)
-      let tRaw = Number(ev.duracionSegundos);
-      if (isNaN(tRaw) || tRaw <= 0) {
-        tRaw = 0.01; // 10 ms para que aparezcan las caídas rápidas del círculo morado
-      }
+    iticEvents.forEach((ev: any, idx: number) => {
+      let t = Number(ev.duracionSegundos);
+      if (isNaN(t) || t <= 0) t = 0.00001;
+      t = Math.max(0.00001, Math.min(100000, t));
 
       const rawResidual = Number(ev.tensionResidual) || 0;
-      const f = String(ev.fase || "").toUpperCase().trim();
-
-      // En Volvo Santa Anita la tensión nominal es 220 V entre líneas
-      const vBase = 220;
-      let vPercent = rawResidual > 50 ? (rawResidual / vBase) * 100 : rawResidual;
-
-      const t = Math.max(0.00001, Math.min(100000, tRaw));
+      const vPercent = rawResidual > 50 ? (rawResidual / vBase) * 100 : rawResidual;
       const v = Math.max(0, Math.min(400, vPercent));
+
+      const duracionMs = t < 1
+        ? `${Math.round(t * 1000).toString().padStart(3, '0')} ms`
+        : `${t.toFixed(3)} s`;
 
       const item = {
         id: idx + 1,
         x: t,
         y: v,
-        duracionOriginal: ev.duracionSegundos,
+        duracionTexto: duracionMs,
         tipoEvento: ev.tipoEvento,
         horaInicio: ev.horaInicio,
+        horaFinalizacion: ev.horaFinalizacion || ev.horaInicio,
         fase: ev.fase,
-        voltiosReales: rawResidual > 50 ? rawResidual : (rawResidual * vBase) / 100
+        voltiosReales: rawResidual
       };
 
-      // 3. Evaluar de forma INDEPENDIENTE (sin 'else if') para que L23, L31 genere punto verde Y azul
+      const f = String(ev.fase || "").toUpperCase().trim();
+
       if (f.includes("L12") || f === "L1" || f.includes("FASE 1")) {
-        dataFase1.push({ ...item, fase: "Línea 12" });
+        dataFase1.push({ ...item, faseExacta: "L12" });
       }
       if (f.includes("L23") || f === "L2" || f.includes("FASE 2")) {
-        dataFase2.push({ ...item, fase: "Línea 23" });
+        dataFase2.push({ ...item, faseExacta: "L23" });
       }
       if (f.includes("L31") || f.includes("L3") || f.includes("FASE 3")) {
-        dataFase3.push({ ...item, fase: "Línea 31" });
+        dataFase3.push({ ...item, faseExacta: "L31" });
       }
     });
 
+    // ── TECHO DINÁMICO ADAPTABLE (Mínimo 200% para mostrar los escalones de la norma ITIC sin romper el sombreado) ──
+    const todosLosPuntosY = [
+      ...dataFase1.map(d => d.y),
+      ...dataFase2.map(d => d.y),
+      ...dataFase3.map(d => d.y)
+    ];
+
+    const maxRegistrado = todosLosPuntosY.length > 0 ? Math.max(...todosLosPuntosY) : 100;
+
+    // Si los eventos son caídas normales (< 100%), el gráfico se compacta a 200% (la mitad de 400%).
+    // Si ocurre una sobretensión (ej. 260%), se expande limpiamente hasta 300% o 400%.
+    const yAxisMax = Math.min(400, Math.max(200, Math.ceil((maxRegistrado * 1.15) / 50) * 50));
+
+    // Línea superior ajustada dinámicamente al techo visible
+    const upperCurveLine = [
+      { x: 0.0002, y: yAxisMax },
+      { x: 0.0002, y: Math.min(200, yAxisMax) },
+      { x: 0.003, y: Math.min(200, yAxisMax) },
+      { x: 0.003, y: 120 },
+      { x: 0.5, y: 120 },
+      { x: 0.5, y: 110 },
+      { x: 100000, y: 110 },
+    ];
+
+    // ── TOOLTIP IDÉNTICO AL FORMATO METREL ──
+    // ── TOOLTIP MULTIFÁSICO INTELIGENTE ──
     const MetrelTooltip = ({ active, payload }: any) => {
       if (active && payload && payload.length) {
-        const data = payload[0]?.payload;
-        if (!data || data.tipoEvento === undefined) return null;
+        const itemActivo = payload[0]?.payload;
+        if (!itemActivo || itemActivo.tipoEvento === undefined) return null;
 
-        const duracionMs = data.duracionOriginal < 1
-          ? `${Math.round(data.duracionOriginal * 1000)} ms`
-          : `${data.duracionOriginal.toFixed(2)} s`;
+        // Todos los eventos procesados de todas las fases
+        const todosLosEventos = [...dataFase1, ...dataFase2, ...dataFase3];
+
+        // Buscar todas las fases que ocurrieron en el mismo instante o duración
+        const eventosCoincidentes = todosLosEventos.filter(
+          ev => ev.horaInicio === itemActivo.horaInicio || (Math.abs(ev.x - itemActivo.x) < 0.0001 && Math.abs(ev.y - itemActivo.y) < 0.5)
+        );
+
+        // Si solo hay uno, mostramos ese; si hay dos o más (ej. L12 y L23), mostramos ambos agrupados
+        const eventosAMostrar = eventosCoincidentes.length > 0 ? eventosCoincidentes : [itemActivo];
 
         return (
-          <div className="rounded-lg border border-slate-400 bg-white/95 p-2.5 shadow-xl font-sans text-[11px] leading-tight min-w-[190px] z-50">
-            <p className="font-bold text-slate-800 border-b border-slate-100 pb-1 mb-1">
-              {data.fase} {data.tipoEvento}
-            </p>
-            <div className="space-y-1 text-slate-600">
-              <p><strong>Iniciado:</strong> {data.horaInicio || "N/A"}</p>
-              <p><strong>Duración:</strong> {duracionMs}</p>
-              <p><strong>% Residual:</strong> {data.y.toFixed(1)}%</p>
-              <p><strong>Tensión medida:</strong> {data.voltiosReales.toFixed(1)} V</p>
+          <div className="rounded-xl border border-slate-300 bg-white/95 p-3 shadow-2xl font-sans text-xs leading-snug min-w-[230px] z-50 text-slate-800 backdrop-blur-sm">
+            <div className="border-b border-slate-200 pb-1.5 mb-2 flex items-center justify-between">
+              <span className="font-bold text-slate-900 text-sm">
+                {itemActivo.tipoEvento} de Tensión
+              </span>
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+                {itemActivo.duracionTexto}
+              </span>
+            </div>
+
+            <div className="space-y-1 text-slate-600 text-[11px] mb-2">
+              <p>Iniciado en: <strong className="text-slate-800">{itemActivo.horaInicio}</strong></p>
+              <p>Finalizado en: <strong className="text-slate-800">{itemActivo.horaFinalizacion}</strong></p>
+            </div>
+
+            <div className="border-t border-slate-100 pt-2 space-y-1.5">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fases Afectadas:</p>
+              {eventosAMostrar.map((ev, idx) => {
+                const colorFase =
+                  ev.faseExacta === 'L12' ? '#dc2626' :
+                    ev.faseExacta === 'L23' ? '#16a34a' : '#2563eb';
+
+                return (
+                  <div key={idx} className="flex items-center justify-between bg-slate-50 px-2 py-1 rounded border border-slate-100">
+                    <span className="flex items-center gap-1.5 font-bold" style={{ color: colorFase }}>
+                      <span className="size-2 rounded-full inline-block" style={{ backgroundColor: colorFase }} />
+                      {ev.faseExacta || ev.fase}
+                    </span>
+                    <span className="text-slate-900 font-extrabold tabular-nums">
+                      {ev.voltiosReales.toFixed(2)} V <span className="font-semibold text-slate-500">({ev.y.toFixed(1)}%)</span>
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -2198,16 +2445,16 @@ const BoardDetailPage = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-3 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700">
               <span className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-sm bg-[#dc2626] inline-block" /> Línea 12 / L1
+                <span className="h-0.5 w-3 bg-[#dc2626] inline-block rounded-full" /> Línea 12
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-sm bg-[#16a34a] inline-block" /> Línea 23 / L2
+                <span className="h-0.5 w-3 bg-[#16a34a] inline-block rounded-full" /> Línea 23
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="size-2.5 rounded-full bg-[#2563eb] inline-block" /> Línea 31 / L3
+                <span className="size-2 rounded-full bg-[#2563eb] inline-block" /> Línea 31
               </span>
             </div>
 
@@ -2221,6 +2468,52 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
+        {/* ── CARD FLOTANTE DE DETALLE PARA MÓVIL / TABLET (UX OPTIMIZADA) ── */}
+        {/* ── CARD FLOTANTE DE DETALLE PARA MÓVIL / TABLET (UX MULTIFÁSICA) ── */}
+        {selectedIticPoint && (() => {
+          const todosLosEventos = [...dataFase1, ...dataFase2, ...dataFase3];
+          const eventosRelacionados = todosLosEventos.filter(
+            ev => ev.horaInicio === selectedIticPoint.horaInicio
+          );
+          const lista = eventosRelacionados.length > 0 ? eventosRelacionados : [selectedIticPoint];
+
+          return (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/80 p-3.5 shadow-sm text-xs animate-in fade-in slide-in-from-top-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 w-full">
+                <div>
+                  <p className="text-[10px] font-bold text-amber-700 uppercase">Evento</p>
+                  <p className="font-black text-slate-900">{selectedIticPoint.tipoEvento}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-amber-700 uppercase">Duración</p>
+                  <p className="font-black text-slate-900">{selectedIticPoint.duracionTexto}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-amber-700 uppercase">Fases y Valores</p>
+                  <div className="flex flex-wrap gap-2 mt-0.5">
+                    {lista.map((item, i) => (
+                      <span key={i} className="font-bold text-slate-900 bg-white/80 px-1.5 py-0.5 rounded border border-amber-200">
+                        {item.faseExacta || item.fase}: {item.voltiosReales.toFixed(1)} V
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-amber-700 uppercase">Hora Inicio</p>
+                  <p className="font-medium text-slate-700 truncate">{selectedIticPoint.horaInicio}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedIticPoint(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-amber-100 hover:text-slate-700 shrink-0"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          );
+        })()}
+
         {/* Contenedor del Gráfico */}
         <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2">
           <div className="h-[480px] w-[950px] sm:w-full text-xs select-none">
@@ -2228,20 +2521,17 @@ const BoardDetailPage = () => {
               <ScatterChart margin={{ top: 20, right: 30, left: 10, bottom: 35 }}>
                 <CartesianGrid strokeDasharray="1 1" stroke="#cbd5e1" />
 
-                {/* ── ZONA SUPERIOR: 3 ESCALONES SOMBREADOS EXACTOS ── */}
-                {/* 1. Transitorio: 200 µs (0.0002s) a 3 ms (0.003s) en 200% */}
-                <ReferenceArea x1={0.0002} x2={0.003} y1={200} y2={400} fill="#fed7aa" fillOpacity={0.65} />
-                {/* 2. Dinámico: 3 ms (0.003s) a 0.5 s en 120% */}
-                <ReferenceArea x1={0.003} x2={0.5} y1={120} y2={400} fill="#fed7aa" fillOpacity={0.65} />
-                {/* 3. Permanente: 0.5 s a 100.000 s en 110% */}
-                <ReferenceArea x1={0.5} x2={100000} y1={110} y2={400} fill="#fed7aa" fillOpacity={0.65} />
+                {/* Zona Superior */}
+                {/* ── ZONA SUPERIOR DINÁMICA (Sin huecos ni inversiones) ── */}
+                <ReferenceArea x1={0.0002} x2={0.003} y1={Math.min(200, yAxisMax)} y2={yAxisMax} fill="#fed7aa" fillOpacity={0.65} />
+                <ReferenceArea x1={0.003} x2={0.5} y1={120} y2={yAxisMax} fill="#fed7aa" fillOpacity={0.65} />
+                <ReferenceArea x1={0.5} x2={100000} y1={110} y2={yAxisMax} fill="#fed7aa" fillOpacity={0.65} />
 
-                {/* ── ZONA INFERIOR: Caída / Apagado (Color Amarillo suave) ── */}
+                {/* Zona Inferior */}
                 <ReferenceArea x1={0.02} x2={0.5} y1={0} y2={70} fill="#fef08a" fillOpacity={0.7} />
                 <ReferenceArea x1={0.5} x2={10} y1={0} y2={80} fill="#fef08a" fillOpacity={0.7} />
                 <ReferenceArea x1={10} x2={100000} y1={0} y2={90} fill="#fef08a" fillOpacity={0.7} />
 
-                {/* ── EJE X CON TODAS LAS DÉCADAS CALIBRADAS ── */}
                 <XAxis
                   type="number"
                   dataKey="x"
@@ -2274,15 +2564,16 @@ const BoardDetailPage = () => {
                   />
                 </XAxis>
 
-                {/* ── EJE Y (0.0 A 400.0%) ── */}
+                {/* ── EJE Y ADAPTABLE ── */}
                 <YAxis
                   type="number"
                   dataKey="y"
-                  domain={[0, 400]}
-                  ticks={[0, 100, 200, 300, 400]}
+                  domain={[0, yAxisMax]}
+                  allowDataOverflow={true}
+                  ticks={yAxisMax === 200 ? [0, 50, 100, 150, 200] : yAxisMax === 300 ? [0, 100, 200, 300] : [0, 100, 200, 300, 400]}
                   stroke="#475569"
-                  width={50}
-                  tickFormatter={(val) => `${val}.0`}
+                  width={55}
+                  tickFormatter={(val) => `${val.toFixed(1)}%`}
                   tick={{ fontSize: '10px', fill: '#1e293b', fontWeight: 600 }}
                 >
                   <Label
@@ -2296,81 +2587,86 @@ const BoardDetailPage = () => {
 
                 <Tooltip content={<MetrelTooltip />} cursor={{ strokeDasharray: '3 3', stroke: '#94a3b8' }} />
 
-                {/* Línea nominal 100% */}
                 <ReferenceLine y={100} stroke="#475569" strokeDasharray="3 3" strokeWidth={1} />
 
-                {/* ── LÍNEAS NEGRAS DE LA ENVOLVENTE ITIC ── */}
+                {/* Envolvente ITIC */}
+                {/* Envolvente ITIC Superior Dinámica */}
                 <Scatter
                   name="Límite Superior"
-                  data={ITIC_UPPER_LINE}
+                  data={upperCurveLine}
                   line={{ stroke: '#0f172a', strokeWidth: 2 }}
                   shape={() => null}
                   legendType="none"
                   isAnimationActive={false}
                 />
-                <Scatter
-                  name="Límite Inferior"
-                  data={ITIC_LOWER_LINE}
-                  line={{ stroke: '#0f172a', strokeWidth: 2 }}
-                  shape={() => null}
-                  legendType="none"
-                  isAnimationActive={false}
-                />
+                <Scatter name="Límite Inferior" data={ITIC_LOWER_LINE} line={{ stroke: '#0f172a', strokeWidth: 2 }} shape={() => null} legendType="none" isAnimationActive={false} />
 
-                {/* ── DISPERSIÓN DE PUNTOS POR FASE ── */}
-                {/* <Scatter
-                  name="Fase 1"
-                  data={dataFase1}
-                  fill="#dc2626"
-                  shape="square"
-                  isAnimationActive={false}
-                />
-                <Scatter
-                  name="Fase 2"
-                  data={dataFase2}
-                  fill="#16a34a"
-                  shape="square"
-                  isAnimationActive={false}
-                />
-                <Scatter
-                  name="Fase 3"
-                  data={dataFase3}
-                  fill="#2563eb"
-                  shape="circle"
-                  isAnimationActive={false}
-                /> */}
+                {/* ── DISPERSIÓN CON TARGET TÁCTIL GRANDE PARA CELULARES Y TABLETS ── */}
 
-                {/* 1. Línea 31 (Círculos azules finos) */}
-                <Scatter
-                  name="Línea 31"
-                  data={dataFase3}
-                  fill="#2563eb"
-                  shape={(props: any) => (
-                    <circle cx={props.cx} cy={props.cy} r={2.8} fill="#2563eb" fillOpacity={0.75} stroke="#1e3a8a" strokeWidth={0.5} />
-                  )}
-                  isAnimationActive={false}
-                />
-
-                {/* 2. Línea 23 (Cuadrados verdes finos) */}
-                <Scatter
-                  name="Línea 23"
-                  data={dataFase2}
-                  fill="#16a34a"
-                  shape={(props: any) => (
-                    <rect x={props.cx - 2.2} y={props.cy - 2.2} width={4.5} height={4.5} fill="#16a34a" fillOpacity={0.8} stroke="#14532d" strokeWidth={0.5} />
-                  )}
-                  isAnimationActive={false}
-                />
-
-                {/* 3. Línea 12 (Cruces/Puntos rojos en primer plano) */}
+                {/* 1. Línea 12 (Rojo - Guion Metrel) */}
                 <Scatter
                   name="Línea 12"
                   data={dataFase1}
                   fill="#dc2626"
+                  onClick={(node: any) => setSelectedIticPoint(node?.payload)}
                   shape={(props: any) => (
-                    <g stroke="#dc2626" strokeWidth={1.2}>
-                      <line x1={props.cx - 2.5} y1={props.cy} x2={props.cx + 2.5} y2={props.cy} />
-                      <line x1={props.cx} y1={props.cy - 2.5} x2={props.cx} y2={props.cy + 2.5} />
+                    <g style={{ cursor: 'pointer' }}>
+                      {/* Círculo invisible de 24px para facilitar el tap en celular */}
+                      <circle cx={props.cx} cy={props.cy} r={12} fill="transparent" />
+                      <line
+                        x1={props.cx - 3.5}
+                        y1={props.cy + 1.5}
+                        x2={props.cx + 3.5}
+                        y2={props.cy + 1.5}
+                        stroke="#dc2626"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  )}
+                  isAnimationActive={false}
+                />
+
+                {/* 2. Línea 23 (Verde - Guion Metrel) */}
+                <Scatter
+                  name="Línea 23"
+                  data={dataFase2}
+                  fill="#16a34a"
+                  onClick={(node: any) => setSelectedIticPoint(node?.payload)}
+                  shape={(props: any) => (
+                    <g style={{ cursor: 'pointer' }}>
+                      <circle cx={props.cx} cy={props.cy} r={12} fill="transparent" />
+                      <line
+                        x1={props.cx - 3.5}
+                        y1={props.cy - 1.5}
+                        x2={props.cx + 3.5}
+                        y2={props.cy - 1.5}
+                        stroke="#16a34a"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  )}
+                  isAnimationActive={false}
+                />
+
+                {/* 3. Línea 31 (Azul - Círculo Metrel) */}
+                <Scatter
+                  name="Línea 31"
+                  data={dataFase3}
+                  fill="#2563eb"
+                  onClick={(node: any) => setSelectedIticPoint(node?.payload)}
+                  shape={(props: any) => (
+                    <g style={{ cursor: 'pointer' }}>
+                      <circle cx={props.cx} cy={props.cy} r={12} fill="transparent" />
+                      <circle
+                        cx={props.cx}
+                        cy={props.cy}
+                        r={3.2}
+                        fill="#2563eb"
+                        stroke="#1d4ed8"
+                        strokeWidth={0.5}
+                      />
                     </g>
                   )}
                   isAnimationActive={false}

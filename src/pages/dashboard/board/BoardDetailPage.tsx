@@ -82,7 +82,7 @@ const BoardDetailPage = () => {
   // const isIntermedioOrSuperior = isSuperAdmin || ["intermedio", "empresarial"].includes(userPlan);
   // const isEmpresarial = isSuperAdmin || userPlan === "empresarial";
 
-const { auth, loading: authLoading } = useAuth();
+  const { auth, loading: authLoading } = useAuth();
 
   // Normalizamos a mayúsculas/minúsculas para evitar desajustes ('EMPRESARIAL' vs 'empresarial')
   const rawRole = (auth?.role || "USER").toUpperCase();
@@ -459,7 +459,7 @@ const { auth, loading: authLoading } = useAuth();
     setThermographyReloadKey((prev) => prev + 1);
   };
 
-useEffect(() => {
+  useEffect(() => {
     // Si la autenticación aún se está resolviendo, esperamos
     if (authLoading) return;
 
@@ -1365,20 +1365,28 @@ useEffect(() => {
   // const FACTOR_GENERACION_SOLAR_DIARIO = 0.15;
 
   // ── ESTADOS PARA RECIBO Y COSTO DE ENERGÍA (HP / FP) ──
-  // Inicia en null para que NO dibuje nada hasta que se suba el recibo
-  const [rates, setRates] = useState<{ hp: number; fp: number } | null>(null);
+  // 1. Inicializa leyendo directamente del tablero si ya existen en la base de datos
+  const [rates, setRates] = useState<{ hp: number; fp: number } | null>(() => {
+    const r = (board as any)?.energyRates;
+    if (r?.tarifaHP && r?.tarifaFP) {
+      return { hp: Number(r.tarifaHP), fp: Number(r.tarifaFP) };
+    }
+    return null;
+  });
+
   const [isUploadingBill, setIsUploadingBill] = useState(false);
   const billFileInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  // // Sincronizar tarifas SOLO si el tablero ya las tiene guardadas previamente en MongoDB
-  // useEffect(() => {
-  //   if ((board as any)?.energyRates?.tarifaHP && (board as any)?.energyRates?.tarifaFP) {
-  //     setRates({
-  //       hp: Number((board as any).energyRates.tarifaHP),
-  //       fp: Number((board as any).energyRates.tarifaFP),
-  //     });
-  //   }
-  // }, [board]);
+  // 2. Sincronizar cuando el tablero termine de cargar desde la API
+  useEffect(() => {
+    const energyRates = (board as any)?.energyRates;
+    if (energyRates?.tarifaHP && energyRates?.tarifaFP) {
+      setRates({
+        hp: Number(energyRates.tarifaHP),
+        fp: Number(energyRates.tarifaFP),
+      });
+    }
+  }, [board]);
 
   const handleBillUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1422,26 +1430,26 @@ useEffect(() => {
           <div className="space-y-2">
             {/* Superior en la barra apilada: Hora Punta (HP) */}
             {/* Superior: Hora Punta (HP) */}
-<div className="flex items-center justify-between">
-  <span className="flex items-center gap-1.5 font-bold text-amber-900">
-    <span className="size-2.5 rounded-full bg-[#d97706] inline-block shadow-sm" />
-    Hora Punta (HP):
-  </span>
-  <span className="font-black text-slate-900 tabular-nums">
-    S/. {costHP.toFixed(2)}
-  </span>
-</div>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 font-bold text-amber-900">
+                <span className="size-2.5 rounded-full bg-[#d97706] inline-block shadow-sm" />
+                Hora Punta (HP):
+              </span>
+              <span className="font-black text-slate-900 tabular-nums">
+                S/. {costHP.toFixed(2)}
+              </span>
+            </div>
 
-{/* Inferior: Fuera de Punta (FP) */}
-<div className="flex items-center justify-between">
-  <span className="flex items-center gap-1.5 font-bold text-amber-700">
-    <span className="size-2.5 rounded-full bg-[#fbbf24] border border-amber-400 inline-block shadow-sm" />
-    Fuera de Punta (FP):
-  </span>
-  <span className="font-black text-slate-900 tabular-nums">
-    S/. {costFP.toFixed(2)}
-  </span>
-</div>
+            {/* Inferior: Fuera de Punta (FP) */}
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 font-bold text-amber-700">
+                <span className="size-2.5 rounded-full bg-[#fbbf24] border border-amber-400 inline-block shadow-sm" />
+                Fuera de Punta (FP):
+              </span>
+              <span className="font-black text-slate-900 tabular-nums">
+                S/. {costFP.toFixed(2)}
+              </span>
+            </div>
           </div>
 
           <div className="mt-2.5 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400 flex justify-between font-medium">
@@ -1455,7 +1463,7 @@ useEffect(() => {
   };
 
   const COST_COLOR_HP = "#d97706"; // Ámbar intenso (Hora Punta)
-const COST_COLOR_FP = "#fbbf24"; // Amarillo dorado (Fuera de Punta)
+  const COST_COLOR_FP = "#fbbf24"; // Amarillo dorado (Fuera de Punta)
 
   // ── SECCIÓN COMPLETA DE COSTO DE ENERGÍA ESTIMADO ──
   const renderEnergyCostSection = () => {
@@ -1504,13 +1512,18 @@ const COST_COLOR_FP = "#fbbf24"; // Amarillo dorado (Fuera de Punta)
 
     // 2. Procesamiento diario de costos
     const costoData = energiaPorDiaData
-      .filter(d => visibleCostSeries[d.name] !== false)
-      .map(item => {
-        const kwhFP = item.kwhFP ?? (item.kWh || 0) * 0.70;
-        const kwhHP = item.kwhHP ?? (item.kWh || 0) * 0.30;
+      .filter((d) => visibleCostSeries[d.name] !== false)
+      .map((item) => {
+        // Usar los kWh reales calculados por intervalo de 5 minutos en fetchChartData
+        const kwhFP = Number(item.kwhFP) || 0;
+        const kwhHP = Number(item.kwhHP) || 0;
 
-        const costoFP = kwhFP * rates.fp;
-        const costoHP = kwhHP * rates.hp;
+        // Si por alguna razón kwhFP y kwhHP vinieron en 0 pero sí hay kWh total, aplicar proporción
+        const finalFP = (kwhFP > 0 || kwhHP > 0) ? kwhFP : (item.kWh || 0) * (19 / 24);
+        const finalHP = (kwhFP > 0 || kwhHP > 0) ? kwhHP : (item.kWh || 0) * (5 / 24);
+
+        const costoFP = finalFP * rates.fp;
+        const costoHP = finalHP * rates.hp;
         const costoTotal = costoFP + costoHP;
 
         return {
@@ -1631,8 +1644,8 @@ const COST_COLOR_FP = "#fbbf24"; // Amarillo dorado (Fuera de Punta)
               type="button"
               onClick={() => toggleCostDay(key)}
               className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleCostSeries[key] !== false
-                  ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
-                  : 'bg-white border-slate-200 text-slate-400'
+                ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                : 'bg-white border-slate-200 text-slate-400'
                 }`}
             >
               {key}
@@ -3125,7 +3138,7 @@ const COST_COLOR_FP = "#fbbf24"; // Amarillo dorado (Fuera de Punta)
     );
   };
 
-if (loading || authLoading) {
+  if (loading || authLoading) {
     return (
       <section className="mx-auto max-w-7xl space-y-6">
         <div className="h-28 animate-pulse rounded-3xl bg-slate-200" />

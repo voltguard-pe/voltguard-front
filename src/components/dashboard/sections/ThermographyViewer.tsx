@@ -134,7 +134,7 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
           <button
             type="button"
             onClick={onOpenImportModal}
-            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 shadow-sm"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 shadow-sm cursor-pointer transition-all active:scale-95"
           >
             <UploadCloud size={14} /> Cargar Archivos
           </button>
@@ -158,22 +158,6 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
                   Crítico en conexiones
                 </p>
               </div>
-
-              {/* <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">Punto Frío</p>
-                <p className="mt-1 text-2xl font-black text-blue-950">
-                  {stats.min.toFixed(2)} <span className="text-xs font-bold text-blue-600">°C</span>
-                </p>
-                <p className="text-[10px] text-blue-600/80 font-semibold">Temperatura base</p>
-              </div>
-
-              <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
-                <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Diferencial Térmico (ΔT)</p>
-                <p className="mt-1 text-2xl font-black text-amber-950">
-                  {(stats.max - stats.min).toFixed(2)} <span className="text-xs font-bold text-amber-600">°C</span>
-                </p>
-                <p className="text-[10px] text-amber-600/80 font-semibold">Promedio: {stats.avg.toFixed(2)} °C</p>
-              </div> */}
 
               {/* 2 COLUMNAS: Observación Técnica de OpenAI */}
               <div className="sm:col-span-2 rounded-2xl border border-amber-200/80 bg-amber-50/40 p-4 flex flex-col justify-between">

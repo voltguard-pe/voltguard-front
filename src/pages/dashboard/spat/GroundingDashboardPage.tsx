@@ -253,7 +253,7 @@ const GroundingDashboardPage: React.FC = () => {
   const latestMeasurement = measurements.length > 0 ? measurements[measurements.length - 1] : null;
 
   const calculateRates = () => {
-    if (measurements.length < 2) {
+    if (!measurements || measurements.length < 2) {
       return {
         tasaResistencia: "Sin histórico suficiente",
         tasaFuga: "Sin histórico suficiente",
@@ -261,21 +261,44 @@ const GroundingDashboardPage: React.FC = () => {
         tasaPh: "Sin histórico suficiente",
       };
     }
-    const first = measurements[0];
-    const last = measurements[measurements.length - 1];
-    const diffYears = Math.max(1, parseInt(last.año) - parseInt(first.año));
+    try {
+      const first = measurements[0];
+      const last = measurements[measurements.length - 1];
 
-    const varR = (((last.resistencia - first.resistencia) / first.resistencia) * 100) / diffYears;
-    const varF = (((last.fuga - first.fuga) / (first.fuga || 1)) * 100) / diffYears;
-    const varD = (last.diametro - first.diametro) / diffYears;
-    const varPh = (last.ph - first.ph) / diffYears;
+      const firstYear = parseInt(first?.año) || 0;
+      const lastYear = parseInt(last?.año) || 0;
+      const diffYears = Math.max(1, lastYear - firstYear);
 
-    return {
-      tasaResistencia: `${varR >= 0 ? "+" : ""}${varR.toFixed(1)} %/año`,
-      tasaFuga: `${varF >= 0 ? "+" : ""}${varF.toFixed(1)} %/año`,
-      tasaDiametro: `${varD.toFixed(2)} mm/año`,
-      tasaPh: `${varPh.toFixed(2)} /año`,
-    };
+      const rInit = Number(first?.resistencia) || 1;
+      const rFin = Number(last?.resistencia) || 0;
+      const varR = (((rFin - rInit) / rInit) * 100) / diffYears;
+
+      const fInit = Number(first?.fuga) || 1;
+      const fFin = Number(last?.fuga) || 0;
+      const varF = (((fFin - fInit) / fInit) * 100) / diffYears;
+
+      const dInit = Number(first?.diametro) || 16;
+      const dFin = Number(last?.diametro) || 16;
+      const varD = (dFin - dInit) / diffYears;
+
+      const phInit = Number(first?.ph) || 7;
+      const phFin = Number(last?.ph) || 7;
+      const varPh = (phFin - phInit) / diffYears;
+
+      return {
+        tasaResistencia: `${varR >= 0 ? "+" : ""}${isNaN(varR) ? "0.0" : varR.toFixed(1)} %/año`,
+        tasaFuga: `${varF >= 0 ? "+" : ""}${isNaN(varF) ? "0.0" : varF.toFixed(1)} %/año`,
+        tasaDiametro: `${isNaN(varD) ? "0.00" : varD.toFixed(2)} mm/año`,
+        tasaPh: `${isNaN(varPh) ? "0.00" : varPh.toFixed(2)} /año`,
+      };
+    } catch {
+      return {
+        tasaResistencia: "Sin histórico",
+        tasaFuga: "Sin histórico",
+        tasaDiametro: "Sin histórico",
+        tasaPh: "Sin histórico",
+      };
+    }
   };
 
   const rates = calculateRates();
@@ -474,13 +497,13 @@ const GroundingDashboardPage: React.FC = () => {
                 </div>
                 <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider ${(latestMeasurement?.resistencia ?? 0) <= 5.0 ? "bg-amber-600 text-white" : "bg-rose-600 text-white"
                   }`}>
-                  {(latestMeasurement?.resistencia ?? 0) <= 5.0 ? "VIGILANCIA" : "CRÍTICO"}
+                  {(Number(latestMeasurement?.resistencia) || 0) <= 5.0 ? "VIGILANCIA" : "CRÍTICO"}
                 </span>
               </div>
 
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={measurements} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
+              <div className="h-56 w-full min-w-0 min-h-[224px]">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                  <LineChart data={measurements} margin={{ top: 25, right: 20, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: "11px", fill: "#64748b" }} />
                     <YAxis domain={["auto", "auto"]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: "11px" }} />
@@ -505,13 +528,13 @@ const GroundingDashboardPage: React.FC = () => {
                 </div>
                 <span className={`text-[10px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider ${(latestMeasurement?.fuga ?? 0) <= 5.0 ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
                   }`}>
-                  {(latestMeasurement?.fuga ?? 0) <= 5.0 ? "NORMAL" : "ALERTA"}
+                  {(Number(latestMeasurement?.fuga) || 0) <= 5.0 ? "NORMAL" : "ALERTA"}
                 </span>
               </div>
 
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={measurements} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
+              <div className="h-56 w-full min-w-0 min-h-[224px]">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                  <LineChart data={measurements} margin={{ top: 25, right: 20, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: "11px", fill: "#64748b" }} />
                     <YAxis domain={[0, "auto"]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: "11px" }} />
@@ -539,9 +562,9 @@ const GroundingDashboardPage: React.FC = () => {
                 </span>
               </div>
 
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={measurements} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
+              <div className="h-56 w-full min-w-0 min-h-[224px]">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                  <LineChart data={measurements} margin={{ top: 25, right: 20, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: "11px", fill: "#64748b" }} />
                     <YAxis domain={["auto", "auto"]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: "11px" }} />
@@ -569,9 +592,9 @@ const GroundingDashboardPage: React.FC = () => {
                 </span>
               </div>
 
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={measurements} margin={{ top: 25, right: 35, left: -15, bottom: 5 }}>
+              <div className="h-56 w-full min-w-0 min-h-[224px]">
+                <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                  <LineChart data={measurements} margin={{ top: 25, right: 20, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="año" tickLine={false} stroke="#94a3b8" tick={{ fontSize: "11px", fill: "#64748b" }} />
                     <YAxis domain={["auto", "auto"]} tickLine={false} stroke="#94a3b8" tick={{ fontSize: "11px" }} />
@@ -835,9 +858,8 @@ const GroundingDashboardPage: React.FC = () => {
           {/* Área Central Interactiva (Mouse + Touch) */}
           <div
             ref={imageContainerRef}
-            className={`relative flex-1 w-full overflow-hidden flex items-center justify-center ${
-              zoomScale > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"
-            }`}
+            className={`relative flex-1 w-full overflow-hidden flex items-center justify-center ${zoomScale > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"
+              }`}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => {
               if (zoomScale <= 1) return;

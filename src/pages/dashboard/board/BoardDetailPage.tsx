@@ -82,29 +82,21 @@ const BoardDetailPage = () => {
   // const isIntermedioOrSuperior = isSuperAdmin || ["intermedio", "empresarial"].includes(userPlan);
   // const isEmpresarial = isSuperAdmin || userPlan === "empresarial";
 
-  const { auth } = useAuth();
-  const rawRole = auth?.role || "USER";
-  const rawPlan = auth?.plan || "basico";
+const { auth, loading: authLoading } = useAuth();
 
-  // 1. Determinar el rol efectivo considerando la excepción del plan
+  // Normalizamos a mayúsculas/minúsculas para evitar desajustes ('EMPRESARIAL' vs 'empresarial')
+  const rawRole = (auth?.role || "USER").toUpperCase();
+  const rawPlan = (auth?.plan || "basico").toLowerCase();
+
+  // 1. Determinar el rol efectivo
   const effectiveRole = rawRole === "SUPERADMIN"
     ? "SUPERADMIN"
     : rawPlan === "empresarial"
       ? "ADMIN"
       : "USER";
 
-  // 2. Control de banderas para permisos y vistas
-  const isSuperAdmin = effectiveRole === "SUPERADMIN";
-  // const isAdmin = effectiveRole === "ADMIN";
-  // const isUser = effectiveRole === "USER";
-
-  // Permisos de Acciones de Gestión (ej. importar CSVs, subir archivos, etc.)
-  // const canManage = isSuperAdmin || isUser;
-
-  // Acceso a visualizar más de 1 registro (múltiples tarjetas / historial amplio)
-  // const canViewMultipleRecords = isSuperAdmin || isAdmin;
-
-  // Acceso a visualizar secciones según plan/rol
+  // 2. Banderas de control de vistas
+  const isSuperAdmin = effectiveRole === "SUPERADMIN" || rawRole === "SUPERADMIN";
   const isEmpresarial = isSuperAdmin || rawPlan === "empresarial";
 
 
@@ -467,12 +459,15 @@ const BoardDetailPage = () => {
     setThermographyReloadKey((prev) => prev + 1);
   };
 
-  useEffect(() => {
+useEffect(() => {
+    // Si la autenticación aún se está resolviendo, esperamos
+    if (authLoading) return;
+
     const fetchBoard = async () => {
       try {
         const data = await getBoardByCode(publicCode!, code!);
         setBoard(data);
-        if (data?._id) {
+        if (data?._id && isEmpresarial) {
           await fetchChartData(data._id);
         }
       } catch {
@@ -483,7 +478,7 @@ const BoardDetailPage = () => {
     };
 
     fetchBoard();
-  }, [code, publicCode]);
+  }, [code, publicCode, authLoading, isEmpresarial]);
 
   // ✅ CÓDIGO NUEVO (Recalcula al activar/desactivar días):
   useEffect(() => {
@@ -3130,7 +3125,7 @@ const COST_COLOR_FP = "#fbbf24"; // Amarillo dorado (Fuera de Punta)
     );
   };
 
-  if (loading) {
+if (loading || authLoading) {
     return (
       <section className="mx-auto max-w-7xl space-y-6">
         <div className="h-28 animate-pulse rounded-3xl bg-slate-200" />

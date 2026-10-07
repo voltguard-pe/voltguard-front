@@ -735,26 +735,24 @@ const SidebarComponent = ({
             </nav>
           </div>
 
-          {/* ── SECCIÓN DESTACADA DE NORMATIVAS & LOGOS (SHOWCASE PUBLICITARIO) ── */}
+          {/* ── NORMATIVAS ── */}
           {!isSuperAdmin && (
-            <div className="mx-2.5 my-3 overflow-hidden rounded-2xl border border-slate-200/90 bg-gradient-to-b from-slate-50 via-white to-slate-50 p-3.5 shadow-sm">
-              {/* Encabezado de certificación */}
-              <div className="flex items-center justify-between mb-3 px-0.5">
-                <div className="flex items-center gap-2">
-                  <div className="flex size-6 items-center justify-center rounded-lg bg-[#0797d5]/15 text-[#0797d5] shadow-2xs">
-                    <ShieldCheck size={14} className="stroke-[2.5]" />
-                  </div>
-                  <div>
-                    <span className="block text-[11px] font-black uppercase tracking-wider text-slate-800 leading-tight">
-                      Normativas
-                    </span>
-                    <span className="block text-[9px] font-medium text-slate-400 leading-tight">
-                      Estándares aplicados
-                    </span>
-                  </div>
+            <div className="mx-2.5 my-3 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 p-3 shadow-sm">
+              {/* Encabezado */}
+              <div className="mb-2.5 flex items-center gap-2 px-0.5">
+                <div className="flex size-6 items-center justify-center rounded-lg bg-[#0797d5]/15 text-[#0797d5]">
+                  <ShieldCheck size={14} className="stroke-[2.5]" />
                 </div>
-
-                {/* <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 shadow-2xs">
+                <div>
+                  <span className="block text-[11px] font-black uppercase tracking-wider text-slate-800 leading-tight">
+                    Normativas
+                  </span>
+                  <span className="block text-[10px] font-medium text-slate-500 leading-tight">
+                    Estándares aplicados
+                  </span>
+                </div>
+              </div>
+              {/* <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 shadow-2xs">
                   <span className="relative flex size-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
@@ -763,82 +761,82 @@ const SidebarComponent = ({
                     ACTIVO
                   </span>
                 </div> */}
-              </div>
 
-              {/* Grid de Logos en gran tamaño */}
-              <div className="grid grid-cols-3 gap-2">
-                {/* 1. Logo NFPA 70E */}
-                <div
-                  title="Normativa NFPA 70E - Seguridad Eléctrica y Arc Flash"
-                  className="group relative flex h-16 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-2 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-amber-400 hover:shadow-md hover:shadow-amber-500/15 cursor-default"
-                >
-                  <img
-                    src="/logos/nfpa-70e.png" // 👈 Pon aquí la ruta de tu logo (o url externa)
-                    alt="NFPA 70E"
-                    className="max-h-9 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-110"
-                    onError={(e) => {
-                      // Fallback si la imagen aún no está en tu carpeta
-                      e.currentTarget.style.display = "none";
-                      e.currentTarget.nextElementSibling?.classList.remove("hidden");
-                    }}
-                  />
-                  {/* Respaldo provisional mientras colocas tus imágenes */}
-                  <div className="hidden flex-col items-center">
-                    <span className="text-[11px] font-black text-amber-700">NFPA</span>
-                    <span className="text-[9px] font-black text-slate-800">70E</span>
-                  </div>
-                  <span className="mt-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-tight group-hover:text-amber-600 transition-colors">
-                    Seguridad
-                  </span>
-                </div>
+              {/* Lista de normativas */}
+              <ul className="space-y-1.5">
+                {[
+                  {
+                    title: "NFPA 70E",
+                    desc: "Seguridad eléctrica",
+                    tooltip: "Normativa NFPA 70E - Seguridad Eléctrica",
+                    logo: "/logos/nfpa-70e.png",
+                    fallback: "70E",
+                    hover: "hover:border-amber-400 hover:shadow-amber-500/15",
+                    accent: "text-amber-700",
+                  },
+                  {
+                    title: "NFPA 70B",
+                    desc: "Mantenimiento eléctrico",
+                    tooltip: "Normativa NFPA 70B - Mantenimiento Eléctrico",
+                    logo: "/logos/nfpa-70b.png",
+                    fallback: "70B",
+                    hover: "hover:border-rose-400 hover:shadow-rose-500/15",
+                    accent: "text-rose-700",
+                  },
+                  {
+                    title: "IEEE",
+                    desc: "Power Quality",
+                    tooltip: "Estándares IEEE - Power Quality",
+                    logo: "https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg",
+                    fallback: "IEEE",
+                    hover: "hover:border-[#0797d5] hover:shadow-[#0797d5]/15",
+                    accent: "text-[#0797d5]",
+                  },
+                ].map((n) => (
+                  <li
+                    key={n.title}
+                    title={n.tooltip}
+                    className={`group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-default ${n.hover}`}
+                  >
+                    {/* Logo con tamaño fijo */}
+                    <div className="relative flex h-10 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-50">
+                      <img
+                        src={n.logo}
+                        alt={n.title}
+                        className="max-h-7 max-w-[44px] object-contain transition-transform duration-200 group-hover:scale-105"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                          e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                        }}
+                      />
+                      <span className={`hidden text-xs font-black ${n.accent}`}>{n.fallback}</span>
+                    </div>
 
-                {/* 2. Logo NFPA 70B */}
-                <div
-                  title="Normativa NFPA 70B - Mantenimiento Predictivo & Termografía"
-                  className="group relative flex h-16 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-2 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-rose-400 hover:shadow-md hover:shadow-rose-500/15 cursor-default"
-                >
-                  <img
-                    src="/logos/nfpa-70b.png" // 👈 Pon aquí la ruta de tu logo (o url externa)
-                    alt="NFPA 70B"
-                    className="max-h-9 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-110"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                      e.currentTarget.nextElementSibling?.classList.remove("hidden");
-                    }}
-                  />
-                  <div className="hidden flex-col items-center">
-                    <span className="text-[11px] font-black text-rose-700">NFPA</span>
-                    <span className="text-[9px] font-black text-slate-800">70B</span>
-                  </div>
-                  <span className="mt-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-tight group-hover:text-rose-600 transition-colors">
-                    Térmico
-                  </span>
-                </div>
+                    {/* Texto */}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold leading-tight text-slate-800">
+                        {n.title}
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-500">
+                        {n.desc}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
 
-                {/* 3. Logo IEEE */}
-                <div
-                  title="Estándares IEEE - Calidad de Potencia y Armónicos"
-                  className="group relative flex h-16 flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-2 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-[#0797d5] hover:shadow-md hover:shadow-[#0797d5]/15 cursor-default"
-                >
-                  <img
-                    src="https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg" // 👈 Logo oficial IEEE en SVG
-                    alt="IEEE"
-                    className="max-h-8 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-110"
-                  />
-                  <span className="mt-1 text-[8px] font-extrabold uppercase text-slate-400 tracking-tight group-hover:text-[#0797d5] transition-colors">
-                    Potencia
-                  </span>
-                </div>
-              </div>
 
-              {/* Leyenda publicitaria inferior */}
-              <div className="mt-2.5 flex items-center justify-center gap-1.5 border-t border-slate-100 pt-2 text-center">
-                <span className="text-[9px] font-semibold text-slate-500">
-                  Cumplimiento técnico bajo estándar internacional
-                </span>
-              </div>
             </div>
           )}
+          {/* <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 shadow-2xs">
+                  <span className="relative flex size-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[9.5px] font-black text-emerald-700 tracking-tight">
+                    ACTIVO
+                  </span>
+                </div> */}
 
           {/* Menú de Perfil */}
           <div className="relative border-t border-slate-200 bg-slate-50/50 p-3" ref={dropdownRef}>

@@ -346,7 +346,7 @@ const SidebarComponent = ({
               ) : (
                 <Folder size={15} className="shrink-0 text-[#0797d5]" />
               )}
-              <span className="truncate text-xs font-semibold text-slate-700">Tableros</span>
+              <span className="truncate text-xs font-semibold text-slate-700">Tableros Eléctricos</span>
               <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
                 {isLoadingBoards ? "..." : boards.length}
               </span>
@@ -443,7 +443,7 @@ const SidebarComponent = ({
               ) : (
                 <Folder size={15} className="shrink-0 text-emerald-500" />
               )}
-              <span className="truncate text-xs font-semibold text-slate-700">SPAT</span>
+              <span className="truncate text-xs font-semibold text-slate-700">Puesta a Tierra</span>
               <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
                 {isLoadingGrounding ? "..." : pozos.length}
               </span>

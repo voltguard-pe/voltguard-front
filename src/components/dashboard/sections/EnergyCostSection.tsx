@@ -5,6 +5,7 @@ import {
   BarChart,
   CartesianGrid,
   Label,
+  LabelList,
   Legend,
   ResponsiveContainer,
   Tooltip,
@@ -28,17 +29,26 @@ const COST_COLOR_FP = "#fbbf24"; // Amarillo dorado (Fuera de Punta)
 // ── COMPONENTE TOOLTIP PERSONALIZADO PARA COSTO DE ENERGÍA ──
 const CostTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
-    const costHP = Number(payload.find((p: any) => p.dataKey === "costoHP")?.value || 0);
-    const costFP = Number(payload.find((p: any) => p.dataKey === "costoFP")?.value || 0);
-    const totalDia = costHP + costFP;
+    const data = payload[0].payload;
+    const costHP = data.costoHP;
+    const costFP = data.costoFP;
+    const totalDia = data.costoTotal;
+    const delta = data.deltaOriginal;
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[220px] backdrop-blur-sm">
         <div className="border-b border-slate-100 pb-2 mb-2.5 flex items-center justify-between">
           <span className="font-bold text-slate-800 text-xs">{label}</span>
-          <span className="font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 text-[11px]">
-            S/. {totalDia.toFixed(2)}
-          </span>
+          <div className="text-right">
+            <span className="font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 text-[11px] block">
+              S/. {totalDia.toFixed(2)}
+            </span>
+            {delta > 0 && (
+              <span className="text-[9px] font-bold text-red-600 block mt-0.5">
+                +{delta.toFixed(2)} vs mín.
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2">
@@ -75,6 +85,38 @@ const CostTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+// Renderizado personalizado de la etiqueta superior
+const renderCustomLabel = (props: any) => {
+  const { x, y, width, index, data } = props;
+  const item = data?.[index];
+  if (!item) return null;
+
+  return (
+    <g>
+      <text
+        x={x + width / 2}
+        y={y - 8}
+        fill="#1e293b"
+        textAnchor="middle"
+        className="text-[11px] font-black tabular-nums select-none"
+      >
+        S/. {item.costoTotal.toFixed(2)}
+      </text>
+      {item.deltaOriginal > 0 && (
+        <text
+          x={x + width / 2}
+          y={y - 21}
+          fill="#dc2626"
+          textAnchor="middle"
+          className="text-[9px] font-black tabular-nums select-none"
+        >
+          +{item.deltaOriginal.toFixed(2)}
+        </text>
+      )}
+    </g>
+  );
+};
+
 export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
   rates,
   energiaPorDiaData,
@@ -86,7 +128,6 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
 }) => {
   const billFileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // 1. Estado de espera: si no se ha subido ningún recibo o no hay tarifas
   if (!rates) {
     return (
       <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-6 shadow-sm font-sans mt-6">
@@ -131,8 +172,8 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
     );
   }
 
-  // 2. Procesamiento diario de costos
-  const costoData = energiaPorDiaData
+  // 1. Procesamiento de costos
+  const rawCostoData = energiaPorDiaData
     .filter((d) => visibleCostSeries[d.name] !== false)
     .map((item) => {
       const kwhFP = Number(item.kwhFP) || 0;
@@ -154,12 +195,28 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
       };
     });
 
-  // 3. Cálculos de Totales y Proyecciones
-  const totalCostoPeriodo = costoData.reduce((acc, curr) => acc + curr.costoTotal, 0);
-  const totalCostoHP = costoData.reduce((acc, curr) => acc + curr.costoHP, 0);
-  const totalCostoFP = costoData.reduce((acc, curr) => acc + curr.costoFP, 0);
+  // 2. Magnificación multiplicadora
+  const minTotal = rawCostoData.length > 0 ? Math.min(...rawCostoData.map((d) => d.costoTotal)) : 0;
+  const BOOST_FACTOR = 15;
 
-  const promedioCostoDiario = costoData.length > 0 ? totalCostoPeriodo / costoData.length : 0;
+  const costoData = rawCostoData.map((item) => {
+    const delta = Math.max(0, item.costoTotal - minTotal);
+    const visualBoost = delta * BOOST_FACTOR;
+
+    return {
+      ...item,
+      deltaOriginal: delta,
+      alturaVisualFP: item.costoFP,
+      alturaVisualHP: item.costoHP + visualBoost
+    };
+  });
+
+  // 3. Cálculos de Totales y Proyecciones reales
+  const totalCostoPeriodo = rawCostoData.reduce((acc, curr) => acc + curr.costoTotal, 0);
+  const totalCostoHP = rawCostoData.reduce((acc, curr) => acc + curr.costoHP, 0);
+  const totalCostoFP = rawCostoData.reduce((acc, curr) => acc + curr.costoFP, 0);
+
+  const promedioCostoDiario = rawCostoData.length > 0 ? totalCostoPeriodo / rawCostoData.length : 0;
   const proyeccionMes30Dias = promedioCostoDiario * 30;
 
   return (
@@ -173,7 +230,7 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
         disabled={isUploadingBill}
       />
 
-      {/* Encabezado con tarifas aplicadas y botón de cambio */}
+      {/* Encabezado */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
         <div className="flex items-center gap-3">
           <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-600">
@@ -209,9 +266,8 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
         </button>
       </div>
 
-      {/* ── 4 TARJETAS KPI UNIFICADAS EN TONOS ÁMBAR Y DORADO ── */}
+      {/* 4 TARJETAS KPI */}
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Tarjeta 1: Total Periodo */}
         <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
           <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Total Periodo Filtrado</p>
           <p className="mt-1 text-2xl font-black text-amber-950">
@@ -220,7 +276,6 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
           <p className="mt-1 text-[10px] text-amber-600/90">Suma total de días seleccionados</p>
         </div>
 
-        {/* Tarjeta 2: Proyección Mensual */}
         <div className="rounded-2xl border border-amber-300 bg-amber-100/40 p-4">
           <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">Proyección Mensual (30d)</p>
           <p className="mt-1 text-2xl font-black text-amber-950">
@@ -229,7 +284,6 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
           <p className="mt-1 text-[10px] text-amber-700 font-semibold">Promedio: S/. {promedioCostoDiario.toFixed(2)} / día</p>
         </div>
 
-        {/* Tarjeta 3: Fuera de Punta */}
         <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
           <div className="flex items-center gap-1.5 text-amber-800">
             <span className="size-2 rounded-full bg-[#fbbf24] border border-amber-400 inline-block shadow-sm" />
@@ -241,7 +295,6 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
           <p className="mt-1 text-[10px] text-amber-600/90">Horario base económico (19 horas)</p>
         </div>
 
-        {/* Tarjeta 4: Hora Punta */}
         <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-4">
           <div className="flex items-center gap-1.5 text-orange-800">
             <span className="size-2 rounded-full bg-[#d97706] inline-block shadow-sm" />
@@ -275,34 +328,79 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
 
       {/* Gráfico Stacked Bar Chart */}
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-        <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
+        <div className="h-80 sm:h-96 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
           {costoData.length === 0 ? (
             <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
               Selecciona al menos un día para visualizar los datos del gráfico.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={costoData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }}>
+              <BarChart data={costoData} margin={{ top: 40, right: 15, left: 10, bottom: 30 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: "10px", fontWeight: "700", fill: "#475569" }}>
-                  <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "9px", letterSpacing: "0.05em" }} />
+                <XAxis
+                  dataKey="name"
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  dy={8}
+                  tick={{ fontSize: "10px", fontWeight: "700", fill: "#475569" }}
+                >
+                  <Label
+                    value="Días del Periodo"
+                    position="insideBottom"
+                    offset={-20}
+                    style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "9px", letterSpacing: "0.05em" }}
+                  />
                 </XAxis>
-                <YAxis tickLine={false} stroke="#94a3b8" width={60} tick={{ fontSize: "10px" }} tickFormatter={(val) => `S/. ${val}`}>
-                  <Label value="Costo (S/.)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "9px", letterSpacing: "0.05em" }} />
+                <YAxis
+                  tickLine={false}
+                  stroke="#94a3b8"
+                  width={60}
+                  tick={{ fontSize: "10px" }}
+                  tickFormatter={(val) => `S/. ${val}`}
+                >
+                  <Label
+                    value="Costo Relativo"
+                    angle={-90}
+                    position="insideLeft"
+                    offset={-5}
+                    style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "9px", letterSpacing: "0.05em" }}
+                  />
                 </YAxis>
 
                 <Tooltip content={<CostTooltip />} cursor={{ fill: "#f1f5f9", opacity: 0.6 }} />
 
+                {/* Leyenda con resolución explícita de nombres e iconos */}
                 <Legend
                   verticalAlign="top"
                   align="right"
                   iconType="circle"
-                  wrapperStyle={{ paddingBottom: "12px", fontSize: "11px", fontWeight: 600 }}
-                  formatter={(val) => (val === "costoHP" ? "Hora Punta (HP)" : "Fuera de Punta (FP)")}
+                  wrapperStyle={{ paddingBottom: "16px", fontSize: "11px", fontWeight: 600 }}
+                  formatter={(val) => {
+                    if (val === "alturaVisualHP" || val === "costoHP") return "Hora Punta (HP)";
+                    if (val === "alturaVisualFP" || val === "costoFP") return "Fuera de Punta (FP)";
+                    return val;
+                  }}
                 />
 
-                <Bar dataKey="costoFP" stackId="costo" fill={COST_COLOR_FP} maxBarSize={48} />
-                <Bar dataKey="costoHP" stackId="costo" fill={COST_COLOR_HP} radius={[6, 6, 0, 0]} maxBarSize={48} />
+                <Bar
+                  dataKey="alturaVisualFP"
+                  name="costoFP"
+                  stackId="costo"
+                  fill={COST_COLOR_FP}
+                  maxBarSize={48}
+                />
+                <Bar
+                  dataKey="alturaVisualHP"
+                  name="costoHP"
+                  stackId="costo"
+                  fill={COST_COLOR_HP}
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={48}
+                >
+                  <LabelList
+                    content={(props) => renderCustomLabel({ ...props, data: costoData })}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}

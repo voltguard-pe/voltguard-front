@@ -4,7 +4,9 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Label,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,22 +20,114 @@ interface EnergyBarSectionProps {
   onToggleEnergyDay: (key: string) => void;
 }
 
+const BASE_BAR_COLOR = "#2563eb"; // Azul principal
+const HIGHER_BAR_COLOR = "#1d4ed8"; // Azul más intenso para días con mayor consumo
+
+// Tooltip con consumo exacto y delta respecto al día más bajo
+const CustomEnergyTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const kWh = data.kWh;
+    const delta = data.deltaOriginal;
+
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[210px] backdrop-blur-sm">
+        <div className="border-b border-slate-100 pb-2 mb-2 flex items-center justify-between">
+          <span className="font-bold text-slate-800 text-xs">{label}</span>
+          <span className="font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[11px]">
+            {kWh.toFixed(2)} kWh
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-slate-500 font-semibold">Consumo diario:</span>
+          <span className="font-extrabold text-slate-900 tabular-nums">
+            {kWh.toFixed(1)} kWh
+          </span>
+        </div>
+        {delta > 0 && (
+          <div className="mt-1 flex items-center justify-between text-red-600 font-bold text-[10px]">
+            <span>Variación vs mínimo:</span>
+            <span>+{delta.toFixed(2)} kWh</span>
+          </div>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
+// Renderizado de etiqueta con el valor real y el delta visual
+const renderCustomLabel = (props: any) => {
+  const { x, y, width, index, data } = props;
+  const item = data?.[index];
+  if (!item) return null;
+
+  return (
+    <g>
+      <text
+        x={x + width / 2}
+        y={y - 8}
+        fill="#1e293b"
+        textAnchor="middle"
+        className="text-[10px] font-black tabular-nums select-none"
+      >
+        {item.kWh.toFixed(1)}
+      </text>
+      {item.deltaOriginal > 0 && (
+        <text
+          x={x + width / 2}
+          y={y - 20}
+          fill="#dc2626"
+          textAnchor="middle"
+          className="text-[9px] font-black tabular-nums select-none"
+        >
+          +{item.deltaOriginal.toFixed(1)}
+        </text>
+      )}
+    </g>
+  );
+};
+
 export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   energiaPorDiaData,
   visibleEnergySeries,
   seriesKeys,
   onToggleEnergyDay
 }) => {
-  const barrasVisibles = energiaPorDiaData.filter(
+  // 1. Filtrado de series visibles
+  const rawBarrasVisibles = energiaPorDiaData.filter(
     (d) => visibleEnergySeries[d.name] !== false
   );
 
-  const totalKWhSemana = barrasVisibles.reduce(
+  // 2. Magnificación visual de las diferencias de decimales
+  const minVal =
+    rawBarrasVisibles.length > 0
+      ? Math.min(...rawBarrasVisibles.map((d) => d.kWh || 0))
+      : 0;
+
+  // Factor multiplicador para que variaciones de ~0.2 a 0.8 kWh marquen diferencia de altura
+  const BOOST_FACTOR = 14;
+
+  const barrasVisibles = rawBarrasVisibles.map((item) => {
+    const valKWh = Number(item.kWh) || 0;
+    const delta = Math.max(0, valKWh - minVal);
+    const visualBoost = delta * BOOST_FACTOR;
+
+    return {
+      ...item,
+      kWh: valKWh,
+      deltaOriginal: delta,
+      alturaVisual: valKWh + visualBoost
+    };
+  });
+
+  // 3. Cálculos de Totales y Proyecciones reales
+  const totalKWhSemana = rawBarrasVisibles.reduce(
     (acc, curr) => acc + (curr.kWh || 0),
     0
   );
   const promedioKWhDiario =
-    barrasVisibles.length > 0 ? totalKWhSemana / barrasVisibles.length : 0;
+    rawBarrasVisibles.length > 0 ? totalKWhSemana / rawBarrasVisibles.length : 0;
   const proyeccionKWhMes = promedioKWhDiario * 30;
   const proyeccionKWhAno = promedioKWhDiario * 365;
 
@@ -117,7 +211,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
       </div>
 
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-        <div className="h-72 sm:h-80 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
+        <div className="h-80 sm:h-96 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
           {barrasVisibles.length === 0 ? (
             <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
               Selecciona al menos un día para visualizar los datos del gráfico.
@@ -126,7 +220,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={barrasVisibles}
-                margin={{ top: 25, right: 15, left: 10, bottom: 30 }}
+                margin={{ top: 35, right: 15, left: 10, bottom: 30 }}
                 style={{ outline: "none", border: "none" }}
               >
                 <CartesianGrid
@@ -159,9 +253,10 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   stroke="#94a3b8"
                   width={55}
                   tick={{ fontSize: "10px" }}
+                  tickFormatter={(val) => Math.round(val).toString()}
                 >
                   <Label
-                    value="Energía Activa (kWh)"
+                    value="Energía Activa Relativa"
                     angle={-90}
                     position="insideLeft"
                     offset={-5}
@@ -176,22 +271,24 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                 </YAxis>
                 <Tooltip
                   cursor={{ fill: "#f1f5f9", opacity: 0.6 }}
-                  formatter={(value: any) => [
-                    `${Number(value).toFixed(1)} kWh`,
-                    "Consumo Total"
-                  ]}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid #e2e8f0",
-                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)"
-                  }}
+                  content={<CustomEnergyTooltip />}
                 />
                 <Bar
-                  dataKey="kWh"
-                  fill="#2563eb"
+                  dataKey="alturaVisual"
+                  name="kWh"
                   radius={[6, 6, 0, 0]}
                   maxBarSize={50}
-                />
+                >
+                  {barrasVisibles.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.deltaOriginal > 0 ? HIGHER_BAR_COLOR : BASE_BAR_COLOR}
+                    />
+                  ))}
+                  <LabelList
+                    content={(props) => renderCustomLabel({ ...props, data: barrasVisibles })}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}

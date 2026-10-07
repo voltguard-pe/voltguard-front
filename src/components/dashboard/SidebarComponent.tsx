@@ -760,15 +760,16 @@ const SidebarComponent = ({
                   </span>
                 </div> */}
 
-{/* ── LISTA DE NORMATIVAS CON LOGO AL COSTADO ── */}
-<ul className="space-y-1.5">
+{/* ── LISTA DE NORMATIVAS CON TEXTO VERTICAL TANTO A LA IZQUIERDA COMO A LA DERECHA ── */}
+<ul className="space-y-2.5">
   {[
     {
       title: "",
       part1: "NFPA ",
       part2: "70E",
-      desc: "Seguridad eléctrica",
-      tooltip: "Normativa NFPA 70E - Seguridad eléctrica",
+      desc1: "Seguridad",
+      desc2: "eléctrica",
+      tooltip: "Normativa NFPA 70E - Seguridad Eléctrica",
       colorMain: "text-amber-600",
       hover: "hover:border-amber-400 hover:shadow-amber-500/15",
       isImage: false,
@@ -777,15 +778,17 @@ const SidebarComponent = ({
       title: "",
       part1: "NFPA ",
       part2: "70B",
-      desc: "Mantenimiento eléctrico",
-      tooltip: "Normativa NFPA 70B - Mantenimiento eléctrico",
+      desc1: "Mantenimiento",
+      desc2: "eléctrico",
+      tooltip: "Normativa NFPA 70B - Mantenimiento",
       colorMain: "text-rose-600",
       hover: "hover:border-rose-400 hover:shadow-rose-500/15",
       isImage: false,
     },
     {
       title: "",
-      desc: "Power Quality",
+      desc1: "Power",
+      desc2: "Quality",
       tooltip: "Estándares IEEE - Power Quality",
       logo: "https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg",
       fallback: "IEEE",
@@ -797,39 +800,44 @@ const SidebarComponent = ({
     <li
       key={n.title}
       title={n.tooltip}
-      className={`group flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm cursor-default ${n.hover}`}
+      className={`group flex items-center gap-3.5 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm cursor-default ${n.hover}`}
     >
-      {/* Logotipo a la izquierda (ancho adaptativo según sea imagen o texto) */}
-      <div className={`relative flex h-7 shrink-0 items-center justify-center rounded-md bg-slate-50 px-1 ${n.isImage ? 'w-20' : 'w-16'}`}>
+      {/* Logotipos o textos izquierdos grandes */}
+      <div className={`relative flex h-11 shrink-0 items-center justify-center rounded-lg bg-slate-50 px-2 ${n.isImage ? 'w-28' : 'w-24'}`}>
         {n.isImage ? (
           <>
             <img
               src={n.logo}
               alt={n.title}
-              className="max-h-5 max-w-[72px] object-contain transition-transform duration-200 group-hover:scale-105"
+              className="max-h-9 max-w-[96px] object-contain transition-transform duration-200 group-hover:scale-105"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
                 e.currentTarget.nextElementSibling?.classList.remove("hidden");
               }}
             />
-            <span className={`hidden text-[10px] font-black ${n.accent}`}>{n.fallback}</span>
+            <span className={`hidden text-xs font-black ${n.accent}`}>{n.fallback}</span>
           </>
         ) : (
-          <span className="text-[10px] font-black tracking-tight whitespace-nowrap">
+          <span className="text-[13px] font-black tracking-tight whitespace-nowrap">
             <span className={n.colorMain}>{n.part1}</span>
             <span className="text-slate-900">{n.part2}</span>
           </span>
         )}
       </div>
 
-      {/* Texto a la derecha con el subtítulo en negrita */}
-      <div className="min-w-0 flex-1">
+      {/* Texto de la derecha en formato vertical de dos líneas */}
+      <div className="min-w-0 flex-1 flex flex-col justify-center">
         <p className="truncate text-xs font-bold leading-tight text-slate-800">
           {n.title}
         </p>
-        <p className="truncate text-[10.5px] font-bold text-slate-600 leading-tight mt-0.5">
-          {n.desc}
-        </p>
+        <div className="mt-1 leading-tight">
+          <p className="truncate text-[12px] font-bold text-slate-600">
+            {n.desc1}
+          </p>
+          <p className="truncate text-[12px] font-bold text-slate-600">
+            {n.desc2}
+          </p>
+        </div>
       </div>
     </li>
   ))}

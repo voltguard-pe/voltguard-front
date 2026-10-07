@@ -747,9 +747,7 @@ const SidebarComponent = ({
                   <span className="block text-[11px] font-black uppercase tracking-wider text-slate-800 leading-tight">
                     Normativas
                   </span>
-                  <span className="block text-[10px] font-medium text-slate-500 leading-tight">
-                    Estándares aplicados
-                  </span>
+                
                 </div>
               </div>
               {/* <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 shadow-2xs">
@@ -762,70 +760,80 @@ const SidebarComponent = ({
                   </span>
                 </div> */}
 
-              {/* Lista de normativas */}
-              <ul className="space-y-1.5">
-                {[
-                  {
-                    title: "NFPA 70E",
-                    desc: "Seguridad eléctrica",
-                    tooltip: "Normativa NFPA 70E - Seguridad Eléctrica",
-                    logo: "/logos/nfpa-70e.png",
-                    fallback: "70E",
-                    hover: "hover:border-amber-400 hover:shadow-amber-500/15",
-                    accent: "text-amber-700",
-                  },
-                  {
-                    title: "NFPA 70B",
-                    desc: "Mantenimiento eléctrico",
-                    tooltip: "Normativa NFPA 70B - Mantenimiento Eléctrico",
-                    logo: "/logos/nfpa-70b.png",
-                    fallback: "70B",
-                    hover: "hover:border-rose-400 hover:shadow-rose-500/15",
-                    accent: "text-rose-700",
-                  },
-                  {
-                    title: "IEEE",
-                    desc: "Power Quality",
-                    tooltip: "Estándares IEEE - Power Quality",
-                    logo: "https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg",
-                    fallback: "IEEE",
-                    hover: "hover:border-[#0797d5] hover:shadow-[#0797d5]/15",
-                    accent: "text-[#0797d5]",
-                  },
-                ].map((n) => (
-                  <li
-                    key={n.title}
-                    title={n.tooltip}
-                    className={`group flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-2.5 py-2 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-default ${n.hover}`}
-                  >
-                    {/* Logo con tamaño fijo */}
-                    <div className="relative flex h-10 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-50">
-                      <img
-                        src={n.logo}
-                        alt={n.title}
-                        className="max-h-7 max-w-[44px] object-contain transition-transform duration-200 group-hover:scale-105"
-                        onError={(e) => {
-                          e.currentTarget.style.display = "none";
-                          e.currentTarget.nextElementSibling?.classList.remove("hidden");
-                        }}
-                      />
-                      <span className={`hidden text-xs font-black ${n.accent}`}>{n.fallback}</span>
-                    </div>
+{/* ── LISTA DE NORMATIVAS CON LOGO AL COSTADO ── */}
+<ul className="space-y-1.5">
+  {[
+    {
+      title: "",
+      part1: "NFPA ",
+      part2: "70E",
+      desc: "Seguridad eléctrica",
+      tooltip: "Normativa NFPA 70E - Seguridad eléctrica",
+      colorMain: "text-amber-600",
+      hover: "hover:border-amber-400 hover:shadow-amber-500/15",
+      isImage: false,
+    },
+    {
+      title: "",
+      part1: "NFPA ",
+      part2: "70B",
+      desc: "Mantenimiento eléctrico",
+      tooltip: "Normativa NFPA 70B - Mantenimiento eléctrico",
+      colorMain: "text-rose-600",
+      hover: "hover:border-rose-400 hover:shadow-rose-500/15",
+      isImage: false,
+    },
+    {
+      title: "",
+      desc: "Power Quality",
+      tooltip: "Estándares IEEE - Power Quality",
+      logo: "https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg",
+      fallback: "IEEE",
+      hover: "hover:border-[#0797d5] hover:shadow-[#0797d5]/15",
+      accent: "text-[#0797d5]",
+      isImage: true,
+    },
+  ].map((n) => (
+    <li
+      key={n.title}
+      title={n.tooltip}
+      className={`group flex items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm cursor-default ${n.hover}`}
+    >
+      {/* Logotipo a la izquierda (ancho adaptativo según sea imagen o texto) */}
+      <div className={`relative flex h-7 shrink-0 items-center justify-center rounded-md bg-slate-50 px-1 ${n.isImage ? 'w-20' : 'w-16'}`}>
+        {n.isImage ? (
+          <>
+            <img
+              src={n.logo}
+              alt={n.title}
+              className="max-h-5 max-w-[72px] object-contain transition-transform duration-200 group-hover:scale-105"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+                e.currentTarget.nextElementSibling?.classList.remove("hidden");
+              }}
+            />
+            <span className={`hidden text-[10px] font-black ${n.accent}`}>{n.fallback}</span>
+          </>
+        ) : (
+          <span className="text-[10px] font-black tracking-tight whitespace-nowrap">
+            <span className={n.colorMain}>{n.part1}</span>
+            <span className="text-slate-900">{n.part2}</span>
+          </span>
+        )}
+      </div>
 
-                    {/* Texto */}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-bold leading-tight text-slate-800">
-                        {n.title}
-                      </p>
-                      <p className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-slate-500">
-                        {n.desc}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-
-
+      {/* Texto a la derecha con el subtítulo en negrita */}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-bold leading-tight text-slate-800">
+          {n.title}
+        </p>
+        <p className="truncate text-[10.5px] font-bold text-slate-600 leading-tight mt-0.5">
+          {n.desc}
+        </p>
+      </div>
+    </li>
+  ))}
+</ul>
             </div>
           )}
           {/* <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 shadow-2xs">

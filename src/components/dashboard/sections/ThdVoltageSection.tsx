@@ -165,32 +165,27 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
 
   // ── LÓGICA DINÁMICA DE ESCALA EN EL EJE Y (CERO HARDCODING) ──
   const minVal = allVisibleValues.length > 0 ? Math.min(...allVisibleValues) : 0;
-  // Aseguramos que el límite de norma (5.0%) siempre quepa en el techo si los datos son bajos
   const maxVal = allVisibleValues.length > 0 ? Math.max(...allVisibleValues, 5.0) : 6.0;
 
   const diff = maxVal - minVal;
 
-  // Paso regular proporcional al rango
   let stepIncrement = 0.5;
   if (diff > 8) stepIncrement = 2;
   else if (diff > 4) stepIncrement = 1;
   else if (diff > 1.5) stepIncrement = 0.5;
   else stepIncrement = 0.2;
 
-  // Piso: 1 paso regular debajo del mínimo observado
   const yMin = Math.max(0, Number((Math.floor(minVal / stepIncrement) * stepIncrement - stepIncrement).toFixed(2)));
-  // Techo: 1 paso regular por encima del máximo observado (o 5.0%)
   const yMax = Number((Math.ceil(maxVal / stepIncrement) * stepIncrement + stepIncrement).toFixed(2));
 
-  // Generación uniforme de ticks continuos sin huecos vacíos
   const yTicks: number[] = [];
   for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
     yTicks.push(Number(val.toFixed(2)));
   }
 
   return (
-    <section className="rounded-2xl sm:rounded-3xl border-2 border-purple-200/70 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6 transition-all">
-      {/* Header con Badge de Estado */}
+    <section className="rounded-2xl sm:rounded-3xl border-2 border-purple-200/80 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6 transition-all">
+      {/* Header con Estilo Armónico / Púrpura */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
         <div className="flex items-center gap-3">
           <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-purple-600 text-white shadow-md shadow-purple-200">
@@ -201,12 +196,12 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
               <h2 className="font-extrabold text-slate-950 text-base sm:text-lg tracking-tight">
                 Calidad de Tensión: Distorsión Armónica Total (THD-U)
               </h2>
-              <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-[10px] font-black tracking-wide text-purple-800 uppercase">
+              <span className="rounded-full bg-purple-50 px-2.5 py-0.5 text-[10px] font-black tracking-wide text-purple-700 uppercase border border-purple-200/60">
                 Parámetro Crítico
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Supervisión de salud de la red bajo estándar <strong>IEEE 519 / CNE</strong> (Límite estricto admisible: <strong>5.00%</strong>)
+              Supervisión de salud de la red bajo estándar <strong>IEEE 519 / CNE</strong> (Límite estricto admisible: <strong>5.00%</strong>)[cite: 3]
             </p>
           </div>
         </div>
@@ -229,47 +224,46 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
         </div>
       </div>
 
-      {/* Tarjetas KPI de THD-U */}
+      {/* Tarjetas KPI de THD-U con paleta unificada de armónicos (Púrpura / Índigo / Violeta) */}
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-purple-100 bg-purple-50/50 p-4">
+        {/* Tarjeta 1: Pico Máximo Registrado (Púrpura Vibrante) */}
+        <div className="rounded-2xl border border-purple-100 bg-purple-50/40 p-4">
           <p className="text-[10px] font-black uppercase tracking-wider text-purple-700">
             Pico Máximo Registrado
           </p>
-          <p
-            className={`mt-1 text-3xl font-black ${
-              maxThdV > 5.0 ? "text-rose-600" : "text-purple-950"
-            }`}
-          >
+          <p className="mt-1 text-3xl font-black bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
             {maxThdV.toFixed(2)}{" "}
-            <span className="text-sm font-bold text-purple-600">%</span>
+            <span className="text-sm font-bold">%</span>
           </p>
           <p className="mt-1 text-[11px] text-slate-500">
-            A las <strong className="text-slate-700">{horaPicoThdV} hrs</strong> en el día filtrado
+            A las <strong className="text-slate-700">{horaPicoThdV} hrs</strong> en el día filtrado[cite: 3]
           </p>
         </div>
 
-        <div className="rounded-2xl border border-purple-100 bg-purple-50/50 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-purple-700">
+        {/* Tarjeta 2: Promedio THD-U Diario (Índigo Técnico) */}
+        <div className="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+          <p className="text-[10px] font-black uppercase tracking-wider text-indigo-700">
             Promedio THD-U Diario
           </p>
-          <p className="mt-1 text-3xl font-black text-purple-950">
+          <p className="mt-1 text-3xl font-black bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
             {avgThdV.toFixed(2)}{" "}
-            <span className="text-sm font-bold text-purple-600">%</span>
+            <span className="text-sm font-bold">%</span>
           </p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Tensión en barras principales
+            Tensión en barras principales[cite: 3]
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+        {/* Tarjeta 3: Límite Normativo Máximo (Violeta Oscuro / Neutro Técnico) */}
+        <div className="rounded-2xl border border-purple-200/60 bg-slate-50/80 p-4">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">
             Límite Normativo Máximo
           </p>
           <p className="mt-1 text-3xl font-black text-slate-800">
-            5.00 <span className="text-sm font-bold text-slate-400">%</span>
+            5.00 <span className="text-sm font-bold text-slate-500">%</span>
           </p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Redes de baja tensión (V ≤ 1 kV)
+            Redes de baja tensión (V ≤ 1 kV)[cite: 3]
           </p>
         </div>
       </div>
@@ -289,9 +283,14 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
                 onClick={() => onSelectThdUDay(key)}
                 className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${
                   isSelected
-                    ? "bg-purple-700 border-purple-700 text-white shadow-md"
+                    ? "text-white shadow-md shadow-purple-500/25 border-purple-600"
                     : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
+                style={
+                  isSelected
+                    ? { background: "linear-gradient(to right, #9333ea, #7e22ce)" }
+                    : undefined
+                }
               >
                 {key}
               </button>
@@ -299,20 +298,25 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
           })}
         </div>
 
-        {/* Botones de Fases */}
+        {/* Botones de Fases con Degradados */}
         <div className="flex gap-2 overflow-x-auto pb-1 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
           <button
             type="button"
             onClick={() => onToggleThdFase("u12")}
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${
               visibleThdFases.u12
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white text-slate-600 border-slate-200"
+                ? "text-white border-blue-500 shadow-sm shadow-blue-500/25"
+                : "bg-white text-slate-600 border-slate-200 hover:bg-blue-50/40"
             }`}
+            style={
+              visibleThdFases.u12
+                ? { background: "linear-gradient(to right, #3b82f6, #2563eb)" }
+                : undefined
+            }
           >
             <span
               className={`size-2.5 rounded-full inline-block ${
-                visibleThdFases.u12 ? "bg-white" : "bg-blue-600"
+                visibleThdFases.u12 ? "bg-white" : "bg-blue-500"
               }`}
             />
             THD U12 (Fase 1)
@@ -323,13 +327,18 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
             onClick={() => onToggleThdFase("u23")}
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${
               visibleThdFases.u23
-                ? "bg-red-600 text-white border-red-600"
-                : "bg-white text-slate-600 border-slate-200"
+                ? "text-white border-red-500 shadow-sm shadow-red-500/25"
+                : "bg-white text-slate-600 border-slate-200 hover:bg-red-50/40"
             }`}
+            style={
+              visibleThdFases.u23
+                ? { background: "linear-gradient(to right, #ef4444, #dc2626)" }
+                : undefined
+            }
           >
             <span
               className={`size-2.5 rounded-full inline-block ${
-                visibleThdFases.u23 ? "bg-white" : "bg-red-600"
+                visibleThdFases.u23 ? "bg-white" : "bg-red-500"
               }`}
             />
             THD U23 (Fase 2)
@@ -340,9 +349,14 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
             onClick={() => onToggleThdFase("u31")}
             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${
               visibleThdFases.u31
-                ? "bg-emerald-600 text-white border-emerald-600"
-                : "bg-white text-slate-600 border-slate-200"
+                ? "text-white border-emerald-500 shadow-sm shadow-emerald-500/25"
+                : "bg-white text-slate-600 border-slate-200 hover:bg-emerald-50/40"
             }`}
+            style={
+              visibleThdFases.u31
+                ? { background: "linear-gradient(to right, #22c55e, #16a34a)" }
+                : undefined
+            }
           >
             <span
               className={`size-2.5 rounded-full inline-block ${
@@ -354,7 +368,7 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
         </div>
       </div>
 
-      {/* Gráfico THD-U con Curvas Trifásicas */}
+      {/* Gráfico THD-U con Curvas Trifásicas en Colores Sólidos */}
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
         <div className="h-72 sm:h-80 md:h-[360px] w-[850px] sm:w-full text-xs select-none">
           <ResponsiveContainer width="100%" height="100%">
@@ -401,7 +415,7 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
                   offset={-5}
                   style={{
                     textAnchor: "middle",
-                    fill: "#7e22ce",
+                    fill: "#d97706",
                     fontWeight: "800",
                     fontSize: "9px"
                   }}
@@ -419,7 +433,6 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
                 shared={true}
               />
 
-              {/* Línea normativa IEEE 519 (5.0%) */}
               <ReferenceLine y={5.0} stroke="#dc2626" strokeDasharray="4 4" strokeWidth={2}>
                 <Label
                   value="LÍMITE MÁXIMO IEEE 519 (5.0%)"
@@ -429,42 +442,39 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
                 />
               </ReferenceLine>
 
-              {/* Curva Fase 12 (Azul) */}
               {visibleThdFases.u12 && (
                 <Line
                   type="monotone"
                   name="THD U12"
                   dataKey={`thd_u12_${activeDay}`}
                   stroke="#2563eb"
-                  strokeWidth={1.8}
+                  strokeWidth={2}
                   dot={false}
                   connectNulls={true}
                   animationDuration={150}
                 />
               )}
 
-              {/* Curva Fase 23 (Rojo) */}
               {visibleThdFases.u23 && (
                 <Line
                   type="monotone"
                   name="THD U23"
                   dataKey={`thd_u23_${activeDay}`}
                   stroke="#dc2626"
-                  strokeWidth={1.8}
+                  strokeWidth={2}
                   dot={false}
                   connectNulls={true}
                   animationDuration={150}
                 />
               )}
 
-              {/* Curva Fase 31 (Verde) */}
               {visibleThdFases.u31 && (
                 <Line
                   type="monotone"
                   name="THD U31"
                   dataKey={`thd_u31_${activeDay}`}
                   stroke="#16a34a"
-                  strokeWidth={1.8}
+                  strokeWidth={2}
                   dot={false}
                   connectNulls={true}
                   animationDuration={150}

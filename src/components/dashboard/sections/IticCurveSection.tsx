@@ -301,22 +301,37 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
         <div className="h-[480px] w-[950px] sm:w-full text-xs select-none">
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 20, right: 30, left: 10, bottom: 35 }}>
+              <defs>
+                {/* Degradado para la zona superior (Sobretensión) */}
+                <linearGradient id="gradOvervoltage" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#eea342" stopOpacity={0.8} />
+                  <stop offset="100%" stopColor="#fed7aa" stopOpacity={0.4} />
+                </linearGradient>
+
+                {/* Degradado para la zona inferior (Huecos / Sag) */}
+                <linearGradient id="gradUndervoltage" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#fef08a" stopOpacity={0.8} />
+                  <stop offset="100%" stopColor="#fef9c3" stopOpacity={0.3} />
+                </linearGradient>
+              </defs>
+
               <CartesianGrid strokeDasharray="1 1" stroke="#cbd5e1" />
 
+              {/* Áreas de referencia superiores con degradado */}
               <ReferenceArea
                 x1={0.0002}
                 x2={0.003}
                 y1={Math.min(200, yAxisMax)}
                 y2={yAxisMax}
-                fill="#fed7aa"
-                fillOpacity={0.65}
+                fill="url(#gradOvervoltage)"
               />
-              <ReferenceArea x1={0.003} x2={0.5} y1={120} y2={yAxisMax} fill="#fed7aa" fillOpacity={0.65} />
-              <ReferenceArea x1={0.5} x2={100000} y1={110} y2={yAxisMax} fill="#fed7aa" fillOpacity={0.65} />
+              <ReferenceArea x1={0.003} x2={0.5} y1={120} y2={yAxisMax} fill="url(#gradOvervoltage)" />
+              <ReferenceArea x1={0.5} x2={100000} y1={110} y2={yAxisMax} fill="url(#gradOvervoltage)" />
 
-              <ReferenceArea x1={0.02} x2={0.5} y1={0} y2={70} fill="#fef08a" fillOpacity={0.7} />
-              <ReferenceArea x1={0.5} x2={10} y1={0} y2={80} fill="#fef08a" fillOpacity={0.7} />
-              <ReferenceArea x1={10} x2={100000} y1={0} y2={90} fill="#fef08a" fillOpacity={0.7} />
+              {/* Áreas de referencia inferiores con degradado */}
+              <ReferenceArea x1={0.02} x2={0.5} y1={0} y2={70} fill="url(#gradUndervoltage)" />
+              <ReferenceArea x1={0.5} x2={10} y1={0} y2={80} fill="url(#gradUndervoltage)" />
+              <ReferenceArea x1={10} x2={100000} y1={0} y2={90} fill="url(#gradUndervoltage)" />
 
               <XAxis
                 type="number"

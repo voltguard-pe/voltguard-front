@@ -168,20 +168,22 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
           <p className="mt-1 text-xs text-slate-500 max-w-md">
             Adjunta una fotografía o documento de tu recibo de luz para que la Inteligencia Artificial extraiga automáticamente las tarifas de <strong className="text-[#ff2e51]">Hora Punta (HP)</strong> y <strong className="text-blue-600">Fuera de Punta (FP)</strong> y genere la proyección de costos.
           </p>
+
           <button
             type="button"
             disabled={isUploadingBill}
             onClick={() => billFileInputRef.current?.click()}
-            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 text-xs font-black transition-all shadow-md active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 rounded-xl text-white px-4 py-2.5 text-xs font-bold transition-all shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 cursor-pointer border border-blue-500/30"
+            style={{ background: "linear-gradient(to right, #3b82f6, #1d4ed8)" }}
           >
             {isUploadingBill ? (
               <>
-                <Loader2 size={16} className="animate-spin text-[#ff2e51]" />
+                <Loader2 size={16} className="animate-spin text-white" />
                 <span>Analizando recibo con IA...</span>
               </>
             ) : (
               <>
-                <UploadCloud size={16} className="text-[#ff2e51]" />
+                <UploadCloud size={16} className="text-white" />
                 <span>Adjuntar Recibo de Luz</span>
               </>
             )}
@@ -237,16 +239,17 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
           type="button"
           disabled={isUploadingBill}
           onClick={() => billFileInputRef.current?.click()}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-4 py-2.5 text-xs font-bold transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 rounded-xl text-white px-4 py-2.5 text-xs font-bold transition-all shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 cursor-pointer border border-blue-500/30"
+          style={{ background: "linear-gradient(to right, #3b82f6, #1d4ed8)" }}
         >
           {isUploadingBill ? (
             <>
-              <Loader2 size={16} className="animate-spin text-[#ff2e51]" />
+              <Loader2 size={16} className="animate-spin text-white" />
               <span>Extrayendo con IA...</span>
             </>
           ) : (
             <>
-              <ReceiptText size={16} className="text-[#ff2e51]" />
+              <ReceiptText size={16} className="text-white" />
               <span>Cambiar Recibo de Luz</span>
             </>
           )}
@@ -309,8 +312,8 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
             type="button"
             onClick={() => onToggleCostDay(key)}
             className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 active:scale-95 ${visibleCostSeries[key] !== false
-                ? "border-transparent text-white shadow-sm"
-                : "bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"
+              ? "border-transparent text-white shadow-sm"
+              : "bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"
               }`}
             style={
               visibleCostSeries[key] !== false

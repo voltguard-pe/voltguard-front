@@ -4,6 +4,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Label,
   LabelList,
   ResponsiveContainer,
@@ -20,7 +21,6 @@ interface CarbonEmissionsSectionProps {
 }
 
 const FACTOR_EMISION_PERU = 0.00021;
-const BAR_COLOR = "#475569"; // Pizarra elegante
 
 // Tooltip con los valores reales en tCO2 y kg CO2
 const CustomCarbonTooltip = ({ active, payload, label }: any) => {
@@ -72,21 +72,11 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
   const minVal = rawValues.length > 0 ? Math.min(...rawValues) : 0;
   const maxVal = rawValues.length > 0 ? Math.max(...rawValues) : 0;
 
-  // Calculamos la diferencia real dinámica
   const rawDelta = maxVal - minVal;
-  // Si todos los valores son iguales, tomamos el 2% del valor como salto por defecto
   const step = rawDelta > 0 ? rawDelta : (minVal > 0 ? minVal * 0.02 : 0.0001);
 
-  // Piso: exactamente 1 step antes del mínimo (hace que la barra menor arranque bajita)
   const yMin = Math.max(0, Number((minVal - step).toFixed(4)));
-  
-  // Techo del contenedor: un pequeño margen para que la etiqueta numérica no choque arriba
   const yMax = Number((maxVal + step * 0.3).toFixed(4));
-
-  // Los 3 ticks exactos que coinciden con las alturas reales:
-  // 1) Piso donde nacen las barras
-  // 2) Nivel exacto de la barra mínima
-  // 3) Nivel exacto de la barra máxima
   const yTicks = Array.from(new Set([yMin, minVal, maxVal])).sort((a, b) => a - b);
 
   // 3. Cálculos de Totales y Proyecciones reales
@@ -100,7 +90,7 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-slate-500/10 text-slate-600">
+          <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 text-white shadow-sm">
             <Zap size={20} className="sm:size-[22px]" />
           </div>
           <div>
@@ -115,8 +105,8 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
       </div>
 
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-4 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">
             Emisión Diaria Promedio
           </p>
           <p className="mt-1 text-2xl font-black text-slate-950">
@@ -132,8 +122,8 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-4 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">
             Proyección Mensual (30 días)
           </p>
           <p className="mt-1 text-2xl font-black text-slate-950">
@@ -145,8 +135,8 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-4 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">
             Proyección Anual (365 días)
           </p>
           <p className="mt-1 text-2xl font-black text-slate-950">
@@ -159,24 +149,32 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
         </div>
       </div>
 
-      <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
-        <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">
+      <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none items-center">
+        <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1 px-2">
           Días:
         </span>
-        {seriesKeys.map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onToggleCarbonDay(key)}
-            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${
-              visibleCarbonSeries[key] !== false
-                ? "bg-slate-700 border-slate-700 text-white shadow-sm"
-                : "bg-white border-slate-200 text-slate-400"
-            }`}
-          >
-            {key}
-          </button>
-        ))}
+        {seriesKeys.map((key) => {
+          const isActive = visibleCarbonSeries[key] !== false;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onToggleCarbonDay(key)}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 border cursor-pointer shrink-0 shadow-sm ${
+                isActive
+                  ? "border-transparent text-white shadow-slate-600/25 scale-[1.02]"
+                  : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+              }`}
+              style={
+                isActive
+                  ? { background: "linear-gradient(to bottom, #475569, #1e293b)" }
+                  : undefined
+              }
+            >
+              {key}
+            </button>
+          );
+        })}
       </div>
 
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
@@ -192,6 +190,14 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                 margin={{ top: 35, right: 15, left: 10, bottom: 30 }}
                 style={{ outline: "none", border: "none" }}
               >
+                <defs>
+                  {/* Degradado elegante pizarra/carbón para las barras */}
+                  <linearGradient id="gradCarbon" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#64748b" />
+                    <stop offset="100%" stopColor="#1e293b" />
+                  </linearGradient>
+                </defs>
+
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke="#f1f5f9"
@@ -248,10 +254,13 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                 />
                 <Bar
                   dataKey="tCO2"
-                  fill={BAR_COLOR}
-                  radius={[6, 6, 0, 0]}
+                  fill="url(#gradCarbon)"
+                  radius={[8, 8, 0, 0]}
                   maxBarSize={50}
                 >
+                  {emisionesData.map((_, i) => (
+                    <Cell key={`carbon-cell-${i}`} fill="url(#gradCarbon)" />
+                  ))}
                   <LabelList
                     dataKey="tCO2"
                     position="top"

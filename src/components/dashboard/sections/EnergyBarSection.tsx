@@ -5,6 +5,7 @@ import {
   BarChart,
   CartesianGrid,
   Label,
+  LabelList,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -18,16 +19,74 @@ interface EnergyBarSectionProps {
   onToggleEnergyDay: (key: string) => void;
 }
 
+const BAR_COLOR = "#2563eb"; // Azul principal
+
+// Tooltip con consumo exacto
+const CustomEnergyTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const kWh = Number(data.kWh) || 0;
+
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[200px] backdrop-blur-sm">
+        <div className="border-b border-slate-100 pb-2 mb-2 flex items-center justify-between">
+          <span className="font-bold text-slate-800 text-xs">{label}</span>
+          <span className="font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[11px]">
+            {kWh.toFixed(2)} kWh
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-slate-500 font-semibold">Consumo diario:</span>
+          <span className="font-extrabold text-slate-900 tabular-nums">
+            {kWh.toFixed(2)} kWh
+          </span>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
 export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   energiaPorDiaData,
   visibleEnergySeries,
   seriesKeys,
   onToggleEnergyDay
 }) => {
-  const barrasVisibles = energiaPorDiaData.filter(
-    (d) => visibleEnergySeries[d.name] !== false
-  );
+  // 1. Filtrado de series visibles
+  const barrasVisibles = energiaPorDiaData
+    .filter((d) => visibleEnergySeries[d.name] !== false)
+    .map((item) => ({
+      name: item.name,
+      kWh: Number(Number(item.kWh || 0).toFixed(2))
+    }));
 
+  // 2. LÓGICA DE ESCALA GRADUADA Y UNIFORME EN EL EJE Y
+  const rawValues = barrasVisibles.map((d) => d.kWh);
+  const minVal = rawValues.length > 0 ? Math.min(...rawValues) : 0;
+  const maxVal = rawValues.length > 0 ? Math.max(...rawValues) : 10;
+
+  const diff = maxVal - minVal;
+
+  // Calculamos un incremento de paso regular coherente con los decimales
+  let stepIncrement = 0.1;
+  if (diff > 5) stepIncrement = 1;
+  else if (diff > 2) stepIncrement = 0.5;
+  else if (diff > 0.8) stepIncrement = 0.2;
+  else stepIncrement = 0.1;
+
+  // Piso: 1 o 2 pasos regulares debajo del mínimo
+  const yMin = Math.max(0, Number((Math.floor(minVal / stepIncrement) * stepIncrement - stepIncrement).toFixed(2)));
+  // Techo: 1 paso regular por encima del máximo para acomodar la etiqueta
+  const yMax = Number((Math.ceil(maxVal / stepIncrement) * stepIncrement + stepIncrement).toFixed(2));
+
+  // Generamos una cuadrícula continua de ticks para rellenar todo el espacio
+  const yTicks: number[] = [];
+  for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
+    yTicks.push(Number(val.toFixed(2)));
+  }
+
+  // 3. Totales y Proyecciones reales
   const totalKWhSemana = barrasVisibles.reduce(
     (acc, curr) => acc + (curr.kWh || 0),
     0
@@ -117,7 +176,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
       </div>
 
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-        <div className="h-72 sm:h-80 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
+        <div className="h-80 sm:h-96 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
           {barrasVisibles.length === 0 ? (
             <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
               Selecciona al menos un día para visualizar los datos del gráfico.
@@ -126,7 +185,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={barrasVisibles}
-                margin={{ top: 25, right: 15, left: 10, bottom: 30 }}
+                margin={{ top: 35, right: 15, left: 10, bottom: 30 }}
                 style={{ outline: "none", border: "none" }}
               >
                 <CartesianGrid
@@ -155,10 +214,15 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   />
                 </XAxis>
                 <YAxis
+                  domain={[yMin, yMax]}
+                  ticks={yTicks}
+                  interval={0}
+                  allowDataOverflow={true}
                   tickLine={false}
                   stroke="#94a3b8"
                   width={55}
                   tick={{ fontSize: "10px" }}
+                  tickFormatter={(val) => Number(val).toFixed(1)}
                 >
                   <Label
                     value="Energía Activa (kWh)"
@@ -176,22 +240,25 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                 </YAxis>
                 <Tooltip
                   cursor={{ fill: "#f1f5f9", opacity: 0.6 }}
-                  formatter={(value: any) => [
-                    `${Number(value).toFixed(1)} kWh`,
-                    "Consumo Total"
-                  ]}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid #e2e8f0",
-                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)"
-                  }}
+                  content={<CustomEnergyTooltip />}
                 />
                 <Bar
                   dataKey="kWh"
-                  fill="#2563eb"
+                  fill={BAR_COLOR}
                   radius={[6, 6, 0, 0]}
                   maxBarSize={50}
-                />
+                >
+                  <LabelList
+                    dataKey="kWh"
+                    position="top"
+                    formatter={(val: any) => `${Number(val).toFixed(1)}`}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "800",
+                      fill: "#1e293b"
+                    }}
+                  />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}

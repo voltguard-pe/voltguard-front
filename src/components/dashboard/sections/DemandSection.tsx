@@ -141,7 +141,8 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
           <label
             htmlFor="csv-metrel"
-            className="flex sm:inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl px-5 py-2.5 text-xs font-black text-white transition-all duration-300 cursor-pointer shadow-md bg-emerald-600 hover:bg-emerald-700 active:scale-95 h-[38px]"
+            className="flex sm:inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl px-5 py-2.5 text-xs font-black text-white transition-all duration-300 cursor-pointer shadow-md shadow-orange-500/25 border border-orange-500/30 active:scale-95 h-[38px]"
+            style={{ background: "linear-gradient(to right, #f97316, #c2410c)" }}
           >
             <UploadCloud size={16} />
             {importing ? "Importando..." : "Importar .Mediciones.csv"}
@@ -175,9 +176,14 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
               onClick={() => onToggleDemandDay("Promedio_General")}
               className={`flex shrink-0 items-center gap-x-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer ${
                 visibleDemandSeries["Promedio_General"]
-                  ? 'bg-orange-600 border-orange-600 text-white shadow-sm'
+                  ? 'text-white shadow-sm shadow-orange-500/25 border-orange-500/30 scale-[1.02]'
                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
               }`}
+              style={
+                visibleDemandSeries["Promedio_General"]
+                  ? { background: "linear-gradient(to right, #f97316, #c2410c)" }
+                  : undefined
+              }
             >
               <ChartNoAxesCombined size={14} /> Promedio General
             </button>
@@ -208,6 +214,13 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                   data={rawChartData}
                   margin={{ top: 25, right: 15, left: 10, bottom: 25 }}
                 >
+                  <defs>
+                    <linearGradient id="lineGradPromedio" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#f97316" />
+                      <stop offset="100%" stopColor="#c2410c" />
+                    </linearGradient>
+                  </defs>
+
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
 
                   {(() => {
@@ -233,12 +246,13 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                         {horaPicoMaximo && horasVisibles.includes(horaPicoMaximo) && (
                           <ReferenceLine x={horaPicoMaximo} stroke="#be123c" strokeWidth={2} strokeDasharray="4 4">
                             <Label
-                              value={`PICO MÁXIMO DEL PERIODO (${Number(horaPicoMaximo.split(':')[0]) >= 18 && Number(horaPicoMaximo.split(':')[0]) < 23
-                                ? 'EN HP'
-                                : 'EN HFP'
+                              value={`▲ PICO MÁXIMO (${Number(horaPicoMaximo.split(':')[0]) >= 18 && Number(horaPicoMaximo.split(':')[0]) < 23
+                                ? 'HP'
+                                : 'HFP'
                               })`}
-                              position="top"
-                              offset={10}
+                              position="insideTopLeft"
+                              dy={25}
+                              dx={4}
                               fill="#be123c"
                               style={{ fontSize: '8px', fontWeight: '900' }}
                             />
@@ -278,7 +292,7 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                   <Tooltip content={<CustomTooltip />} shared={true} />
 
                   {visibleDemandSeries["Promedio_General"] && (
-                    <Line type="monotone" name="Promedio General" dataKey="Promedio_General" stroke="#ff5722" strokeWidth={2.5} dot={false} connectNulls animationDuration={150} />
+                    <Line type="monotone" name="Promedio General" dataKey="Promedio_General" stroke="url(#lineGradPromedio)" strokeWidth={3} dot={false} connectNulls animationDuration={150} />
                   )}
 
                   {seriesKeys.map((key, idx) =>

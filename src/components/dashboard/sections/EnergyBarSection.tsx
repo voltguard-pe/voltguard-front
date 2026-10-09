@@ -19,8 +19,6 @@ interface EnergyBarSectionProps {
   onToggleEnergyDay: (key: string) => void;
 }
 
-const BAR_COLOR = "#2563eb"; // Azul principal
-
 // Tooltip con consumo exacto
 const CustomEnergyTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -97,84 +95,98 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   const proyeccionKWhAno = promedioKWhDiario * 365;
 
   return (
-    <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
-        <div className="flex items-center gap-3">
-          <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-blue-500/10 text-blue-600">
-            <Container size={20} className="sm:size-[22px]" />
+    <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/50 transition-all duration-300 hover:border-slate-300 font-sans mt-6">
+      {/* Cabecera Principal */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-6">
+        <div className="flex items-center gap-4">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 to-indigo-500/10 text-blue-600 shadow-inner border border-blue-500/20">
+            <Container size={24} />
           </div>
           <div>
-            <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
+            <h2 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
               Energía Consumida por Día
             </h2>
-            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Energía total acumulada diariamente expresada en KiloVatios-Hora (kWh)
             </p>
           </div>
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">
+      {/* Tarjetas de Métricas Premium */}
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Card 1 */}
+        <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-300">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
             Consumo Diario Promedio
           </p>
-          <p className="mt-1 text-2xl font-black text-blue-950">
+          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
             {promedioKWhDiario.toFixed(1)}{" "}
-            <span className="text-xs font-bold text-blue-600">kWh/día</span>
+            <span className="text-sm font-bold text-blue-600">kWh/día</span>
           </p>
-          <p className="mt-1 text-[10px] text-blue-500">
+          <p className="mt-2 text-xs text-slate-500 font-medium">
             Promedio sobre los días seleccionados
           </p>
         </div>
 
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">
+        {/* Card 2 */}
+        <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-300">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
             Proyección Mensual (30 días)
           </p>
-          <p className="mt-1 text-2xl font-black text-blue-950">
+          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
             {proyeccionKWhMes.toFixed(1)}{" "}
-            <span className="text-xs font-bold text-blue-600">kWh/mes</span>
+            <span className="text-sm font-bold text-blue-600">kWh/mes</span>
           </p>
-          <p className="mt-1 text-[10px] text-blue-500">
+          <p className="mt-2 text-xs text-slate-500 font-medium">
             Estimación a 30 días de operación
           </p>
         </div>
 
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-blue-700">
+        {/* Card 3 */}
+        <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-300">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
             Proyección Anual (365 días)
           </p>
-          <p className="mt-1 text-2xl font-black text-blue-950">
+          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
             {proyeccionKWhAno.toFixed(0)}{" "}
-            <span className="text-xs font-bold text-blue-600">kWh/año</span>
+            <span className="text-sm font-bold text-blue-600">kWh/año</span>
           </p>
-          <p className="mt-1 text-[10px] text-blue-500">
+          <p className="mt-2 text-xs text-slate-500 font-medium">
             Estimación a 365 días de operación
           </p>
         </div>
       </div>
 
-      <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
-        <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">
+      {/* Selector de Días Estilizado */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-6 p-2 rounded-2xl bg-slate-50 border border-slate-200/60 scrollbar-none items-center">
+        <span className="text-xs font-bold uppercase text-slate-400 self-center px-2">
           Días:
         </span>
-        {seriesKeys.map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => onToggleEnergyDay(key)}
-            className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${
-              visibleEnergySeries[key] !== false
-                ? "bg-blue-700 border-blue-700 text-white shadow-sm"
-                : "bg-white border-slate-200 text-slate-400"
-            }`}
-          >
-            {key}
-          </button>
-        ))}
+        {seriesKeys.map((key) => {
+          const isActive = visibleEnergySeries[key] !== false;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onToggleEnergyDay(key)}
+              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 shadow-sm ${isActive
+                  ? "text-white shadow-blue-500/25 border border-blue-500/30 scale-[1.02]"
+                  : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                }`}
+              style={
+                isActive
+                  ? { background: "linear-gradient(to right, #3b82f6, #1d4ed8)" }
+                  : undefined
+              }
+            >
+              {key}
+            </button>
+          );
+        })}
       </div>
 
+      {/* Gráfico */}
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
         <div className="h-80 sm:h-96 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
           {barrasVisibles.length === 0 ? (
@@ -188,9 +200,15 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                 margin={{ top: 35, right: 15, left: 10, bottom: 30 }}
                 style={{ outline: "none", border: "none" }}
               >
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" />
+                    <stop offset="100%" stopColor="#1d4ed8" />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#f1f5f9"
+                  stroke="#e2e8f0"
                   vertical={false}
                 />
                 <XAxis
@@ -198,7 +216,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   tickLine={false}
                   stroke="#94a3b8"
                   dy={8}
-                  tick={{ fontSize: "10px", fontWeight: "700", fill: "#475569" }}
+                  tick={{ fontSize: "11px", fontWeight: "700", fill: "#334155" }}
                 >
                   <Label
                     value="Días del Periodo"
@@ -206,9 +224,9 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                     offset={-20}
                     style={{
                       textAnchor: "middle",
-                      fill: "#475569",
+                      fill: "#64748b",
                       fontWeight: "800",
-                      fontSize: "9px",
+                      fontSize: "10px",
                       letterSpacing: "0.05em"
                     }}
                   />
@@ -221,7 +239,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   tickLine={false}
                   stroke="#94a3b8"
                   width={55}
-                  tick={{ fontSize: "10px" }}
+                  tick={{ fontSize: "11px", fill: "#64748b" }}
                   tickFormatter={(val) => Number(val).toFixed(1)}
                 >
                   <Label
@@ -231,22 +249,22 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                     offset={-5}
                     style={{
                       textAnchor: "middle",
-                      fill: "#475569",
+                      fill: "#64748b",
                       fontWeight: "800",
-                      fontSize: "9px",
+                      fontSize: "10px",
                       letterSpacing: "0.05em"
                     }}
                   />
                 </YAxis>
                 <Tooltip
-                  cursor={{ fill: "#f1f5f9", opacity: 0.6 }}
+                  cursor={{ fill: "rgba(59, 130, 246, 0.05)" }}
                   content={<CustomEnergyTooltip />}
                 />
                 <Bar
                   dataKey="kWh"
-                  fill={BAR_COLOR}
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={50}
+                  fill="url(#barGradient)"
+                  radius={[8, 8, 0, 0]}
+                  maxBarSize={45}
                 >
                   <LabelList
                     dataKey="kWh"
@@ -255,7 +273,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                     style={{
                       fontSize: "11px",
                       fontWeight: "800",
-                      fill: "#1e293b"
+                      fill: "#0f172a"
                     }}
                   />
                 </Bar>

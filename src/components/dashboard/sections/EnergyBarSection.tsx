@@ -4,7 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Label,
   LabelList,
   ResponsiveContainer,
@@ -20,18 +19,16 @@ interface EnergyBarSectionProps {
   onToggleEnergyDay: (key: string) => void;
 }
 
-const BASE_BAR_COLOR = "#2563eb"; // Azul principal
-const HIGHER_BAR_COLOR = "#1d4ed8"; // Azul más intenso para días con mayor consumo
+const BAR_COLOR = "#2563eb"; // Azul principal
 
-// Tooltip con consumo exacto y delta respecto al día más bajo
+// Tooltip con consumo exacto
 const CustomEnergyTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const kWh = data.kWh;
-    const delta = data.deltaOriginal;
+    const kWh = Number(data.kWh) || 0;
 
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[210px] backdrop-blur-sm">
+      <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[200px] backdrop-blur-sm">
         <div className="border-b border-slate-100 pb-2 mb-2 flex items-center justify-between">
           <span className="font-bold text-slate-800 text-xs">{label}</span>
           <span className="font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[11px]">
@@ -41,51 +38,13 @@ const CustomEnergyTooltip = ({ active, payload, label }: any) => {
         <div className="flex items-center justify-between">
           <span className="text-slate-500 font-semibold">Consumo diario:</span>
           <span className="font-extrabold text-slate-900 tabular-nums">
-            {kWh.toFixed(1)} kWh
+            {kWh.toFixed(2)} kWh
           </span>
         </div>
-        {delta > 0 && (
-          <div className="mt-1 flex items-center justify-between text-red-600 font-bold text-[10px]">
-            <span>Variación vs mínimo:</span>
-            <span>+{delta.toFixed(2)} kWh</span>
-          </div>
-        )}
       </div>
     );
   }
   return null;
-};
-
-// Renderizado de etiqueta con el valor real y el delta visual
-const renderCustomLabel = (props: any) => {
-  const { x, y, width, index, data } = props;
-  const item = data?.[index];
-  if (!item) return null;
-
-  return (
-    <g>
-      <text
-        x={x + width / 2}
-        y={y - 8}
-        fill="#1e293b"
-        textAnchor="middle"
-        className="text-[10px] font-black tabular-nums select-none"
-      >
-        {item.kWh.toFixed(1)}
-      </text>
-      {item.deltaOriginal > 0 && (
-        <text
-          x={x + width / 2}
-          y={y - 20}
-          fill="#dc2626"
-          textAnchor="middle"
-          className="text-[9px] font-black tabular-nums select-none"
-        >
-          +{item.deltaOriginal.toFixed(1)}
-        </text>
-      )}
-    </g>
-  );
 };
 
 export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
@@ -95,39 +54,45 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   onToggleEnergyDay
 }) => {
   // 1. Filtrado de series visibles
-  const rawBarrasVisibles = energiaPorDiaData.filter(
-    (d) => visibleEnergySeries[d.name] !== false
-  );
+  const barrasVisibles = energiaPorDiaData
+    .filter((d) => visibleEnergySeries[d.name] !== false)
+    .map((item) => ({
+      name: item.name,
+      kWh: Number(Number(item.kWh || 0).toFixed(2))
+    }));
 
-  // 2. Magnificación visual de las diferencias de decimales
-  const minVal =
-    rawBarrasVisibles.length > 0
-      ? Math.min(...rawBarrasVisibles.map((d) => d.kWh || 0))
-      : 0;
+  // 2. LÓGICA DE ESCALA GRADUADA Y UNIFORME EN EL EJE Y
+  const rawValues = barrasVisibles.map((d) => d.kWh);
+  const minVal = rawValues.length > 0 ? Math.min(...rawValues) : 0;
+  const maxVal = rawValues.length > 0 ? Math.max(...rawValues) : 10;
 
-  // Factor multiplicador para que variaciones de ~0.2 a 0.8 kWh marquen diferencia de altura
-  const BOOST_FACTOR = 14;
+  const diff = maxVal - minVal;
 
-  const barrasVisibles = rawBarrasVisibles.map((item) => {
-    const valKWh = Number(item.kWh) || 0;
-    const delta = Math.max(0, valKWh - minVal);
-    const visualBoost = delta * BOOST_FACTOR;
+  // Calculamos un incremento de paso regular coherente con los decimales
+  let stepIncrement = 0.1;
+  if (diff > 5) stepIncrement = 1;
+  else if (diff > 2) stepIncrement = 0.5;
+  else if (diff > 0.8) stepIncrement = 0.2;
+  else stepIncrement = 0.1;
 
-    return {
-      ...item,
-      kWh: valKWh,
-      deltaOriginal: delta,
-      alturaVisual: valKWh + visualBoost
-    };
-  });
+  // Piso: 1 o 2 pasos regulares debajo del mínimo
+  const yMin = Math.max(0, Number((Math.floor(minVal / stepIncrement) * stepIncrement - stepIncrement).toFixed(2)));
+  // Techo: 1 paso regular por encima del máximo para acomodar la etiqueta
+  const yMax = Number((Math.ceil(maxVal / stepIncrement) * stepIncrement + stepIncrement).toFixed(2));
 
-  // 3. Cálculos de Totales y Proyecciones reales
-  const totalKWhSemana = rawBarrasVisibles.reduce(
+  // Generamos una cuadrícula continua de ticks para rellenar todo el espacio
+  const yTicks: number[] = [];
+  for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
+    yTicks.push(Number(val.toFixed(2)));
+  }
+
+  // 3. Totales y Proyecciones reales
+  const totalKWhSemana = barrasVisibles.reduce(
     (acc, curr) => acc + (curr.kWh || 0),
     0
   );
   const promedioKWhDiario =
-    rawBarrasVisibles.length > 0 ? totalKWhSemana / rawBarrasVisibles.length : 0;
+    barrasVisibles.length > 0 ? totalKWhSemana / barrasVisibles.length : 0;
   const proyeccionKWhMes = promedioKWhDiario * 30;
   const proyeccionKWhAno = promedioKWhDiario * 365;
 
@@ -249,14 +214,18 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   />
                 </XAxis>
                 <YAxis
+                  domain={[yMin, yMax]}
+                  ticks={yTicks}
+                  interval={0}
+                  allowDataOverflow={true}
                   tickLine={false}
                   stroke="#94a3b8"
                   width={55}
                   tick={{ fontSize: "10px" }}
-                  tickFormatter={(val) => Math.round(val).toString()}
+                  tickFormatter={(val) => Number(val).toFixed(1)}
                 >
                   <Label
-                    value="Energía Activa Relativa"
+                    value="Energía Activa (kWh)"
                     angle={-90}
                     position="insideLeft"
                     offset={-5}
@@ -274,19 +243,20 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   content={<CustomEnergyTooltip />}
                 />
                 <Bar
-                  dataKey="alturaVisual"
-                  name="kWh"
+                  dataKey="kWh"
+                  fill={BAR_COLOR}
                   radius={[6, 6, 0, 0]}
                   maxBarSize={50}
                 >
-                  {barrasVisibles.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.deltaOriginal > 0 ? HIGHER_BAR_COLOR : BASE_BAR_COLOR}
-                    />
-                  ))}
                   <LabelList
-                    content={(props) => renderCustomLabel({ ...props, data: barrasVisibles })}
+                    dataKey="kWh"
+                    position="top"
+                    formatter={(val: any) => `${Number(val).toFixed(1)}`}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "800",
+                      fill: "#1e293b"
+                    }}
                   />
                 </Bar>
               </BarChart>

@@ -55,7 +55,7 @@ const ReactiveTooltip = ({
         </p>
 
         <div className="space-y-2 font-semibold text-[11px]">
-          {mostrarCapacitiva && valCap > 0 && (
+          {mostrarCapacitiva && valCap !== undefined && (
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-1.5 text-red-600 font-bold">
                 <span className="size-2 rounded-full bg-red-500 inline-block"></span>
@@ -67,7 +67,7 @@ const ReactiveTooltip = ({
             </div>
           )}
 
-          {mostrarInductiva && valInd > 0 && (
+          {mostrarInductiva && valInd !== undefined && (
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-1.5 text-blue-600 font-bold">
                 <span className="size-2 rounded-full bg-blue-600 inline-block"></span>
@@ -103,6 +103,48 @@ export const ReactivePowerSection: React.FC<ReactivePowerSectionProps> = ({
   if (rawChartData.length === 0) return null;
 
   const activeDay = selectedReactiveDay || seriesKeys[0] || "";
+
+  // 1. Recolección dinámica de valores visibles activos
+  const allValues: number[] = [];
+  const mostrarCap = visibleReactiveSeries["kvar_capacitivo"] !== false;
+  const mostrarInd = visibleReactiveSeries["kvar_inductivo"] !== false;
+
+  rawChartData.forEach((row) => {
+    const valCap = row[`capacitiva_${activeDay}`];
+    const valInd = row[`inductiva_${activeDay}`];
+
+    if (mostrarCap && valCap !== null && valCap !== undefined && !isNaN(Number(valCap))) {
+      allValues.push(Number(valCap));
+    }
+    if (mostrarInd && valInd !== null && valInd !== undefined && !isNaN(Number(valInd))) {
+      allValues.push(Number(valInd));
+    }
+  });
+
+  // 2. LÓGICA DE ESCALA GRADUADA Y UNIFORME EN EL EJE Y (CERO HARDCODING)
+  const minVal = allValues.length > 0 ? Math.min(...allValues) : 0;
+  const maxVal = allValues.length > 0 ? Math.max(...allValues) : 10;
+  const diff = maxVal - minVal;
+
+  // Paso regular coherente según la magnitud de los valores
+  let stepIncrement = 1;
+  if (diff > 50) stepIncrement = 10;
+  else if (diff > 20) stepIncrement = 5;
+  else if (diff > 8) stepIncrement = 2;
+  else if (diff > 3) stepIncrement = 1;
+  else if (diff > 1) stepIncrement = 0.5;
+  else stepIncrement = 0.2;
+
+  // Piso: 1 paso regular por debajo del mínimo (sin volverse negativo si la reactiva parte de cero o positivo)
+  const yMin = Math.max(0, Number((Math.floor(minVal / stepIncrement) * stepIncrement - stepIncrement).toFixed(2)));
+  // Techo: 1 paso regular por encima del máximo
+  const yMax = Number((Math.ceil(maxVal / stepIncrement) * stepIncrement + stepIncrement).toFixed(2));
+
+  // Generamos una cuadrícula continua de ticks sin huecos
+  const yTicks: number[] = [];
+  for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
+    yTicks.push(Number(val.toFixed(2)));
+  }
 
   return (
     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
@@ -216,15 +258,21 @@ export const ReactivePowerSection: React.FC<ReactivePowerSectionProps> = ({
                 />
               </XAxis>
               <YAxis
+                domain={[yMin, yMax]}
+                ticks={yTicks}
+                interval={0}
+                allowDataOverflow={true}
                 tickLine={false}
                 stroke="#94a3b8"
-                width={45}
-                domain={[0, "auto"]}
+                width={55}
+                tick={{ fontSize: "10px" }}
+                tickFormatter={(val) => `${Number(val).toFixed(stepIncrement < 1 ? 1 : 0)}`}
               >
                 <Label
                   value="N [kvar]"
                   angle={-90}
                   position="insideLeft"
+                  offset={-5}
                   style={{
                     textAnchor: "middle",
                     fill: "#475569",
@@ -243,7 +291,7 @@ export const ReactivePowerSection: React.FC<ReactivePowerSectionProps> = ({
                 shared={true}
               />
 
-              {visibleReactiveSeries["kvar_capacitivo"] !== false && activeDay && (
+              {mostrarCap && activeDay && (
                 <Line
                   type="linear"
                   name={`Ntotcap+ - ${activeDay}`}
@@ -256,7 +304,7 @@ export const ReactivePowerSection: React.FC<ReactivePowerSectionProps> = ({
                 />
               )}
 
-              {visibleReactiveSeries["kvar_inductivo"] !== false && activeDay && (
+              {mostrarInd && activeDay && (
                 <Line
                   type="linear"
                   name={`Ntotind+ - ${activeDay}`}

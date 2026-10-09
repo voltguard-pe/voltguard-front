@@ -23,8 +23,9 @@ interface EnergyCostSectionProps {
   onBillUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
 }
 
-const COST_COLOR_HP = "#d97706"; // Ámbar intenso (Hora Punta)
-const COST_COLOR_FP = "#fbbf24"; // Amarillo dorado (Fuera de Punta)
+// ── PALETA MONOCROMÁTICA: ROJO CARMESÍ / RUBÍ ──
+const COST_COLOR_HP = "#be123c"; // Rubí carmesí intenso (Hora Punta)
+const COST_COLOR_FP = "#fb7185"; // Rubí claro / Rosa coral (Fuera de Punta)
 
 // ── COMPONENTE TOOLTIP PERSONALIZADO PARA COSTO DE ENERGÍA ──
 const CostTooltip = ({ active, payload, label }: any) => {
@@ -33,29 +34,21 @@ const CostTooltip = ({ active, payload, label }: any) => {
     const costHP = data.costoHP;
     const costFP = data.costoFP;
     const totalDia = data.costoTotal;
-    const delta = data.deltaOriginal;
 
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[220px] backdrop-blur-sm">
-        <div className="border-b border-slate-100 pb-2 mb-2.5 flex items-center justify-between">
+      <div className="rounded-2xl border border-rose-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[220px] backdrop-blur-sm">
+        <div className="border-b border-rose-100 pb-2 mb-2.5 flex items-center justify-between">
           <span className="font-bold text-slate-800 text-xs">{label}</span>
-          <div className="text-right">
-            <span className="font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200/60 text-[11px] block">
-              S/. {totalDia.toFixed(2)}
-            </span>
-            {delta > 0 && (
-              <span className="text-[9px] font-bold text-red-600 block mt-0.5">
-                +{delta.toFixed(2)} vs mín.
-              </span>
-            )}
-          </div>
+          <span className="font-black text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200 text-[11px]">
+            Total: S/. {totalDia.toFixed(2)}
+          </span>
         </div>
 
         <div className="space-y-2">
-          {/* Superior: Hora Punta (HP) */}
+          {/* Superior: Hora Punta (HP) en Carmesí Profundo */}
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 font-bold text-amber-900">
-              <span className="size-2.5 rounded-full bg-[#d97706] inline-block shadow-sm" />
+            <span className="flex items-center gap-1.5 font-bold text-rose-950">
+              <span className="size-2.5 rounded-full bg-[#be123c] inline-block shadow-sm" />
               Hora Punta (HP):
             </span>
             <span className="font-black text-slate-900 tabular-nums">
@@ -63,10 +56,10 @@ const CostTooltip = ({ active, payload, label }: any) => {
             </span>
           </div>
 
-          {/* Inferior: Fuera de Punta (FP) */}
+          {/* Inferior: Fuera de Punta (FP) en Rubí Claro */}
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1.5 font-bold text-amber-700">
-              <span className="size-2.5 rounded-full bg-[#fbbf24] border border-amber-400 inline-block shadow-sm" />
+            <span className="flex items-center gap-1.5 font-bold text-rose-800">
+              <span className="size-2.5 rounded-full bg-[#fb7185] inline-block shadow-sm" />
               Fuera de Punta (FP):
             </span>
             <span className="font-black text-slate-900 tabular-nums">
@@ -75,9 +68,9 @@ const CostTooltip = ({ active, payload, label }: any) => {
           </div>
         </div>
 
-        <div className="mt-2.5 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400 flex justify-between font-medium">
+        <div className="mt-2.5 border-t border-rose-100 pt-1.5 text-[9px] text-slate-400 flex justify-between font-medium">
           <span>HP: 18:00 a 23:00 hrs</span>
-          <span className="font-bold text-amber-600">Voltguard</span>
+          <span className="font-bold text-rose-700">Voltguard</span>
         </div>
       </div>
     );
@@ -85,35 +78,22 @@ const CostTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-// Renderizado personalizado de la etiqueta superior
-const renderCustomLabel = (props: any) => {
-  const { x, y, width, index, data } = props;
+// Renderizado del valor dentro de cada barra
+const renderSegmentLabel = (props: any, key: "costoFP" | "costoHP", textColor: string) => {
+  const { x, y, width, height, index, data } = props;
   const item = data?.[index];
-  if (!item) return null;
+  if (!item || height < 14) return null;
 
   return (
-    <g>
-      <text
-        x={x + width / 2}
-        y={y - 8}
-        fill="#1e293b"
-        textAnchor="middle"
-        className="text-[11px] font-black tabular-nums select-none"
-      >
-        S/. {item.costoTotal.toFixed(2)}
-      </text>
-      {item.deltaOriginal > 0 && (
-        <text
-          x={x + width / 2}
-          y={y - 21}
-          fill="#dc2626"
-          textAnchor="middle"
-          className="text-[9px] font-black tabular-nums select-none"
-        >
-          +{item.deltaOriginal.toFixed(2)}
-        </text>
-      )}
-    </g>
+    <text
+      x={x + width / 2}
+      y={y + height / 2 + 4}
+      fill={textColor}
+      textAnchor="middle"
+      className="text-[10px] font-black tabular-nums select-none"
+    >
+      S/. {item[key].toFixed(2)}
+    </text>
   );
 };
 
@@ -139,8 +119,8 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
           className="hidden"
           disabled={isUploadingBill}
         />
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-amber-200 bg-amber-50/30 px-4 py-12 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 mb-3">
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-rose-200 bg-rose-50/30 px-4 py-12 text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 mb-3">
             <ReceiptText size={28} />
           </div>
           <h3 className="font-extrabold text-slate-900 text-base">
@@ -157,12 +137,12 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
           >
             {isUploadingBill ? (
               <>
-                <Loader2 size={16} className="animate-spin text-amber-400" />
+                <Loader2 size={16} className="animate-spin text-rose-400" />
                 <span>Analizando recibo con IA...</span>
               </>
             ) : (
               <>
-                <UploadCloud size={16} className="text-amber-400" />
+                <UploadCloud size={16} className="text-rose-400" />
                 <span>Adjuntar Recibo de Luz</span>
               </>
             )}
@@ -233,7 +213,7 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
       {/* Encabezado */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-amber-500/10 text-amber-600">
+          <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-rose-500/10 text-rose-700">
             <Coins size={20} className="sm:size-[22px]" />
           </div>
           <div>
@@ -241,7 +221,7 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
               Costo de Energía Estimado (HP / FP)
             </h2>
             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-              Tarifas aplicadas del recibo: HP = <strong className="text-slate-800">S/. {rates.hp.toFixed(4)}</strong> | FP = <strong className="text-slate-800">S/. {rates.fp.toFixed(4)}</strong> por kWh
+              Tarifas aplicadas del recibo: HP = <strong className="text-rose-900">S/. {rates.hp.toFixed(4)}</strong> | FP = <strong className="text-rose-700">S/. {rates.fp.toFixed(4)}</strong> por kWh
             </p>
           </div>
         </div>
@@ -254,56 +234,60 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
         >
           {isUploadingBill ? (
             <>
-              <Loader2 size={16} className="animate-spin text-amber-400" />
+              <Loader2 size={16} className="animate-spin text-rose-400" />
               <span>Extrayendo con IA...</span>
             </>
           ) : (
             <>
-              <ReceiptText size={16} className="text-amber-400" />
+              <ReceiptText size={16} className="text-rose-400" />
               <span>Cambiar Recibo de Luz</span>
             </>
           )}
         </button>
       </div>
 
-      {/* 4 TARJETAS KPI */}
+      {/* 4 TARJETAS KPI EN TONOS RUBÍ Y CARMESÍ */}
       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-amber-700">Total Periodo Filtrado</p>
-          <p className="mt-1 text-2xl font-black text-amber-950">
+        {/* Total Periodo */}
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-4">
+          <p className="text-[10px] font-black uppercase tracking-wider text-rose-800">Total Periodo Filtrado</p>
+          <p className="mt-1 text-2xl font-black text-rose-950">
             S/. {totalCostoPeriodo.toFixed(2)}
           </p>
-          <p className="mt-1 text-[10px] text-amber-600/90">Suma total de días seleccionados</p>
+          <p className="mt-1 text-[10px] text-rose-700/90">Suma total de días seleccionados</p>
         </div>
 
-        <div className="rounded-2xl border border-amber-300 bg-amber-100/40 p-4">
-          <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">Proyección Mensual (30d)</p>
-          <p className="mt-1 text-2xl font-black text-amber-950">
+        {/* Proyección Mensual */}
+        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-700">Proyección Mensual (30d)</p>
+          <p className="mt-1 text-2xl font-black text-slate-950">
             S/. {proyeccionMes30Dias.toFixed(2)}
           </p>
-          <p className="mt-1 text-[10px] text-amber-700 font-semibold">Promedio: S/. {promedioCostoDiario.toFixed(2)} / día</p>
+          <p className="mt-1 text-[10px] text-slate-600 font-semibold">Promedio: S/. {promedioCostoDiario.toFixed(2)} / día</p>
         </div>
 
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
-          <div className="flex items-center gap-1.5 text-amber-800">
-            <span className="size-2 rounded-full bg-[#fbbf24] border border-amber-400 inline-block shadow-sm" />
-            <p className="text-[10px] font-black uppercase tracking-wider text-amber-800">Fuera de Punta (FP)</p>
+        {/* Fuera de Punta (FP) - Rubí claro */}
+        <div className="rounded-2xl border border-rose-200 bg-rose-50/30 p-4">
+          <div className="flex items-center gap-1.5 text-rose-800">
+            <span className="size-2 rounded-full bg-[#fb7185] inline-block shadow-sm" />
+            <p className="text-[10px] font-black uppercase tracking-wider text-rose-800">Fuera de Punta (FP)</p>
           </div>
           <p className="mt-1 text-2xl font-black text-slate-900">
             S/. {totalCostoFP.toFixed(2)}
           </p>
-          <p className="mt-1 text-[10px] text-amber-600/90">Horario base económico (19 horas)</p>
+          <p className="mt-1 text-[10px] text-rose-700/90">Horario base económico (19 horas)</p>
         </div>
 
-        <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-4">
-          <div className="flex items-center gap-1.5 text-orange-800">
-            <span className="size-2 rounded-full bg-[#d97706] inline-block shadow-sm" />
-            <p className="text-[10px] font-black uppercase tracking-wider text-orange-800">Hora Punta (HP)</p>
+        {/* Hora Punta (HP) - Rubí carmesí profundo */}
+        <div className="rounded-2xl border border-rose-300 bg-rose-100/50 p-4">
+          <div className="flex items-center gap-1.5 text-rose-950">
+            <span className="size-2 rounded-full bg-[#be123c] inline-block shadow-sm" />
+            <p className="text-[10px] font-black uppercase tracking-wider text-rose-950">Hora Punta (HP)</p>
           </div>
           <p className="mt-1 text-2xl font-black text-slate-900">
             S/. {totalCostoHP.toFixed(2)}
           </p>
-          <p className="mt-1 text-[10px] text-orange-700/90">Horario crítico (18:00 a 23:00 hrs)</p>
+          <p className="mt-1 text-[10px] text-rose-800 font-semibold">Horario crítico (18:00 a 23:00 hrs)</p>
         </div>
       </div>
 
@@ -317,7 +301,7 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
             onClick={() => onToggleCostDay(key)}
             className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${
               visibleCostSeries[key] !== false
-                ? "bg-amber-500 border-amber-500 text-white shadow-sm"
+                ? "bg-rose-700 border-rose-700 text-white shadow-sm"
                 : "bg-white border-slate-200 text-slate-400"
             }`}
           >
@@ -335,7 +319,7 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={costoData} margin={{ top: 40, right: 15, left: 10, bottom: 30 }}>
+              <BarChart data={costoData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                 <XAxis
                   dataKey="name"
@@ -369,7 +353,6 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
 
                 <Tooltip content={<CostTooltip />} cursor={{ fill: "#f1f5f9", opacity: 0.6 }} />
 
-                {/* Leyenda con resolución explícita de nombres e iconos */}
                 <Legend
                   verticalAlign="top"
                   align="right"
@@ -382,13 +365,20 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
                   }}
                 />
 
+                {/* Segmento Inferior: Fuera de Punta (FP) - Rubí Claro */}
                 <Bar
                   dataKey="alturaVisualFP"
                   name="costoFP"
                   stackId="costo"
                   fill={COST_COLOR_FP}
                   maxBarSize={48}
-                />
+                >
+                  <LabelList
+                    content={(props) => renderSegmentLabel({ ...props, data: costoData }, "costoFP", "#881337")}
+                  />
+                </Bar>
+
+                {/* Segmento Superior: Hora Punta (HP) - Carmesí / Rubí Oscuro */}
                 <Bar
                   dataKey="alturaVisualHP"
                   name="costoHP"
@@ -398,7 +388,7 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
                   maxBarSize={48}
                 >
                   <LabelList
-                    content={(props) => renderCustomLabel({ ...props, data: costoData })}
+                    content={(props) => renderSegmentLabel({ ...props, data: costoData }, "costoHP", "#ffffff")}
                   />
                 </Bar>
               </BarChart>

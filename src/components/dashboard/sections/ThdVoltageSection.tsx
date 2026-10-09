@@ -136,6 +136,8 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
   let countThdV = 0;
   let horaPicoThdV = "--:--";
 
+  const allVisibleValues: number[] = [];
+
   rawChartData.forEach((row) => {
     const u12 = Number(row[`thd_u12_${activeDay}`] || 0);
     const u23 = Number(row[`thd_u23_${activeDay}`] || 0);
@@ -152,10 +154,39 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
       sumThdV += avg > 0 ? avg : (u12 + u23 + u31) / 3;
       countThdV++;
     }
+
+    if (visibleThdFases.u12 && u12 > 0) allVisibleValues.push(u12);
+    if (visibleThdFases.u23 && u23 > 0) allVisibleValues.push(u23);
+    if (visibleThdFases.u31 && u31 > 0) allVisibleValues.push(u31);
   });
 
   const avgThdV = countThdV > 0 ? sumThdV / countThdV : 0;
   const cumpleNorma = maxThdV <= 5.0;
+
+  // ── LÓGICA DINÁMICA DE ESCALA EN EL EJE Y (CERO HARDCODING) ──
+  const minVal = allVisibleValues.length > 0 ? Math.min(...allVisibleValues) : 0;
+  // Aseguramos que el límite de norma (5.0%) siempre quepa en el techo si los datos son bajos
+  const maxVal = allVisibleValues.length > 0 ? Math.max(...allVisibleValues, 5.0) : 6.0;
+
+  const diff = maxVal - minVal;
+
+  // Paso regular proporcional al rango
+  let stepIncrement = 0.5;
+  if (diff > 8) stepIncrement = 2;
+  else if (diff > 4) stepIncrement = 1;
+  else if (diff > 1.5) stepIncrement = 0.5;
+  else stepIncrement = 0.2;
+
+  // Piso: 1 paso regular debajo del mínimo observado
+  const yMin = Math.max(0, Number((Math.floor(minVal / stepIncrement) * stepIncrement - stepIncrement).toFixed(2)));
+  // Techo: 1 paso regular por encima del máximo observado (o 5.0%)
+  const yMax = Number((Math.ceil(maxVal / stepIncrement) * stepIncrement + stepIncrement).toFixed(2));
+
+  // Generación uniforme de ticks continuos sin huecos vacíos
+  const yTicks: number[] = [];
+  for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
+    yTicks.push(Number(val.toFixed(2)));
+  }
 
   return (
     <section className="rounded-2xl sm:rounded-3xl border-2 border-purple-200/70 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6 transition-all">
@@ -268,7 +299,7 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
           })}
         </div>
 
-        {/* Botones de Fases tipo Metrel (Azul, Rojo, Verde) */}
+        {/* Botones de Fases */}
         <div className="flex gap-2 overflow-x-auto pb-1 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
           <button
             type="button"
@@ -353,16 +384,21 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
                 />
               </XAxis>
               <YAxis
+                domain={[yMin, yMax]}
+                ticks={yTicks}
+                interval={0}
+                allowDataOverflow={true}
                 tickLine={false}
                 stroke="#94a3b8"
-                width={45}
-                domain={[0, (dataMax: number) => Math.max(6, Math.ceil(dataMax + 1))]}
+                width={48}
+                tick={{ fontSize: "10px" }}
                 tickFormatter={(val) => `${val}%`}
               >
                 <Label
                   value="THD-U (%)"
                   angle={-90}
                   position="insideLeft"
+                  offset={-5}
                   style={{
                     textAnchor: "middle",
                     fill: "#7e22ce",

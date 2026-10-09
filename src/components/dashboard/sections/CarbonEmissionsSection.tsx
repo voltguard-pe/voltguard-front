@@ -4,7 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Label,
   LabelList,
   ResponsiveContainer,
@@ -21,16 +20,14 @@ interface CarbonEmissionsSectionProps {
 }
 
 const FACTOR_EMISION_PERU = 0.00021;
-const BASE_BAR_COLOR = "#64748b"; // Pizarra base
-const HIGHER_BAR_COLOR = "#334155"; // Pizarra más oscuro para los picos
+const BAR_COLOR = "#475569"; // Pizarra elegante
 
 // Tooltip con los valores reales en tCO2 y kg CO2
 const CustomCarbonTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const tCO2 = data.tCO2;
-    const kgCO2 = data.kgCO2;
-    const delta = data.deltaOriginal;
+    const tCO2 = Number(data.tCO2) || 0;
+    const kgCO2 = Number(data.kgCO2) || 0;
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[210px] backdrop-blur-sm">
@@ -46,48 +43,10 @@ const CustomCarbonTooltip = ({ active, payload, label }: any) => {
             {kgCO2.toFixed(2)} kg CO₂
           </span>
         </div>
-        {delta > 0 && (
-          <div className="mt-1 flex items-center justify-between text-red-600 font-bold text-[10px]">
-            <span>Variación vs mínimo:</span>
-            <span>+{delta.toFixed(4)} tCO₂</span>
-          </div>
-        )}
       </div>
     );
   }
   return null;
-};
-
-// Renderizado de etiqueta con el valor real y el delta visual
-const renderCustomLabel = (props: any) => {
-  const { x, y, width, index, data } = props;
-  const item = data?.[index];
-  if (!item) return null;
-
-  return (
-    <g>
-      <text
-        x={x + width / 2}
-        y={y - 8}
-        fill="#1e293b"
-        textAnchor="middle"
-        className="text-[10px] font-black tabular-nums select-none"
-      >
-        {item.tCO2.toFixed(4)}
-      </text>
-      {item.deltaOriginal > 0 && (
-        <text
-          x={x + width / 2}
-          y={y - 20}
-          fill="#dc2626"
-          textAnchor="middle"
-          className="text-[9px] font-black tabular-nums select-none"
-        >
-          +{(item.deltaOriginal * 1000).toFixed(1)}kg
-        </text>
-      )}
-    </g>
-  );
 };
 
 export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
@@ -96,8 +55,8 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
   seriesKeys,
   onToggleCarbonDay
 }) => {
-  // 1. Datos reales
-  const rawEmisionesData = energiaPorDiaData
+  // 1. Datos reales directos calculados desde la data visible
+  const emisionesData = energiaPorDiaData
     .filter((d) => visibleCarbonSeries[d.name] !== false)
     .map((item) => {
       const tCO2_dia = (item.kWh || 0) * FACTOR_EMISION_PERU;
@@ -108,30 +67,32 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
       };
     });
 
-  // 2. Magnificación visual de las diferencias de decimales
-  const minVal =
-    rawEmisionesData.length > 0
-      ? Math.min(...rawEmisionesData.map((d) => d.tCO2))
-      : 0;
+  // 2. LÓGICA DINÁMICA DE RANGO Y ALINEACIÓN (CERO HARDCODING)
+  const rawValues = emisionesData.map((d) => d.tCO2);
+  const minVal = rawValues.length > 0 ? Math.min(...rawValues) : 0;
+  const maxVal = rawValues.length > 0 ? Math.max(...rawValues) : 0;
 
-  // Multiplicador visual para acentuar los cambios de altura
-  const BOOST_FACTOR = 18;
+  // Calculamos la diferencia real dinámica
+  const rawDelta = maxVal - minVal;
+  // Si todos los valores son iguales, tomamos el 2% del valor como salto por defecto
+  const step = rawDelta > 0 ? rawDelta : (minVal > 0 ? minVal * 0.02 : 0.0001);
 
-  const emisionesData = rawEmisionesData.map((item) => {
-    const delta = Math.max(0, item.tCO2 - minVal);
-    const visualBoost = delta * BOOST_FACTOR;
+  // Piso: exactamente 1 step antes del mínimo (hace que la barra menor arranque bajita)
+  const yMin = Math.max(0, Number((minVal - step).toFixed(4)));
+  
+  // Techo del contenedor: un pequeño margen para que la etiqueta numérica no choque arriba
+  const yMax = Number((maxVal + step * 0.3).toFixed(4));
 
-    return {
-      ...item,
-      deltaOriginal: delta,
-      alturaVisual: item.tCO2 + visualBoost
-    };
-  });
+  // Los 3 ticks exactos que coinciden con las alturas reales:
+  // 1) Piso donde nacen las barras
+  // 2) Nivel exacto de la barra mínima
+  // 3) Nivel exacto de la barra máxima
+  const yTicks = Array.from(new Set([yMin, minVal, maxVal])).sort((a, b) => a - b);
 
   // 3. Cálculos de Totales y Proyecciones reales
-  const totalTCO2Semana = rawEmisionesData.reduce((acc, curr) => acc + curr.tCO2, 0);
+  const totalTCO2Semana = emisionesData.reduce((acc, curr) => acc + curr.tCO2, 0);
   const promedioTCO2Diario =
-    rawEmisionesData.length > 0 ? totalTCO2Semana / rawEmisionesData.length : 0;
+    emisionesData.length > 0 ? totalTCO2Semana / emisionesData.length : 0;
   const proyeccionTCO2Mes = promedioTCO2Diario * 30;
   const proyeccionTCO2Ano = promedioTCO2Diario * 365;
 
@@ -257,14 +218,18 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                   />
                 </XAxis>
                 <YAxis
+                  domain={[yMin, yMax]}
+                  ticks={yTicks}
+                  interval={0}
+                  allowDataOverflow={true}
                   tickLine={false}
                   stroke="#94a3b8"
-                  width={65}
+                  width={68}
                   tick={{ fontSize: "10px" }}
-                  tickFormatter={(val) => val.toFixed(3)}
+                  tickFormatter={(val) => Number(val).toFixed(4)}
                 >
                   <Label
-                    value="Emisiones Relativas"
+                    value="Emisiones (tCO₂)"
                     angle={-90}
                     position="insideLeft"
                     offset={-5}
@@ -282,19 +247,20 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                   content={<CustomCarbonTooltip />}
                 />
                 <Bar
-                  dataKey="alturaVisual"
-                  name="tCO2"
+                  dataKey="tCO2"
+                  fill={BAR_COLOR}
                   radius={[6, 6, 0, 0]}
                   maxBarSize={50}
                 >
-                  {emisionesData.map((entry, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={entry.deltaOriginal > 0 ? HIGHER_BAR_COLOR : BASE_BAR_COLOR}
-                    />
-                  ))}
                   <LabelList
-                    content={(props) => renderCustomLabel({ ...props, data: emisionesData })}
+                    dataKey="tCO2"
+                    position="top"
+                    formatter={(val: any) => `${Number(val).toFixed(4)}`}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "800",
+                      fill: "#1e293b"
+                    }}
                   />
                 </Bar>
               </BarChart>

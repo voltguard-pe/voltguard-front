@@ -59,6 +59,32 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
       kWh: Number(Number(item.kWh || 0).toFixed(2))
     }));
 
+  // ── ESTADOS DE SELECCIÓN ──
+  const isAllSelected =
+    seriesKeys.length > 0 &&
+    seriesKeys.every((key) => visibleEnergySeries[key] !== false);
+
+  const activeDaysCount = seriesKeys.filter(
+    (key) => visibleEnergySeries[key] !== false
+  ).length;
+
+  // Impide desmarcar el último día activo (evita un gráfico en blanco)
+  const handleSafeToggleDay = (key: string) => {
+    const isCurrentlySelected = visibleEnergySeries[key] !== false;
+    if (isCurrentlySelected && activeDaysCount <= 1) {
+      return;
+    }
+    onToggleEnergyDay(key);
+  };
+
+  const handleSelectAll = () => {
+    seriesKeys.forEach((key) => {
+      if (visibleEnergySeries[key] === false) {
+        onToggleEnergyDay(key);
+      }
+    });
+  };
+
   // 2. LÓGICA DE ESCALA GRADUADA Y UNIFORME EN EL EJE Y
   const rawValues = barrasVisibles.map((d) => d.kWh);
   const minVal = rawValues.length > 0 ? Math.min(...rawValues) : 0;
@@ -167,32 +193,65 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
         </div>
       </div>
 
-      {/* Selector de Días Estilizado */}
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-6 p-2 rounded-2xl bg-slate-50 border border-slate-200/60 scrollbar-none items-center">
-        <span className="text-xs font-bold uppercase text-slate-400 self-center px-2">
-          Días:
-        </span>
-        {seriesKeys.map((key) => {
-          const isActive = visibleEnergySeries[key] !== false;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onToggleEnergyDay(key)}
-              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 shadow-sm ${isActive
-                  ? "text-white shadow-blue-500/25 border border-blue-500/30 scale-[1.02]"
-                  : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              style={
-                isActive
-                  ? { background: "linear-gradient(to right, #3b82f6, #1d4ed8)" }
-                  : undefined
-              }
-            >
-              {key}
-            </button>
-          );
-        })}
+      {/* ── SECCIÓN DE FILTROS ── */}
+      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs font-sans">
+
+        {/* IZQUIERDA */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs font-black uppercase text-slate-400 mr-1 tracking-wider">Filtros:</span>
+        </div>
+
+        {/* CENTRO: Días de la semana (protegidos para no vaciar el gráfico) */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 justify-start flex-1">
+          {seriesKeys.map((key) => {
+            const isSelected = visibleEnergySeries[key] !== false;
+            // Si es el único activo, el botón se muestra bloqueado para evitar un gráfico en blanco
+            const isLastActive = isSelected && activeDaysCount === 1;
+
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleSafeToggleDay(key)}
+                title={isLastActive ? "Debe mantener al menos un día visible" : undefined}
+                className={`flex flex-col items-center justify-center min-w-[78px] px-3.5 py-2 rounded-xl transition-all border cursor-pointer shrink-0 active:scale-95 ${
+                  isSelected
+                    ? "border-transparent text-white shadow-md shadow-blue-500/10"
+                    : "bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"
+                } ${isLastActive ? "cursor-not-allowed opacity-90 ring-2 ring-white/50" : ""}`}
+                style={
+                  isSelected
+                    ? { background: "linear-gradient(to bottom, #3b82f6, #1d4ed8)" }
+                    : undefined
+                }
+              >
+                <span className="text-xs font-extrabold">{key}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* DERECHA: Botón Todos */}
+        <div className="flex items-center gap-2 shrink-0 justify-end">
+          <button
+            type="button"
+            onClick={handleSelectAll}
+            className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border active:scale-95 flex items-center gap-1.5 ${
+              isAllSelected
+                ? "text-white border-blue-500/30 shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/40"
+                : "bg-white border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 shadow-xs"
+            }`}
+            style={
+              isAllSelected
+                ? { background: "linear-gradient(to right, #3b82f6, #1d4ed8)" }
+                : undefined
+            }
+          >
+            {isAllSelected && <span className="size-1.5 rounded-full bg-white animate-pulse" />}
+            <span>Todos</span>
+          </button>
+        </div>
+
       </div>
 
       {/* Gráfico */}

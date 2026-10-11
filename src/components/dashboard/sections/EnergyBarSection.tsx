@@ -19,6 +19,10 @@ interface EnergyBarSectionProps {
   onToggleEnergyDay: (key: string) => void;
 }
 
+// La corrección del ×12 del backend ya se aplica en BoardDetailPage.tsx,
+// por eso aquí el divisor es 1 (no dividir dos veces).
+const DIVISOR_CORRECCION_BACKEND = 1;
+
 // Tooltip con consumo exacto
 const CustomEnergyTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -51,12 +55,12 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   seriesKeys,
   onToggleEnergyDay
 }) => {
-  // 1. Filtrado de series visibles
+  // 1. Filtrado de series visibles (con la corrección del backend aplicada)
   const barrasVisibles = energiaPorDiaData
     .filter((d) => visibleEnergySeries[d.name] !== false)
     .map((item) => ({
       name: item.name,
-      kWh: Number(Number(item.kWh || 0).toFixed(2))
+      kWh: Number(((item.kWh || 0) / DIVISOR_CORRECCION_BACKEND).toFixed(2))
     }));
 
   // ── ESTADOS DE SELECCIÓN ──
@@ -119,7 +123,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     }
   }
 
-  // 3. Totales y Proyecciones reales
+  // 3. Totales y Proyecciones
   const totalKWhSemana = barrasVisibles.reduce(
     (acc, curr) => acc + (curr.kWh || 0),
     0
@@ -139,10 +143,10 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
           </div>
           <div>
             <h2 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
-              Energía Consumida por Año
+              Energía Consumida Estimada
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Promedio anual de cada día de la semana, expresado en KiloVatios-Hora (kWh)
+              Promedio por día de la semana según el período medido, expresado en KiloVatios-Hora (kWh)
             </p>
           </div>
         </div>
@@ -174,21 +178,21 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             <span className="text-sm font-bold text-blue-600">kWh/mes</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">
-            Estimación a 30 días de operación
+            Promedio diario × 30 días
           </p>
         </div>
 
         {/* Card 3 */}
         <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-300">
           <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-            Proyección Anual (365 días)
+            Proyección Anual Estimada
           </p>
           <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
             {proyeccionKWhAno.toFixed(0)}{" "}
             <span className="text-sm font-bold text-blue-600">kWh/año</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">
-            Estimación a 365 días de operación
+            Promedio diario × 365 (extrapolado del período medido)
           </p>
         </div>
       </div>
@@ -205,7 +209,6 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
         <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 justify-start flex-1">
           {seriesKeys.map((key) => {
             const isSelected = visibleEnergySeries[key] !== false;
-            // Si es el único activo, el botón se muestra bloqueado para evitar un gráfico en blanco
             const isLastActive = isSelected && activeDaysCount === 1;
 
             return (
@@ -337,7 +340,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   <LabelList
                     dataKey="kWh"
                     position="top"
-                    formatter={(val: any) => `${Number(val).toFixed(1)}`}
+                    formatter={(val: any) => `${Number(val).toFixed(2)}`}
                     style={{
                       fontSize: "11px",
                       fontWeight: "800",

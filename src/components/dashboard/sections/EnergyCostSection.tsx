@@ -228,7 +228,7 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Tarifas aplicadas del recibo:{" "}
+              Perfil semanal del año. Tarifas del recibo:{" "}
               <span className="text-[#ff2e51] font-semibold">HP = S/. {rates.hp.toFixed(4)}</span> |{" "}
               <span className="text-blue-600 font-semibold">FP = S/. {rates.fp.toFixed(4)}</span> por kWh
             </p>
@@ -264,7 +264,7 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
           <p className="mt-2 text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             S/. {totalCostoPeriodo.toFixed(2)}
           </p>
-          <p className="mt-2 text-[11px] text-slate-500 font-medium">Suma total de días seleccionados</p>
+          <p className="mt-2 text-[11px] text-slate-500 font-medium">Suma de la semana típica anual</p>
         </div>
 
         {/* Proyección Mensual */}
@@ -363,7 +363,7 @@ export const EnergyCostSection: React.FC<EnergyCostSectionProps> = ({
                   tick={{ fontSize: "11px", fontWeight: "700", fill: "#334155" }}
                 >
                   <Label
-                    value="Días del Periodo"
+                    value="Días de la Semana"
                     position="insideBottom"
                     offset={-20}
                     style={{ textAnchor: "middle", fill: "#334155", fontWeight: "800", fontSize: "10px", letterSpacing: "0.05em" }}

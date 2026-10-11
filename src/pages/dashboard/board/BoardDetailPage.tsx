@@ -32,6 +32,24 @@ const formatMeasurementWithUnit = (
   return `${data} ${unit}`;
 };
 
+const WEEKDAYS_ES = [
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+  "Domingo",
+] as const;
+
+const weekdayFromYmd = (fechaYMD: string): (typeof WEEKDAYS_ES)[number] | null => {
+  const [year, month, day] = (fechaYMD || "").split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return null;
+  return WEEKDAYS_ES[(date.getDay() + 6) % 7];
+};
+
 const BoardDetailPage = () => {
   const { auth, loading: authLoading } = useAuth();
 
@@ -96,7 +114,8 @@ const BoardDetailPage = () => {
     ahorroEstimado: number;
   } | null>(null);
 
-  const [energiaPorDiaData, setEnergiaPorDiaData] = useState<any[]>([]);
+  const [energiaPorDiaSemanaData, setEnergiaPorDiaSemanaData] = useState<any[]>([]);
+  const [weekdaySeriesKeys, setWeekdaySeriesKeys] = useState<string[]>([]);
   const [isScrolled, setIsScrolled] = useState(false);
 
   console.log(isScrolled)
@@ -115,13 +134,6 @@ const BoardDetailPage = () => {
     try {
       const res: any = await getDemandChartData(boardId, start, end);
       const { agrupado } = res;
-
-      if (!agrupado || Object.keys(agrupado).length === 0) {
-        setRawChartData([]);
-        setSeriesKeys([]);
-        return;
-      }
-
       const rawKeys = Object.keys(agrupado);
       const labelsX = Array.from({ length: 288 }, (_, i) => {
         const h = String(Math.floor((i * 5) / 60)).padStart(2, '0');
@@ -236,7 +248,36 @@ const BoardDetailPage = () => {
         };
       });
 
-      setEnergiaPorDiaData(barrasProcesadas);
+      const weekdayAgg: {
+        [day: string]: { kWh: number; kwhHP: number; kwhFP: number; count: number };
+      } = {};
+      WEEKDAYS_ES.forEach((day) => {
+        weekdayAgg[day] = { kWh: 0, kwhHP: 0, kwhFP: 0, count: 0 };
+      });
+      barrasProcesadas.forEach((item, idx) => {
+        const fechaYMD = (rawKeys[idx] || "").split(" ")[0];
+        const weekday = weekdayFromYmd(fechaYMD);
+        if (!weekday) return;
+        weekdayAgg[weekday].kWh += item.kWh;
+        weekdayAgg[weekday].kwhHP += item.kwhHP;
+        weekdayAgg[weekday].kwhFP += item.kwhFP;
+        weekdayAgg[weekday].count += 1;
+      });
+
+      const weekdayKeys = [...WEEKDAYS_ES];
+      const barrasPorDiaSemana = weekdayKeys.map((day) => {
+        const n = weekdayAgg[day].count;
+        return {
+          name: day,
+          kWh: n > 0 ? Math.round((weekdayAgg[day].kWh / n) * 10) / 10 : 0,
+          kwhHP: n > 0 ? Math.round((weekdayAgg[day].kwhHP / n) * 10) / 10 : 0,
+          kwhFP: n > 0 ? Math.round((weekdayAgg[day].kwhFP / n) * 10) / 10 : 0,
+          count: n,
+        };
+      });
+
+      setEnergiaPorDiaSemanaData(barrasPorDiaSemana);
+      setWeekdaySeriesKeys(weekdayKeys);
       setRawChartData(formattedData);
       setSeriesKeys(sortedCleanKeys);
       setSelectedReactiveDay(prev => (prev && sortedCleanKeys.includes(prev) ? prev : sortedCleanKeys[0] || null));
@@ -247,6 +288,10 @@ const BoardDetailPage = () => {
       const initialVisibility: { [key: string]: boolean } = {};
       sortedCleanKeys.forEach((k) => {
         initialVisibility[k] = true;
+      });
+      const initialWeekdayVisibility: { [key: string]: boolean } = {};
+      weekdayKeys.forEach((k) => {
+        initialWeekdayVisibility[k] = true;
       });
 
       setVisibleDemandSeries(prev => {
@@ -264,9 +309,27 @@ const BoardDetailPage = () => {
         "kvar_capacitivo": prev["kvar_capacitivo"] ?? true
       }));
 
-      setVisibleEnergySeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
-      setVisibleCarbonSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
-      setVisibleCostSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
+      setVisibleEnergySeries((prev) => {
+        const next: { [key: string]: boolean } = {};
+        weekdayKeys.forEach((k) => {
+          next[k] = prev[k] !== undefined ? prev[k] : true;
+        });
+        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
+      });
+      setVisibleCarbonSeries((prev) => {
+        const next: { [key: string]: boolean } = {};
+        weekdayKeys.forEach((k) => {
+          next[k] = prev[k] !== undefined ? prev[k] : true;
+        });
+        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
+      });
+      setVisibleCostSeries((prev) => {
+        const next: { [key: string]: boolean } = {};
+        weekdayKeys.forEach((k) => {
+          next[k] = prev[k] !== undefined ? prev[k] : true;
+        });
+        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
+      });
       // setVisibleSolarSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
     } catch (err) {
       console.error("Error cargando curvas de demanda en Recharts:", err);
@@ -987,24 +1050,24 @@ const BoardDetailPage = () => {
             />
 
             <EnergyBarSection
-              energiaPorDiaData={energiaPorDiaData}
+              energiaPorDiaData={energiaPorDiaSemanaData}
               visibleEnergySeries={visibleEnergySeries}
-              seriesKeys={seriesKeys}
+              seriesKeys={weekdaySeriesKeys}
               onToggleEnergyDay={toggleEnergyDay}
             />
 
             <CarbonEmissionsSection
-              energiaPorDiaData={energiaPorDiaData}
+              energiaPorDiaData={energiaPorDiaSemanaData}
               visibleCarbonSeries={visibleCarbonSeries}
-              seriesKeys={seriesKeys}
+              seriesKeys={weekdaySeriesKeys}
               onToggleCarbonDay={toggleCarbonDay}
             />
 
             <EnergyCostSection
               rates={rates}
-              energiaPorDiaData={energiaPorDiaData}
+              energiaPorDiaData={energiaPorDiaSemanaData}
               visibleCostSeries={visibleCostSeries}
-              seriesKeys={seriesKeys}
+              seriesKeys={weekdaySeriesKeys}
               onToggleCostDay={toggleCostDay}
               isUploadingBill={isUploadingBill}
               onBillUpload={handleBillUpload}

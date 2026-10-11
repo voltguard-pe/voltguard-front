@@ -95,10 +95,10 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
           </div>
           <div>
             <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
-              Emisiones de CO₂ por Día (Huella de Carbono)
+              Emisiones de CO₂ por Año (Huella de Carbono)
             </h2>
             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-              Dióxido de Carbono equivalente emitido por el consumo eléctrico (tCO₂eq - SEIN Perú)
+              Promedio anual de cada día de la semana (tCO₂eq - SEIN Perú)
             </p>
           </div>
         </div>
@@ -118,7 +118,7 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
             </span>
           </p>
           <p className="mt-1 text-[10px] text-slate-500">
-            Equivalencia del periodo filtrado
+            Promedio de los días de la semana seleccionados
           </p>
         </div>
 
@@ -211,7 +211,7 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                   tick={{ fontSize: "10px", fontWeight: "700", fill: "#475569" }}
                 >
                   <Label
-                    value="Días del Periodo"
+                    value="Días de la Semana"
                     position="insideBottom"
                     offset={-20}
                     style={{

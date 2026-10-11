@@ -34,7 +34,7 @@ const CustomEnergyTooltip = ({ active, payload, label }: any) => {
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-slate-500 font-semibold">Consumo diario:</span>
+          <span className="text-slate-500 font-semibold">Consumo promedio:</span>
           <span className="font-extrabold text-slate-900 tabular-nums">
             {kWh.toFixed(2)} kWh
           </span>
@@ -66,9 +66,12 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
 
   const diff = maxVal - minVal;
 
-  // Calculamos un incremento de paso regular coherente con los decimales
   let stepIncrement = 0.1;
-  if (diff > 5) stepIncrement = 1;
+  if (diff > 5000) stepIncrement = 1000;
+  else if (diff > 1000) stepIncrement = 200;
+  else if (diff > 200) stepIncrement = 50;
+  else if (diff > 50) stepIncrement = 10;
+  else if (diff > 5) stepIncrement = 1;
   else if (diff > 2) stepIncrement = 0.5;
   else if (diff > 0.8) stepIncrement = 0.2;
   else stepIncrement = 0.1;
@@ -78,10 +81,16 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   // Techo: 1 paso regular por encima del máximo para acomodar la etiqueta
   const yMax = Number((Math.ceil(maxVal / stepIncrement) * stepIncrement + stepIncrement).toFixed(2));
 
-  // Generamos una cuadrícula continua de ticks para rellenar todo el espacio
   const yTicks: number[] = [];
   for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
     yTicks.push(Number(val.toFixed(2)));
+  }
+  while (yTicks.length > 12 && stepIncrement > 0) {
+    stepIncrement *= 2;
+    yTicks.length = 0;
+    for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
+      yTicks.push(Number(val.toFixed(2)));
+    }
   }
 
   // 3. Totales y Proyecciones reales
@@ -104,10 +113,10 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
           </div>
           <div>
             <h2 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
-              Energía Consumida por Día
+              Energía Consumida por Año
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Energía total acumulada diariamente expresada en KiloVatios-Hora (kWh)
+              Promedio anual de cada día de la semana, expresado en KiloVatios-Hora (kWh)
             </p>
           </div>
         </div>
@@ -125,7 +134,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             <span className="text-sm font-bold text-blue-600">kWh/día</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">
-            Promedio sobre los días seleccionados
+            Promedio sobre los días de la semana seleccionados
           </p>
         </div>
 
@@ -219,7 +228,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   tick={{ fontSize: "11px", fontWeight: "700", fill: "#334155" }}
                 >
                   <Label
-                    value="Días del Periodo"
+                    value="Días de la Semana"
                     position="insideBottom"
                     offset={-20}
                     style={{

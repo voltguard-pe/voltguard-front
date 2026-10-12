@@ -51,7 +51,7 @@ const ProfileDashboardPage = () => {
       <div>
         <h1 className="text-2xl font-bold text-slate-950">Mi perfil</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Gestiona tu información personal y accesos de Voltguard.
+          Gestiona tu información personal y accesos de VoltGuard.
         </p>
       </div>
 
@@ -219,7 +219,7 @@ const ProfileDashboardPage = () => {
                 <h3 className="font-bold text-slate-950">Cuenta segura</h3>
                 <p className="mt-1 text-sm leading-6 text-slate-500">
                   Mantén tus datos actualizados para mejorar la seguridad y
-                  trazabilidad dentro de Voltguard.
+                  trazabilidad dentro de VoltGuard.
                 </p>
               </div>
             </div>

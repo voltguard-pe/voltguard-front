@@ -37,7 +37,7 @@ const FooterComponent = () => {
         
         {/* DERECHOS RESERVADOS */}
         <p className="order-2 md:order-1">
-          © {new Date().getFullYear()} Voltguard · Todos los derechos reservados.
+          © {new Date().getFullYear()} VoltGuard · Todos los derechos reservados.
         </p>
 
         {/* REDES SOCIALES (fb, X, ig, yt, in, tk) */}
@@ -66,7 +66,7 @@ const FooterComponent = () => {
             alt="Voltguard"
             className="size-7 object-contain"
           />
-          <span className="font-semibold text-slate-700">Voltguard</span>
+          <span className="font-semibold text-slate-700">VoltGuard</span>
         </div>
 
       </div>

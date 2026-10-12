@@ -84,7 +84,7 @@ const ReactiveTooltip = ({
           <span>
             Valores en <strong>kvar</strong>
           </span>
-          <span className="font-bold text-[#0797d5]">Voltguard</span>
+          <span className="font-bold text-[#0797d5]">VoltGuard</span>
         </div>
       </div>
     );

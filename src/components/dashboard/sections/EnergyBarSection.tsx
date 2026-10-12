@@ -19,6 +19,10 @@ interface EnergyBarSectionProps {
   onToggleEnergyDay: (key: string) => void;
 }
 
+// La corrección del ×12 del backend ya se aplica en BoardDetailPage.tsx,
+// por eso aquí el divisor es 1 (no dividir dos veces).
+const DIVISOR_CORRECCION_BACKEND = 1;
+
 // Tooltip con consumo exacto
 const CustomEnergyTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -34,7 +38,7 @@ const CustomEnergyTooltip = ({ active, payload, label }: any) => {
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-slate-500 font-semibold">Consumo diario:</span>
+          <span className="text-slate-500 font-semibold">Consumo promedio:</span>
           <span className="font-extrabold text-slate-900 tabular-nums">
             {kWh.toFixed(2)} kWh
           </span>
@@ -51,13 +55,39 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   seriesKeys,
   onToggleEnergyDay
 }) => {
-  // 1. Filtrado de series visibles
+  // 1. Filtrado de series visibles (con la corrección del backend aplicada)
   const barrasVisibles = energiaPorDiaData
     .filter((d) => visibleEnergySeries[d.name] !== false)
     .map((item) => ({
       name: item.name,
-      kWh: Number(Number(item.kWh || 0).toFixed(2))
+      kWh: Number(((item.kWh || 0) / DIVISOR_CORRECCION_BACKEND).toFixed(2))
     }));
+
+  // ── ESTADOS DE SELECCIÓN ──
+  const isAllSelected =
+    seriesKeys.length > 0 &&
+    seriesKeys.every((key) => visibleEnergySeries[key] !== false);
+
+  const activeDaysCount = seriesKeys.filter(
+    (key) => visibleEnergySeries[key] !== false
+  ).length;
+
+  // Impide desmarcar el último día activo (evita un gráfico en blanco)
+  const handleSafeToggleDay = (key: string) => {
+    const isCurrentlySelected = visibleEnergySeries[key] !== false;
+    if (isCurrentlySelected && activeDaysCount <= 1) {
+      return;
+    }
+    onToggleEnergyDay(key);
+  };
+
+  const handleSelectAll = () => {
+    seriesKeys.forEach((key) => {
+      if (visibleEnergySeries[key] === false) {
+        onToggleEnergyDay(key);
+      }
+    });
+  };
 
   // 2. LÓGICA DE ESCALA GRADUADA Y UNIFORME EN EL EJE Y
   const rawValues = barrasVisibles.map((d) => d.kWh);
@@ -66,9 +96,12 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
 
   const diff = maxVal - minVal;
 
-  // Calculamos un incremento de paso regular coherente con los decimales
   let stepIncrement = 0.1;
-  if (diff > 5) stepIncrement = 1;
+  if (diff > 5000) stepIncrement = 1000;
+  else if (diff > 1000) stepIncrement = 200;
+  else if (diff > 200) stepIncrement = 50;
+  else if (diff > 50) stepIncrement = 10;
+  else if (diff > 5) stepIncrement = 1;
   else if (diff > 2) stepIncrement = 0.5;
   else if (diff > 0.8) stepIncrement = 0.2;
   else stepIncrement = 0.1;
@@ -78,13 +111,19 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   // Techo: 1 paso regular por encima del máximo para acomodar la etiqueta
   const yMax = Number((Math.ceil(maxVal / stepIncrement) * stepIncrement + stepIncrement).toFixed(2));
 
-  // Generamos una cuadrícula continua de ticks para rellenar todo el espacio
   const yTicks: number[] = [];
   for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
     yTicks.push(Number(val.toFixed(2)));
   }
+  while (yTicks.length > 12 && stepIncrement > 0) {
+    stepIncrement *= 2;
+    yTicks.length = 0;
+    for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
+      yTicks.push(Number(val.toFixed(2)));
+    }
+  }
 
-  // 3. Totales y Proyecciones reales
+  // 3. Totales y Proyecciones
   const totalKWhSemana = barrasVisibles.reduce(
     (acc, curr) => acc + (curr.kWh || 0),
     0
@@ -104,10 +143,10 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
           </div>
           <div>
             <h2 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
-              Energía Consumida por Día
+              Energía Consumida Estimada
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Energía total acumulada diariamente expresada en KiloVatios-Hora (kWh)
+              Promedio por día de la semana según el período medido, expresado en KiloVatios-Hora (kWh)
             </p>
           </div>
         </div>
@@ -125,7 +164,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             <span className="text-sm font-bold text-blue-600">kWh/día</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">
-            Promedio sobre los días seleccionados
+            Promedio sobre los días de la semana seleccionados
           </p>
         </div>
 
@@ -139,51 +178,83 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             <span className="text-sm font-bold text-blue-600">kWh/mes</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">
-            Estimación a 30 días de operación
+            Promedio diario × 30 días
           </p>
         </div>
 
         {/* Card 3 */}
         <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-300">
           <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-            Proyección Anual (365 días)
+            Proyección Anual Estimada
           </p>
           <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
             {proyeccionKWhAno.toFixed(0)}{" "}
             <span className="text-sm font-bold text-blue-600">kWh/año</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">
-            Estimación a 365 días de operación
+            Promedio diario × 365 (extrapolado del período medido)
           </p>
         </div>
       </div>
 
-      {/* Selector de Días Estilizado */}
-      <div className="flex gap-2 overflow-x-auto pb-3 mb-6 p-2 rounded-2xl bg-slate-50 border border-slate-200/60 scrollbar-none items-center">
-        <span className="text-xs font-bold uppercase text-slate-400 self-center px-2">
-          Días:
-        </span>
-        {seriesKeys.map((key) => {
-          const isActive = visibleEnergySeries[key] !== false;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onToggleEnergyDay(key)}
-              className={`rounded-xl px-4 py-2 text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 shadow-sm ${isActive
-                  ? "text-white shadow-blue-500/25 border border-blue-500/30 scale-[1.02]"
-                  : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-900"
-                }`}
-              style={
-                isActive
-                  ? { background: "linear-gradient(to right, #3b82f6, #1d4ed8)" }
-                  : undefined
-              }
-            >
-              {key}
-            </button>
-          );
-        })}
+      {/* ── SECCIÓN DE FILTROS ── */}
+      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs font-sans">
+
+        {/* IZQUIERDA */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs font-black uppercase text-slate-400 mr-1 tracking-wider">Filtros:</span>
+        </div>
+
+        {/* CENTRO: Días de la semana (protegidos para no vaciar el gráfico) */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 justify-start flex-1">
+          {seriesKeys.map((key) => {
+            const isSelected = visibleEnergySeries[key] !== false;
+            const isLastActive = isSelected && activeDaysCount === 1;
+
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleSafeToggleDay(key)}
+                title={isLastActive ? "Debe mantener al menos un día visible" : undefined}
+                className={`flex flex-col items-center justify-center min-w-[78px] px-3.5 py-2 rounded-xl transition-all border cursor-pointer shrink-0 active:scale-95 ${
+                  isSelected
+                    ? "border-transparent text-white shadow-md shadow-blue-500/10"
+                    : "bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"
+                } ${isLastActive ? "cursor-not-allowed opacity-90 ring-2 ring-white/50" : ""}`}
+                style={
+                  isSelected
+                    ? { background: "linear-gradient(to bottom, #3b82f6, #1d4ed8)" }
+                    : undefined
+                }
+              >
+                <span className="text-xs font-extrabold">{key}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* DERECHA: Botón Todos */}
+        <div className="flex items-center gap-2 shrink-0 justify-end">
+          <button
+            type="button"
+            onClick={handleSelectAll}
+            className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border active:scale-95 flex items-center gap-1.5 ${
+              isAllSelected
+                ? "text-white border-blue-500/30 shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/40"
+                : "bg-white border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 shadow-xs"
+            }`}
+            style={
+              isAllSelected
+                ? { background: "linear-gradient(to right, #3b82f6, #1d4ed8)" }
+                : undefined
+            }
+          >
+            {isAllSelected && <span className="size-1.5 rounded-full bg-white animate-pulse" />}
+            <span>Todos</span>
+          </button>
+        </div>
+
       </div>
 
       {/* Gráfico */}
@@ -219,7 +290,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   tick={{ fontSize: "11px", fontWeight: "700", fill: "#334155" }}
                 >
                   <Label
-                    value="Días del Periodo"
+                    value="Días de la Semana"
                     position="insideBottom"
                     offset={-20}
                     style={{
@@ -269,7 +340,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   <LabelList
                     dataKey="kWh"
                     position="top"
-                    formatter={(val: any) => `${Number(val).toFixed(1)}`}
+                    formatter={(val: any) => `${Number(val).toFixed(2)}`}
                     style={{
                       fontSize: "11px",
                       fontWeight: "800",

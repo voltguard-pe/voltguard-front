@@ -83,7 +83,7 @@ const CustomTooltip = ({ active, label, payload }: any) => {
 
         <div className="mt-2.5 border-t border-slate-100 pt-2 text-[9px] sm:text-[10px] text-slate-400 font-medium flex justify-between">
           <span>Analizador: Metrel</span>
-          <span className="font-bold text-[#0797d5]">Voltguard</span>
+          <span className="font-bold text-[#0797d5]">VoltGuard</span>
         </div>
       </div>
     );

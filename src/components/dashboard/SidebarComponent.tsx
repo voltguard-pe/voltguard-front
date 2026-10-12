@@ -724,7 +724,7 @@ const SidebarComponent = ({
                 />
                 <div className="min-w-0">
                   <h1 className="truncate text-lg font-black tracking-tight text-slate-900 transition-colors duration-200 group-hover:text-[#0797d5]">
-                    Voltguard
+                    VoltGuard
                   </h1>
                 </div>
               </Link>

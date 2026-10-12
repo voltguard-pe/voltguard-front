@@ -42,6 +42,15 @@ import GroundingDashboardPage from './pages/dashboard/spat/GroundingDashboardPag
 import { SidebarProvider } from './contexts/SidebarContext'
 import DocumentViewerPage from './pages/dashboard/document/DocumentViewerPage'
 
+const PlaceholderPage = ({ title }: { title: string }) => (
+  <div className="p-6">
+    <div className="rounded-xl border border-dashed border-slate-300 p-8 text-center">
+      <h2 className="text-base font-bold text-slate-800">{title}</h2>
+      <p className="mt-1 text-xs text-slate-500">Módulo en construcción.</p>
+    </div>
+  </div>
+);
+
 function App() {
   return (
     <BrowserRouter>
@@ -87,16 +96,44 @@ function App() {
                 </Route>
 
                 {/* RUTAS DE TABLEROS VISIBLES PARA USER/ADMIN/SUPERADMIN */}
+                {/* 1. TABLEROS ELÉCTRICOS */}
                 <Route path="boards" element={<BoardDashboardPage />} />
                 <Route path="boards/:publicCode" element={<BoardDashboardPage />} />
                 <Route path="boards/:publicCode/:code" element={<BoardDetailPage />} />
 
+                {/* 2. PUESTA A TIERRA (SPAT) */}
                 <Route path="grounding" element={<GroundingDashboardPage />} />
                 <Route path="companies/:publicCode/grounding" element={<GroundingDashboardPage />} />
                 <Route path="companies/:publicCode/grounding/:pozoCode" element={<GroundingDashboardPage />} />
 
+                {/* 3. DOCUMENTOS ITSE */}
                 <Route path="documents/view/:id" element={<DocumentViewerPage />} />
 
+                {/* 4. REPORTE MÉDICO */}
+                <Route path="companies/:publicCode/medical-reports" element={<PlaceholderPage title="Reportes Médicos" />} />
+                <Route path="companies/:publicCode/medical-reports/new" element={<PlaceholderPage title="Nuevo Reporte Médico" />} />
+
+                {/* 5. PANELES SOLARES */}
+                <Route path="companies/:publicCode/solar" element={<PlaceholderPage title="Paneles Solares" />} />
+                <Route path="companies/:publicCode/solar/new" element={<PlaceholderPage title="Nueva Instalación Solar" />} />
+
+                {/* 6. SUBESTACIÓN */}
+                <Route path="companies/:publicCode/substations" element={<PlaceholderPage title="Subestaciones" />} />
+                <Route path="companies/:publicCode/substations/new" element={<PlaceholderPage title="Nueva Subestación" />} />
+
+                {/* 7. CELDAS */}
+                <Route path="companies/:publicCode/cells" element={<PlaceholderPage title="Celdas de Media Tensión" />} />
+                <Route path="companies/:publicCode/cells/new" element={<PlaceholderPage title="Nueva Celda" />} />
+
+                {/* 8. BANCO DE CONDENSADORES */}
+                <Route path="companies/:publicCode/capacitors" element={<PlaceholderPage title="Bancos de Condensadores" />} />
+                <Route path="companies/:publicCode/capacitors/new" element={<PlaceholderPage title="Nuevo Banco de Condensadores" />} />
+
+                {/* 9. UPS */}
+                <Route path="companies/:publicCode/ups" element={<PlaceholderPage title="Sistemas UPS" />} />
+                <Route path="companies/:publicCode/ups/new" element={<PlaceholderPage title="Nuevo Sistema UPS" />} />
+
+                {/* RUTAS EXCLUSIVAS DE SUPERADMIN */}
                 <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                   <Route path="users" element={<AdminDashboardPage />} />
                   <Route path="users/create" element={<AdminCreatePage />} />

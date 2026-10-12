@@ -876,7 +876,15 @@ const BoardDetailPage = () => {
     );
   }
 
-  const companyName = typeof board.company === "object" ? board.company.name : "Sin empresa";
+  // const companyName = typeof board.company === "object" ? board.company.name : "Sin empresa";
+
+  const isElcorsaBoard = board?.boardCode === "ELC-MIR-TE-001" || code === "ELC-MIR-TE-001";
+
+const companyName = isElcorsaBoard
+  ? "ELCORSA"
+  : typeof board.company === "object"
+    ? board.company.name
+    : "Sin empresa";
 
   return (
     <>
@@ -922,8 +930,9 @@ const BoardDetailPage = () => {
         </section>
 
         {/* ── GRILLA DE DETALLES (UBICACIÓN, TIPO, SISTEMA, ESTADO) ── */}
-        <div className="grid grid-cols-2 gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-4">
           {[
+            { l: "Empresa", v: companyName, icon: Building2, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             { l: "Sistema", v: getSistemaCompleto(board), icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }

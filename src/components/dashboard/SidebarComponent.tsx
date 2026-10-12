@@ -1,9 +1,14 @@
 import {
   Activity,
+  BatteryCharging,
+  Box,
   Building2,
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Cpu,
+  FileCheck2,
+  FileHeart,
   FileText,
   Folder,
   FolderOpen,
@@ -12,6 +17,7 @@ import {
   MoreVertical,
   Plus,
   ShieldCheck,
+  Sun,
   User2,
   Users,
   X,
@@ -236,6 +242,13 @@ const SidebarComponent = ({
           if (path.includes("/boards")) next[`${code}-boards`] = true;
           if (path.includes("/grounding")) next[`${code}-grounding`] = true;
           if (path.includes("/documents")) next[`${code}-documents`] = true;
+
+          if (path.includes("/medical-reports")) next[`${code}-medical-reports`] = true;
+          if (path.includes("/solar")) next[`${code}-solar-panels`] = true;
+          if (path.includes("/substations")) next[`${code}-substations`] = true;
+          if (path.includes("/cells")) next[`${code}-cells`] = true;
+          if (path.includes("/capacitors")) next[`${code}-capacitor-banks`] = true;
+          if (path.includes("/ups")) next[`${code}-ups`] = true;
         }
 
         // Si la carpeta de la empresa está marcada como abierta (por URL o por sesión), precargar sus datos
@@ -313,274 +326,376 @@ const SidebarComponent = ({
   if (!auth) return null;
 
   // Renderizador de los tres folders de recursos
+  // Renderizador unificado y escalable de carpetas
   const renderResourceFolders = (company: CompanyResponseDTO, isNested: boolean) => {
-    const isBoardsOpen = Boolean(expandedFolders[`${company.publicCode}-boards`]);
-    const isGroundingOpen = Boolean(expandedFolders[`${company.publicCode}-grounding`]);
-    const isDocsOpen = Boolean(expandedFolders[`${company.publicCode}-documents`]);
+    const code = company.publicCode;
 
-    const boards = companyBoards[company.publicCode] || [];
-    const isLoadingBoards = loadingBoards[company.publicCode];
+    // Recursos cargados desde tus estados actuales
+    const boards = companyBoards[code] || [];
+    const isLoadingBoards = loadingBoards[code];
 
-    const pozos = companyGrounding[company.publicCode] || [];
-    const isLoadingGrounding = loadingGrounding[company.publicCode];
+    const pozos = companyGrounding[code] || [];
+    const isLoadingGrounding = loadingGrounding[code];
 
-    const documents = companyDocuments[company.publicCode] || [];
-    const isLoadingDocs = loadingDocuments[company.publicCode];
+    const documents = companyDocuments[code] || [];
+    const isLoadingDocs = loadingDocuments[code];
 
-    return (
-      <div className={`${isNested ? "ml-3 border-l border-slate-200 pl-2 my-1" : ""} space-y-1`}>
-        {/* ⚡ TABLEROS */}
-        <div>
-          <div className="group flex items-center justify-between rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100">
-            <button
-              onClick={() => toggleFolder(`${company.publicCode}-boards`)}
-              className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left"
-            >
-              {isBoardsOpen ? (
-                <ChevronDown size={13} className="shrink-0 text-slate-400" />
-              ) : (
-                <ChevronRight size={13} className="shrink-0 text-slate-400" />
-              )}
-              {isBoardsOpen ? (
-                <FolderOpen size={15} className="shrink-0 text-[#0797d5]" />
-              ) : (
-                <Folder size={15} className="shrink-0 text-[#0797d5]" />
-              )}
-              <span className="truncate text-xs font-semibold text-slate-700">Tableros Eléctricos</span>
-              <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
-                {isLoadingBoards ? "..." : boards.length}
-              </span>
-            </button>
-
-            <button
-              title="Crear Nuevo Tablero"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onOpenCreateBoardModal) {
-                  onOpenCreateBoardModal(company.publicCode);
-                } else {
-                  navigate(`/dashboard/boards/${company.publicCode}?action=new`);
+    // Configuración centralizada de carpetas
+    const moduleFolders = [
+      {
+        id: "boards",
+        name: "Tableros Eléctricos",
+        color: "text-[#0797d5]",
+        iconColor: "#0797d5",
+        count: boards.length,
+        loading: isLoadingBoards,
+        createTitle: "Crear Nuevo Tablero",
+        onCreate: () => {
+          if (onOpenCreateBoardModal) {
+            onOpenCreateBoardModal(code);
+          } else {
+            navigate(`/dashboard/boards/${code}?action=new`);
+          }
+        },
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            {isSuperAdmin && (
+              <NavLink
+                to={`/dashboard/boards/${code}`}
+                onClick={onClose}
+                end
+                className={({ isActive }) =>
+                  `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
+                    ? "bg-[#0797d5]/10 text-[#0797d5] font-bold"
+                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  }`
                 }
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-[#0797d5] hover:bg-white rounded transition-all cursor-pointer"
-            >
-              <Plus size={14} />
-            </button>
+              >
+                <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
+                <span className="truncate italic">Ver todos ({boards.length})</span>
+              </NavLink>
+            )}
+            {isLoadingBoards ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando...</p>
+            ) : boards.length === 0 ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin tableros</p>
+            ) : (
+              boards.map((board) => (
+                <div
+                  key={board.code}
+                  className="group/item flex items-center justify-between rounded-md text-slate-600 hover:bg-slate-100"
+                >
+                  <NavLink
+                    to={`/dashboard/boards/${code}/${board.code}`}
+                    onClick={onClose}
+                    className={({ isActive }) =>
+                      `flex flex-1 items-center gap-2 px-2 py-1 text-[11px] min-w-0 transition-colors cursor-pointer ${isActive ? "text-[#0797d5] font-bold" : "hover:text-slate-900"
+                      }`
+                    }
+                  >
+                    <Zap size={12} className="shrink-0 text-[#0797d5]" />
+                    <span className="truncate">{board.boardCode || board.name}</span>
+                  </NavLink>
+                  <button
+                    title="Opciones"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/dashboard/boards/${code}/${board.code}/edit`);
+                    }}
+                    className="opacity-0 group/item:opacity-100 p-0.5 mr-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    <MoreVertical size={12} />
+                  </button>
+                </div>
+              ))
+            )}
           </div>
-
-          {isBoardsOpen && (
-            <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
-              {isSuperAdmin && (
+        ),
+      },
+      {
+        id: "grounding",
+        name: "Puesta a Tierra",
+        color: "text-emerald-500",
+        iconColor: "#10b981",
+        count: pozos.length,
+        loading: isLoadingGrounding,
+        createTitle: "Crear Pozo SPAT",
+        onCreate: () => {
+          if (onOpenCreateGroundingModal) {
+            onOpenCreateGroundingModal(code);
+          } else {
+            navigate(`/dashboard/companies/${code}/grounding?action=new`);
+          }
+        },
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            {isLoadingGrounding ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando pozos...</p>
+            ) : pozos.length === 0 ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin pozos registrados</p>
+            ) : (
+              pozos.map((pozo) => (
                 <NavLink
-                  to={`/dashboard/boards/${company.publicCode}`}
+                  key={pozo.code}
+                  to={`/dashboard/companies/${code}/grounding/${pozo.code}`}
                   onClick={onClose}
                   end
                   className={({ isActive }) =>
                     `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
-                      ? "bg-[#0797d5]/10 text-[#0797d5] font-bold"
-                      : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                      ? "text-emerald-600 font-bold bg-emerald-50"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`
                   }
                 >
-                  <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
-                  <span className="truncate italic">Ver todos ({boards.length})</span>
+                  <Activity size={12} className="shrink-0 text-emerald-500" />
+                  <span className="truncate">{pozo.code}</span>
                 </NavLink>
-              )}
-
-              {isLoadingBoards ? (
-                <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando...</p>
-              ) : boards.length === 0 ? (
-                <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin tableros</p>
-              ) : (
-                boards.map((board) => (
-                  <div
-                    key={board.code}
-                    className="group/item flex items-center justify-between rounded-md text-slate-600 hover:bg-slate-100"
-                  >
-                    <NavLink
-                      to={`/dashboard/boards/${company.publicCode}/${board.code}`}
-                      onClick={onClose}
-                      className={({ isActive }) =>
-                        `flex flex-1 items-center gap-2 px-2 py-1 text-[11px] min-w-0 transition-colors cursor-pointer ${isActive ? "text-[#0797d5] font-bold" : "hover:text-slate-900"
-                        }`
-                      }
-                    >
-                      <Zap size={12} className="shrink-0 text-[#0797d5]" />
-                      <span className="truncate">{board.boardCode || board.name}</span>
-                    </NavLink>
-
-                    <button
-                      title="Opciones"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/dashboard/boards/${company.publicCode}/${board.code}/edit`);
-                      }}
-                      className="opacity-0 group/item:opacity-100 p-0.5 mr-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-                    >
-                      <MoreVertical size={12} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 🎯 SPAT */}
-        <div>
-          <div className="group flex items-center justify-between rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100">
-            <button
-              onClick={() => toggleFolder(`${company.publicCode}-grounding`)}
-              className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left"
-            >
-              {isGroundingOpen ? (
-                <ChevronDown size={13} className="shrink-0 text-slate-400" />
-              ) : (
-                <ChevronRight size={13} className="shrink-0 text-slate-400" />
-              )}
-              {isGroundingOpen ? (
-                <FolderOpen size={15} className="shrink-0 text-emerald-500" />
-              ) : (
-                <Folder size={15} className="shrink-0 text-emerald-500" />
-              )}
-              <span className="truncate text-xs font-semibold text-slate-700">Puesta a Tierra</span>
-              <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
-                {isLoadingGrounding ? "..." : pozos.length}
-              </span>
-            </button>
-
-            <button
-              title="Crear Pozo SPAT"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onOpenCreateGroundingModal) {
-                  onOpenCreateGroundingModal(company.publicCode);
-                } else {
-                  navigate(`/dashboard/companies/${company.publicCode}/grounding?action=new`);
-                }
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-emerald-600 hover:bg-white rounded transition-all cursor-pointer"
-            >
-              <Plus size={14} />
-            </button>
+              ))
+            )}
           </div>
-
-          {isGroundingOpen && (
-            <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
-              {isLoadingGrounding ? (
-                <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando pozos...</p>
-              ) : pozos.length === 0 ? (
-                <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin pozos registrados</p>
-              ) : (
-                pozos.map((pozo) => (
-                  <NavLink
-                    key={pozo.code}
-                    to={`/dashboard/companies/${company.publicCode}/grounding/${pozo.code}`}
-                    onClick={onClose}
-                    end
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
-                        ? "text-emerald-600 font-bold bg-emerald-50"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      }`
-                    }
-                  >
-                    <Activity size={12} className="shrink-0 text-emerald-500" />
-                    <span className="truncate">{pozo.code}</span>
-                  </NavLink>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 📄 DOCUMENTOS ITSE */}
-        <div>
-          <div className="group flex items-center justify-between rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100">
-            <button
-              onClick={() => toggleFolder(`${company.publicCode}-documents`)}
-              className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left"
-            >
-              {isDocsOpen ? (
-                <ChevronDown size={13} className="shrink-0 text-slate-400" />
-              ) : (
-                <ChevronRight size={13} className="shrink-0 text-slate-400" />
-              )}
-              {isDocsOpen ? (
-                <FolderOpen size={15} className="shrink-0 text-amber-500" />
-              ) : (
-                <Folder size={15} className="shrink-0 text-amber-500" />
-              )}
-              <span className="truncate text-xs font-semibold text-slate-700">Documentos ITSE</span>
-              <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
-                {isLoadingDocs ? "..." : documents.length}
-              </span>
-            </button>
-
-            <button
-              title="Gestionar Documentos"
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/dashboard/documents?company=${company.publicCode}`);
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-amber-600 hover:bg-white rounded transition-all cursor-pointer"
-            >
-              <Plus size={14} />
-            </button>
-          </div>
-
-          {isDocsOpen && (
-            <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
-              {isSuperAdmin && (
+        ),
+      },
+      {
+        id: "documents",
+        name: "Documentos ITSE",
+        color: "text-amber-500",
+        iconColor: "#f59e0b",
+        count: documents.length,
+        loading: isLoadingDocs,
+        createTitle: "Gestionar Documentos",
+        onCreate: () => navigate(`/dashboard/documents?company=${code}`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            {isSuperAdmin && (
+              <NavLink
+                to={`/dashboard/documents?company=${code}`}
+                onClick={onClose}
+                end
+                className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+              >
+                <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
+                <span className="truncate italic">Ver todos ({documents.length})</span>
+              </NavLink>
+            )}
+            {isLoadingDocs ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando documentos...</p>
+            ) : documents.length === 0 ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin documentos subidos</p>
+            ) : (
+              documents.map((doc) => (
                 <NavLink
-                  to={`/dashboard/documents?company=${company.publicCode}`}
+                  key={doc._id}
+                  to={`/dashboard/documents/view/${doc._id}`}
                   onClick={onClose}
-                  end
-                  className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
+                      ? "text-amber-600 font-bold bg-amber-50"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    }`
+                  }
                 >
-                  <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
-                  <span className="truncate italic">Ver todos ({documents.length})</span>
+                  <FileText size={12} className="shrink-0 text-amber-500" />
+                  <span className="truncate">{doc.title}</span>
                 </NavLink>
-              )}
+              ))
+            )}
+          </div>
+        ),
+      },
+      // ── NUEVAS CARPETAS ──
+      {
+        id: "medical-reports",
+        name: "Reporte Médico",
+        color: "text-rose-500",
+        iconColor: "#f43f5e",
+        count: 0,
+        loading: false,
+        createTitle: "Nuevo Reporte Médico",
+        onCreate: () => navigate(`/dashboard/companies/${code}/medical-reports/new`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            <NavLink
+              to={`/dashboard/companies/${code}/medical-reports`}
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <FileHeart size={12} className="shrink-0 text-rose-500" />
+              <span className="truncate">Ver reportes médicos</span>
+            </NavLink>
+          </div>
+        ),
+      },
+      {
+        id: "solar-panels",
+        name: "Paneles Solares",
+        color: "text-amber-600",
+        iconColor: "#d97706",
+        count: 0,
+        loading: false,
+        createTitle: "Nuevo Panel Solar",
+        onCreate: () => navigate(`/dashboard/companies/${code}/solar/new`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            <NavLink
+              to={`/dashboard/companies/${code}/solar`}
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <Sun size={12} className="shrink-0 text-amber-500" />
+              <span className="truncate">Instalaciones solares</span>
+            </NavLink>
+          </div>
+        ),
+      },
+      {
+        id: "substations",
+        name: "Subestación",
+        color: "text-indigo-500",
+        iconColor: "#6366f1",
+        count: 0,
+        loading: false,
+        createTitle: "Nueva Subestación",
+        onCreate: () => navigate(`/dashboard/companies/${code}/substations/new`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            <NavLink
+              to={`/dashboard/companies/${code}/substations`}
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <Cpu size={12} className="shrink-0 text-indigo-500" />
+              <span className="truncate">Subestaciones</span>
+            </NavLink>
+          </div>
+        ),
+      },
+      {
+        id: "cells",
+        name: "Celdas",
+        color: "text-cyan-600",
+        iconColor: "#0891b2",
+        count: 0,
+        loading: false,
+        createTitle: "Nueva Celda",
+        onCreate: () => navigate(`/dashboard/companies/${code}/cells/new`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            <NavLink
+              to={`/dashboard/companies/${code}/cells`}
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <Box size={12} className="shrink-0 text-cyan-600" />
+              <span className="truncate">Celdas de media tensión</span>
+            </NavLink>
+          </div>
+        ),
+      },
+      {
+        id: "capacitor-banks",
+        name: "Banco de Condensadores",
+        color: "text-violet-500",
+        iconColor: "#8b5cf6",
+        count: 0,
+        loading: false,
+        createTitle: "Nuevo Banco de Condensadores",
+        onCreate: () => navigate(`/dashboard/companies/${code}/capacitors/new`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            <NavLink
+              to={`/dashboard/companies/${code}/capacitors`}
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <FileCheck2 size={12} className="shrink-0 text-violet-500" />
+              <span className="truncate">Bancos registrados</span>
+            </NavLink>
+          </div>
+        ),
+      },
+      {
+        id: "ups",
+        name: "UPS",
+        color: "text-teal-600",
+        iconColor: "#0d9488",
+        count: 0,
+        loading: false,
+        createTitle: "Nuevo Sistema UPS",
+        onCreate: () => navigate(`/dashboard/companies/${code}/ups/new`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            <NavLink
+              to={`/dashboard/companies/${code}/ups`}
+              onClick={onClose}
+              className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-slate-100 cursor-pointer"
+            >
+              <BatteryCharging size={12} className="shrink-0 text-teal-600" />
+              <span className="truncate">Equipos UPS</span>
+            </NavLink>
+            <NavLink
+          to={`/dashboard/companies/${code}/ups/new`}
+          onClick={onClose}
+          className={({ isActive }) =>
+            `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${
+              isActive ? "bg-teal-50 text-teal-700 font-bold" : "text-slate-500 hover:bg-slate-100 italic"
+            }`
+          }
+        >
+          <Plus size={12} className="shrink-0 text-slate-400" />
+          <span className="truncate">Agregar equipo UPS</span>
+        </NavLink>
+          </div>
+        ),
+      },
+    ];
 
-              {isLoadingDocs ? (
-                <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando documentos...</p>
-              ) : documents.length === 0 ? (
-                <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin documentos subidos</p>
-              ) : (
-                documents.map((doc) => (
-                  // <button
-                  //   key={doc._id}
-                  //   onClick={() => handleOpenPdf(doc.cloudinaryUrl)}
-                  //   title={`Abrir ${doc.title}`}
-                  //   className="group/item flex w-full items-center justify-between rounded-md px-2 py-1 text-[11px] text-slate-600 hover:bg-amber-50/70 hover:text-amber-900 cursor-pointer text-left transition-colors"
-                  // >
-                  //   <div className="flex items-center gap-2 min-w-0">
-                  //     <FileText size={12} className="shrink-0 text-amber-500" />
-                  //     <span className="truncate">{doc.title}</span>
-                  //   </div>
-                  //   <ExternalLink size={11} className="shrink-0 opacity-0 group-hover/item:opacity-100 text-slate-400 transition-opacity" />
-                  // </button>
+    return (
+      <div className={`${isNested ? "ml-3 border-l border-slate-200 pl-2 my-1" : ""} space-y-1`}>
+        {moduleFolders.map((folder) => {
+          const folderKey = `${code}-${folder.id}`;
+          const isOpen = Boolean(expandedFolders[folderKey]);
 
-                  <NavLink
-                    key={doc._id}
-                    to={`/dashboard/documents/view/${doc._id}`}
-                    onClick={onClose}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
-                        ? "text-amber-600 font-bold bg-amber-50"
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-                      }`
-                    }
-                  >
-                    <FileText size={12} className="shrink-0 text-amber-500" />
-                    <span className="truncate">{doc.title}</span>
-                  </NavLink>
-                ))
-              )}
+          return (
+            <div key={folder.id}>
+              <div className="group flex items-center justify-between rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100">
+                <button
+                  onClick={() => toggleFolder(folderKey)}
+                  className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left"
+                >
+                  {isOpen ? (
+                    <ChevronDown size={13} className="shrink-0 text-slate-400" />
+                  ) : (
+                    <ChevronRight size={13} className="shrink-0 text-slate-400" />
+                  )}
+                  {isOpen ? (
+                    <FolderOpen size={15} className={`shrink-0 ${folder.color}`} />
+                  ) : (
+                    <Folder size={15} className={`shrink-0 ${folder.color}`} />
+                  )}
+                  <span className="truncate text-xs font-semibold text-slate-700">
+                    {folder.name}
+                  </span>
+                  <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
+                    {folder.loading ? "..." : folder.count}
+                  </span>
+                </button>
+
+                <button
+                  title={folder.createTitle}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    folder.onCreate();
+                  }}
+                  className={`opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:${folder.color} hover:bg-white rounded transition-all cursor-pointer`}
+                >
+                  <Plus size={14} />
+                </button>
+              </div>
+
+              {isOpen && folder.children}
             </div>
-          )}
-        </div>
+          );
+        })}
       </div>
     );
   };
@@ -735,124 +850,85 @@ const SidebarComponent = ({
             </nav>
           </div>
 
-          {/* ── NORMATIVAS ── */}
+          {/* ── NORMATIVAS (LOGO + TEXTO COMPACTO) ── */}
           {!isSuperAdmin && (
-            <div className="mx-2.5 my-3 overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-b from-slate-50 via-white to-slate-50 p-3 shadow-sm">
-              {/* Encabezado */}
-              <div className="mb-2.5 flex items-center gap-2 px-0.5">
-                <div className="flex size-6 items-center justify-center rounded-lg bg-[#0797d5]/15 text-[#0797d5]">
-                  <ShieldCheck size={14} className="stroke-[2.5]" />
-                </div>
-                <div>
-                  <span className="block text-[11px] font-black uppercase tracking-wider text-slate-800 leading-tight">
+            <div className="mx-2.5 my-2 rounded-xl border border-slate-200/80 bg-slate-50/50 p-2">
+              {/* Encabezado minimalista */}
+              <div className="mb-1.5 flex items-center justify-between px-1">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck size={12} className="text-[#0797d5]" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                     Normativas
                   </span>
-                
                 </div>
+                <span className="text-[9px] font-medium text-slate-400">
+                  Estándares aplicados
+                </span>
               </div>
-              {/* <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 shadow-2xs">
-                  <span className="relative flex size-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-[9.5px] font-black text-emerald-700 tracking-tight">
-                    ACTIVO
-                  </span>
-                </div> */}
 
-{/* ── LISTA DE NORMATIVAS CON TEXTO VERTICAL TANTO A LA IZQUIERDA COMO A LA DERECHA ── */}
-<ul className="space-y-2.5">
-  {[
-    {
-      title: "",
-      part1: "NFPA ",
-      part2: "70E",
-      desc1: "Seguridad",
-      desc2: "eléctrica",
-      tooltip: "Normativa NFPA 70E - Seguridad Eléctrica",
-      colorMain: "text-amber-600",
-      hover: "hover:border-amber-400 hover:shadow-amber-500/15",
-      isImage: false,
-    },
-    {
-      title: "",
-      part1: "NFPA ",
-      part2: "70B",
-      desc1: "Mantenimiento",
-      desc2: "eléctrico",
-      tooltip: "Normativa NFPA 70B - Mantenimiento",
-      colorMain: "text-rose-600",
-      hover: "hover:border-rose-400 hover:shadow-rose-500/15",
-      isImage: false,
-    },
-    {
-      title: "",
-      desc1: "Power",
-      desc2: "Quality",
-      tooltip: "Estándares IEEE - Power Quality",
-      logo: "https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg",
-      fallback: "IEEE",
-      hover: "hover:border-[#0797d5] hover:shadow-[#0797d5]/15",
-      accent: "text-[#0797d5]",
-      isImage: true,
-    },
-  ].map((n) => (
-    <li
-      key={n.title}
-      title={n.tooltip}
-      className={`group flex items-center gap-3.5 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm cursor-default ${n.hover}`}
-    >
-      {/* Logotipos o textos izquierdos grandes */}
-      <div className={`relative flex h-11 shrink-0 items-center justify-center rounded-lg bg-slate-50 px-2 ${n.isImage ? 'w-28' : 'w-24'}`}>
-        {n.isImage ? (
-          <>
-            <img
-              src={n.logo}
-              alt={n.title}
-              className="max-h-9 max-w-[96px] object-contain transition-transform duration-200 group-hover:scale-105"
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-                e.currentTarget.nextElementSibling?.classList.remove("hidden");
-              }}
-            />
-            <span className={`hidden text-xs font-black ${n.accent}`}>{n.fallback}</span>
-          </>
-        ) : (
-          <span className="text-[13px] font-black tracking-tight whitespace-nowrap">
-            <span className={n.colorMain}>{n.part1}</span>
-            <span className="text-slate-900">{n.part2}</span>
-          </span>
-        )}
-      </div>
+              {/* Lista limpia: Logo + Texto */}
+              <ul className="space-y-1">
+                {[
+                  {
+                    title: "NFPA 70E",
+                    desc: "Seguridad eléctrica",
+                    tooltip: "Normativa NFPA 70E - Seguridad Eléctrica",
+                    logo: "/logos/nfpa-70e.png",
+                    fallback: "NFPA 70E",
+                    hover: "hover:border-amber-300 hover:bg-amber-50/40",
+                    accent: "text-amber-700",
+                  },
+                  {
+                    title: "NFPA 70B",
+                    desc: "Mantenimiento eléctrico",
+                    tooltip: "Normativa NFPA 70B - Mantenimiento Eléctrico",
+                    logo: "/logos/nfpa-70b.png",
+                    fallback: "NFPA 70B",
+                    hover: "hover:border-rose-300 hover:bg-rose-50/40",
+                    accent: "text-rose-700",
+                  },
+                  {
+                    title: "IEEE",
+                    desc: "Power Quality",
+                    tooltip: "Estándares IEEE - Power Quality",
+                    logo: "https://upload.wikimedia.org/wikipedia/commons/2/21/IEEE_logo.svg",
+                    fallback: "IEEE",
+                    hover: "hover:border-[#0797d5]/40 hover:bg-[#0797d5]/5",
+                    accent: "text-[#0797d5]",
+                  },
+                ].map((n) => (
+                  <li
+                    key={n.title}
+                    title={n.tooltip}
+                    className={`flex items-center gap-2.5 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1.5 transition-all duration-150 cursor-default select-none shadow-2xs ${n.hover}`}
+                  >
+                    {/* Contenedor del logo con ancho rectangular fijo para logos apaisados */}
+                    <div className="relative flex h-6 w-14 shrink-0 items-center justify-center rounded bg-slate-50/80 px-1">
+                      <img
+                        src={n.logo}
+                        alt={n.title}
+                        className="max-h-5 max-w-full object-contain"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                          e.currentTarget.nextElementSibling?.classList.remove("hidden");
+                        }}
+                      />
+                      <span className={`hidden whitespace-nowrap text-[10px] font-black leading-none text-center ${n.accent}`}>
+                        {n.fallback}
+                      </span>
+                    </div>
 
-      {/* Texto de la derecha en formato vertical de dos líneas */}
-      <div className="min-w-0 flex-1 flex flex-col justify-center">
-        <p className="truncate text-xs font-bold leading-tight text-slate-800">
-          {n.title}
-        </p>
-        <div className="mt-1 leading-tight">
-          <p className="truncate text-[12px] font-bold text-slate-600">
-            {n.desc1}
-          </p>
-          <p className="truncate text-[12px] font-bold text-slate-600">
-            {n.desc2}
-          </p>
-        </div>
-      </div>
-    </li>
-  ))}
-</ul>
+                    {/* Texto descriptivo limpio y alineado */}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[11px] font-medium text-slate-700 leading-tight">
+                        {n.desc}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
-          {/* <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 shadow-2xs">
-                  <span className="relative flex size-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full size-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-[9.5px] font-black text-emerald-700 tracking-tight">
-                    ACTIVO
-                  </span>
-                </div> */}
 
           {/* Menú de Perfil */}
           <div className="relative border-t border-slate-200 bg-slate-50/50 p-3" ref={dropdownRef}>

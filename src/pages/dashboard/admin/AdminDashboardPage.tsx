@@ -100,7 +100,7 @@ const AdminDashboardPage = () => {
           </h1>
 
           <p className="mt-0.5 text-sm text-slate-500">
-            Lista de todos los usuarios registrados en Voltguard.
+            Lista de todos los usuarios registrados en VoltGuard.
           </p>
         </div>
 

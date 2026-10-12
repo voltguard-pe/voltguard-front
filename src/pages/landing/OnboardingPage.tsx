@@ -143,7 +143,7 @@ export default function OnboardingPage() {
                                 <Zap size={20} />
                             </div>
                             <h3 className="text-xl font-black text-slate-950 tracking-tight">Tu primer Tablero Eléctrico</h3>
-                            <p className="text-xs text-slate-400">Crearemos un espacio piloto para que explores el visor digital de Voltguard de inmediato.</p>
+                            <p className="text-xs text-slate-400">Crearemos un espacio piloto para que explores el visor digital de VoltGuard de inmediato.</p>
                         </div>
 
                         <div className="space-y-1">

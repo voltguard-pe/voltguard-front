@@ -149,7 +149,7 @@ export default function ContactSalesPage() {
                     </h2>
                     
                     <p className="text-sm text-slate-500 leading-relaxed">
-                        Evita penalizaciones y retrasos en la obtención de tu certificado de seguridad. Voltguard digitaliza tus planos unifilares, automatiza las bitácoras de mantenimiento corporativo y detecta riesgos eléctricos críticos mediante modelos predictivos.
+                        Evita penalizaciones y retrasos en la obtención de tu certificado de seguridad. VoltGuard digitaliza tus planos unifilares, automatiza las bitácoras de mantenimiento corporativo y detecta riesgos eléctricos críticos mediante modelos predictivos.
                     </p>
 
                     <div className="space-y-3.5 pt-6 border-t border-slate-200/60 text-xs font-medium text-slate-600">

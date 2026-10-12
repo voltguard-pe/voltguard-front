@@ -58,7 +58,7 @@ const CostTooltip = ({ active, payload, label }: any) => {
 
         <div className="mt-2.5 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400 flex justify-between font-medium">
           <span>HP: 18:00 a 23:00 hrs</span>
-          <span className="font-bold text-blue-600">Voltguard</span>
+          <span className="font-bold text-blue-600">VoltGuard</span>
         </div>
       </div>
     );

@@ -300,7 +300,7 @@ export default function PlanesPage() {
                         </span>
                     </h1>
                     <p className="text-slate-500 text-base max-w-xl mx-auto leading-relaxed">
-                        Adquiere una suscripción Voltguard para habilitar la emisión de expedientes ITSE, planos unifilares y firmas autorizadas de Ingeniero Colegiado (CIP).
+                        Adquiere una suscripción VoltGuard para habilitar la emisión de expedientes ITSE, planos unifilares y firmas autorizadas de Ingeniero Colegiado (CIP).
                     </p>
                 </div>
 
@@ -317,7 +317,7 @@ export default function PlanesPage() {
                     style={{ opacity: tableVisible ? 1 : 0, transform: tableVisible ? "translateY(0)" : "translateY(28px)", transition: "opacity 0.7s ease, transform 0.7s ease" }}>
                     <div className="text-center lg:text-left mb-8">
                         <h2 className="text-2xl font-black text-slate-950 tracking-tight">Matriz comparativa de características y alcance</h2>
-                        <p className="text-sm text-slate-500 mt-1">Revisa detalladamente las opciones del sistema Voltguard de acuerdo con la exigencia técnica de tu negocio.</p>
+                        <p className="text-sm text-slate-500 mt-1">Revisa detalladamente las opciones del sistema VoltGuard de acuerdo con la exigencia técnica de tu negocio.</p>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">

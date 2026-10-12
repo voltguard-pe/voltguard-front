@@ -32,6 +32,29 @@ const formatMeasurementWithUnit = (
   return `${data} ${unit}`;
 };
 
+const WEEKDAYS_ES = [
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+  "Domingo",
+] as const;
+
+// Corrección temporal: el backend entrega las potencias multiplicadas por 12.
+// Cuando se corrija en el backend, cambiar este valor a 1
+// (y dejar DIVISOR_CORRECCION_BACKEND = 1 en EnergyBarSection.tsx).
+const FACTOR_CORRECCION_BACKEND = 12;
+
+const weekdayFromYmd = (fechaYMD: string): (typeof WEEKDAYS_ES)[number] | null => {
+  const [year, month, day] = (fechaYMD || "").split("-").map(Number);
+  if (!year || !month || !day) return null;
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return null;
+  return WEEKDAYS_ES[(date.getDay() + 6) % 7];
+};
+
 const BoardDetailPage = () => {
   const { auth, loading: authLoading } = useAuth();
 
@@ -63,16 +86,13 @@ const BoardDetailPage = () => {
   const [selectedReactiveDay, setSelectedReactiveDay] = useState<string | null>(null);
   // ── ESTADOS PARA DISTORSIÓN ARMÓNICA ──
   const [selectedThdUDay, setSelectedThdUDay] = useState<string | null>(null);
-  // const [selectedThdIDay, setSelectedThdIDay] = useState<string | null>(null);
 
-  // Agrega este estado cerca de visibleDemandSeries / visibleReactiveSeries:
   const [visibleThdFases, setVisibleThdFases] = useState<{ [key: string]: boolean }>({
     u12: true,
     u23: true,
     u31: true,
   });
 
-  // Dentro de tu componente BoardDetailPage:
   const [visibleDemandSeries, setVisibleDemandSeries] = useState<{ [key: string]: boolean }>({
     "Promedio_General": true,
   });
@@ -83,7 +103,6 @@ const BoardDetailPage = () => {
   const [visibleEnergySeries, setVisibleEnergySeries] = useState<{ [key: string]: boolean }>({});
   const [visibleCarbonSeries, setVisibleCarbonSeries] = useState<{ [key: string]: boolean }>({});
   const [visibleCostSeries, setVisibleCostSeries] = useState<{ [key: string]: boolean }>({});
-  // const [visibleSolarSeries, setVisibleSolarSeries] = useState<{ [key: string]: boolean }>({});
   const [importing, setImporting] = useState(false);
 
   const [tarifaContratada] = useState<number>(350);
@@ -96,29 +115,22 @@ const BoardDetailPage = () => {
     ahorroEstimado: number;
   } | null>(null);
 
-  const [energiaPorDiaData, setEnergiaPorDiaData] = useState<any[]>([]);
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [energiaPorDiaSemanaData, setEnergiaPorDiaSemanaData] = useState<any[]>([]);
+  const [weekdaySeriesKeys, setWeekdaySeriesKeys] = useState<string[]>([]);
 
-  console.log(isScrolled)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 40);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // ✅ CÓDIGO CORREGIDO Y REESTRUCTURADO DE fetchChartData:
   const fetchChartData = async (boardId: string, start?: string, end?: string) => {
     try {
       const res: any = await getDemandChartData(boardId, start, end);
       const { agrupado } = res;
 
+      // Sin mediciones: limpiamos todo y salimos
       if (!agrupado || Object.keys(agrupado).length === 0) {
         setRawChartData([]);
         setSeriesKeys([]);
+        setEnergiaPorDiaSemanaData([]);
+        setWeekdaySeriesKeys([]);
+        setHoraPicoMaximo(null);
+        setAnalisisPotencia(null);
         return;
       }
 
@@ -147,13 +159,14 @@ const BoardDetailPage = () => {
 
           const punto = agrupado[diaKey]?.[hora];
 
-          const valP = typeof punto === 'number' ? punto : (punto?.p ?? 0);
-          const valInd = typeof punto === 'object' ? (punto?.ind ?? 0) : 0;
-          const valCap = typeof punto === 'object' ? (punto?.cap ?? 0) : 0;
-          // ✅ CÓDIGO CORREGIDO:
+          // Potencias con la corrección del backend (÷ FACTOR_CORRECCION_BACKEND)
+          const valP = (typeof punto === 'number' ? punto : (punto?.p ?? 0)) / FACTOR_CORRECCION_BACKEND;
+          const valInd = (typeof punto === 'object' ? (punto?.ind ?? 0) : 0) / FACTOR_CORRECCION_BACKEND;
+          const valCap = (typeof punto === 'object' ? (punto?.cap ?? 0) : 0) / FACTOR_CORRECCION_BACKEND;
+
           const valThdV = typeof punto === 'object' ? (punto?.thd_v ?? 0) : 0;
           const valThdI = typeof punto === 'object' ? (punto?.thd_i ?? 0) : 0;
-          // Leemos las tres fases individuales que envía el nuevo backend:
+          // Leemos las tres fases individuales que envía el backend:
           const valU12 = typeof punto === 'object' ? (punto?.thd_u12 ?? 0) : 0;
           const valU23 = typeof punto === 'object' ? (punto?.thd_u23 ?? 0) : 0;
           const valU31 = typeof punto === 'object' ? (punto?.thd_u31 ?? 0) : 0;
@@ -193,7 +206,6 @@ const BoardDetailPage = () => {
         return `${dia}/${mes} (${diaNombre})`;
       });
 
-      // En fetchChartData dentro de BoardDetailPage.tsx:
       const barrasProcesadas = sortedCleanKeys.map((key) => {
         // Filtrar las lecturas válidas del día
         const puntosValidos = formattedData.filter(
@@ -223,20 +235,49 @@ const BoardDetailPage = () => {
           }
         });
 
-        // Cada punto equivale a un intervalo de 5 minutos (1/12 de hora)
-        const kwhHP = countHP > 0 ? (sumaKwHP / countHP) * 5 : 0;   // 5 horas de HP
-        const kwhFP = countFP > 0 ? (sumaKwFP / countFP) * 19 : 0; // 19 horas de FP
+        // Potencia promedio × horas del bloque (5 h de HP y 19 h de FP)
+        const kwhHP = countHP > 0 ? (sumaKwHP / countHP) * 5 : 0;
+        const kwhFP = countFP > 0 ? (sumaKwFP / countFP) * 19 : 0;
         const totalKWh = kwhHP + kwhFP;
 
         return {
           name: key,
-          kWh: Math.round(totalKWh * 10) / 10,
-          kwhHP: Math.round(kwhHP * 10) / 10,
-          kwhFP: Math.round(kwhFP * 10) / 10,
+          kWh: Math.round(totalKWh * 100) / 100,
+          kwhHP: Math.round(kwhHP * 100) / 100,
+          kwhFP: Math.round(kwhFP * 100) / 100,
         };
       });
 
-      setEnergiaPorDiaData(barrasProcesadas);
+      const weekdayAgg: {
+        [day: string]: { kWh: number; kwhHP: number; kwhFP: number; count: number };
+      } = {};
+      WEEKDAYS_ES.forEach((day) => {
+        weekdayAgg[day] = { kWh: 0, kwhHP: 0, kwhFP: 0, count: 0 };
+      });
+      barrasProcesadas.forEach((item, idx) => {
+        const fechaYMD = (rawKeys[idx] || "").split(" ")[0];
+        const weekday = weekdayFromYmd(fechaYMD);
+        if (!weekday) return;
+        weekdayAgg[weekday].kWh += item.kWh;
+        weekdayAgg[weekday].kwhHP += item.kwhHP;
+        weekdayAgg[weekday].kwhFP += item.kwhFP;
+        weekdayAgg[weekday].count += 1;
+      });
+
+      const weekdayKeys = [...WEEKDAYS_ES];
+      const barrasPorDiaSemana = weekdayKeys.map((day) => {
+        const n = weekdayAgg[day].count;
+        return {
+          name: day,
+          kWh: n > 0 ? Math.round((weekdayAgg[day].kWh / n) * 100) / 100 : 0,
+          kwhHP: n > 0 ? Math.round((weekdayAgg[day].kwhHP / n) * 100) / 100 : 0,
+          kwhFP: n > 0 ? Math.round((weekdayAgg[day].kwhFP / n) * 100) / 100 : 0,
+          count: n,
+        };
+      });
+
+      setEnergiaPorDiaSemanaData(barrasPorDiaSemana);
+      setWeekdaySeriesKeys(weekdayKeys);
       setRawChartData(formattedData);
       setSeriesKeys(sortedCleanKeys);
       setSelectedReactiveDay(prev => (prev && sortedCleanKeys.includes(prev) ? prev : sortedCleanKeys[0] || null));
@@ -244,9 +285,9 @@ const BoardDetailPage = () => {
       // Recalcular métricas de picos e indicadores eléctricos inmediatamente con los datos frescos
       calcularMetricasLuzDelSur(formattedData);
 
-      const initialVisibility: { [key: string]: boolean } = {};
-      sortedCleanKeys.forEach((k) => {
-        initialVisibility[k] = true;
+      const initialWeekdayVisibility: { [key: string]: boolean } = {};
+      weekdayKeys.forEach((k) => {
+        initialWeekdayVisibility[k] = true;
       });
 
       setVisibleDemandSeries(prev => {
@@ -264,10 +305,27 @@ const BoardDetailPage = () => {
         "kvar_capacitivo": prev["kvar_capacitivo"] ?? true
       }));
 
-      setVisibleEnergySeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
-      setVisibleCarbonSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
-      setVisibleCostSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
-      // setVisibleSolarSeries(prev => Object.keys(prev).length ? prev : { ...initialVisibility });
+      setVisibleEnergySeries((prev) => {
+        const next: { [key: string]: boolean } = {};
+        weekdayKeys.forEach((k) => {
+          next[k] = prev[k] !== undefined ? prev[k] : true;
+        });
+        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
+      });
+      setVisibleCarbonSeries((prev) => {
+        const next: { [key: string]: boolean } = {};
+        weekdayKeys.forEach((k) => {
+          next[k] = prev[k] !== undefined ? prev[k] : true;
+        });
+        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
+      });
+      setVisibleCostSeries((prev) => {
+        const next: { [key: string]: boolean } = {};
+        weekdayKeys.forEach((k) => {
+          next[k] = prev[k] !== undefined ? prev[k] : true;
+        });
+        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
+      });
     } catch (err) {
       console.error("Error cargando curvas de demanda en Recharts:", err);
     }
@@ -369,7 +427,7 @@ const BoardDetailPage = () => {
     fetchBoard();
   }, [code, publicCode, authLoading, isEmpresarial]);
 
-  // ✅ CÓDIGO NUEVO (Recalcula al activar/desactivar días):
+  // Recalcula métricas al activar/desactivar días
   useEffect(() => {
     if (rawChartData.length > 0) {
       calcularMetricasLuzDelSur(rawChartData);
@@ -397,7 +455,6 @@ const BoardDetailPage = () => {
     }
   };
 
-  // ✅ FUNCIÓN COMPLETA 100% DINÁMICA:
   const calcularMetricasLuzDelSur = (data: any[]) => {
     if (!data || data.length === 0) return;
 
@@ -419,10 +476,9 @@ const BoardDetailPage = () => {
     let valorPicoAbsoluto = -1;
     let horaPicoAbsoluto = "";
 
-    // Cambiado de data.forEach a for...of para que TypeScript mantenga el rastro del tipo
     for (const row of data) {
       const horaStr = row.horaMinuto;
-      if (!horaStr) continue; // En bucles for...of usamos continue en vez de return
+      if (!horaStr) continue;
 
       const [horas, minutos] = horaStr.split(":").map(Number);
       const totalMinutos = horas * 60 + minutos;
@@ -430,7 +486,6 @@ const BoardDetailPage = () => {
       // Hora Punta (HP): 18:00 a 23:00 hrs (1080 a 1380 minutos)
       const esHoraPunta = totalMinutos >= 18 * 60 && totalMinutos < 23 * 60;
 
-      // Cambiado de activeKeys.forEach a for...of
       for (const key of activeKeys) {
         const valor = Number(row[key]);
 
@@ -463,7 +518,6 @@ const BoardDetailPage = () => {
       setHoraPicoMaximo(null);
     }
 
-    // TypeScript ahora sabrá perfectamente que maxHP y maxHFP pueden no ser null aquí
     const valHP = maxHP ? maxHP.valor : 0;
     const valHFP = maxHFP ? maxHFP.valor : 0;
     const picoMaximoAbsoluto = Math.max(valHP, valHFP);
@@ -481,172 +535,6 @@ const BoardDetailPage = () => {
       ahorroEstimado: Math.round((ahorroPotenciaHP + sobrecostoPenalidad) * 100) / 100
     });
   };
-
-  /* TODO: SEPARADOR */
-
-  // const renderCombinedDemandAndReactiveSection = () => {
-  //   if (rawChartData.length === 0) return null;
-
-  //   const activeDay = selectedReactiveDay || seriesKeys[0] || "";
-
-  //   return (
-  //     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
-  //       <div className="mb-5 border-b border-slate-100 pb-4">
-  //         <div className="flex items-center gap-3">
-  //           <div className="flex size-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600">
-  //             <Layers size={22} />
-  //           </div>
-  //           <div>
-  //             <h2 className="font-bold text-slate-950 text-base">
-  //               Cuadro Integrado: Demanda (kW) y Potencia Reactiva (kvar)
-  //             </h2>
-  //             <p className="text-xs text-slate-500 mt-0.5">
-  //               Superposición de curva de potencia activa y potencia reactiva capacitiva e inductiva por día
-  //             </p>
-  //           </div>
-  //         </div>
-  //       </div>
-
-  //       <div className="space-y-3 mb-5">
-  //         <div className="flex gap-1.5 overflow-x-auto pb-1 p-2 rounded-2xl bg-slate-100/80 border border-slate-200/40 scrollbar-thin">
-  //           <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-2 shrink-0">
-  //             SELECCIONAR DÍA:
-  //           </span>
-  //           {seriesKeys.map((key) => {
-  //             const isSelected = activeDay === key;
-  //             return (
-  //               <button
-  //                 key={key}
-  //                 type="button"
-  //                 onClick={() => setSelectedReactiveDay(key)}
-  //                 className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
-  //                   ? 'bg-slate-900 border-slate-900 text-white shadow-md scale-105'
-  //                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-  //                   }`}
-  //               >
-  //                 {key}
-  //               </button>
-  //             );
-  //           })}
-  //         </div>
-
-  //         <div className="flex flex-wrap gap-2 p-1.5 bg-slate-50 rounded-xl border border-slate-100">
-  //           <button
-  //             type="button"
-  //             onClick={() => toggleDemandDay(activeDay)}
-  //             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleDemandSeries[activeDay] !== false
-  //               ? 'bg-orange-600 text-white border-orange-600'
-  //               : 'bg-white text-slate-600 border-slate-200'
-  //               }`}
-  //           >
-  //             <span className={`size-2.5 rounded-full inline-block ${visibleDemandSeries[activeDay] !== false ? 'bg-white' : 'bg-orange-600'}`}></span>
-  //             Demanda Activa ({activeDay}) [kW]
-  //           </button>
-
-  //           <button
-  //             type="button"
-  //             onClick={() => toggleReactiveDay("kvar_capacitivo")}
-  //             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200'
-  //               }`}
-  //           >
-  //             <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_capacitivo"] !== false ? 'bg-white' : 'bg-red-600'}`}></span>
-  //             kvar c (Capacitiva)
-  //           </button>
-
-  //           <button
-  //             type="button"
-  //             onClick={() => toggleReactiveDay("kvar_inductivo")}
-  //             className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-indigo-700 text-white border-indigo-700' : 'bg-white text-slate-600 border-slate-200'
-  //               }`}
-  //           >
-  //             <span className={`size-2.5 rounded-full inline-block ${visibleReactiveSeries["kvar_inductivo"] !== false ? 'bg-white' : 'bg-indigo-700'}`}></span>
-  //             kvar i (Inductiva)
-  //           </button>
-  //         </div>
-  //       </div>
-
-  //       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
-  //         <div className="h-72 sm:h-80 md:h-[400px] w-[850px] sm:w-full text-xs select-none">
-  //           <ResponsiveContainer width="100%" height="100%">
-  //             <LineChart data={rawChartData} margin={{ top: 15, right: 25, left: 10, bottom: 25 }}>
-  //               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-
-  //               <XAxis
-  //                 dataKey="horaMinuto"
-  //                 tickLine={false}
-  //                 interval={11}
-  //                 stroke="#94a3b8"
-  //                 dy={5}
-  //                 tick={{ fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
-  //               >
-  //                 <Label
-  //                   value="Hora del Día"
-  //                   position="insideBottom"
-  //                   offset={-15}
-  //                   style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }}
-  //                 />
-  //               </XAxis>
-
-  //               <YAxis yAxisId="left" tickLine={false} stroke="#f97316" width={45} domain={[0, 'auto']}>
-  //                 <Label value="Demanda [kW]" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#f97316', fontWeight: '800', fontSize: '9px' }} />
-  //               </YAxis>
-
-  //               <YAxis yAxisId="right" orientation="right" tickLine={false} stroke="#dc2626" width={45} domain={[0, 'auto']}>
-  //                 <Label value="Reactiva [kvar]" angle={90} position="insideRight" style={{ textAnchor: 'middle', fill: '#dc2626', fontWeight: '800', fontSize: '9px' }} />
-  //               </YAxis>
-
-  //               <Tooltip content={<CustomTooltip />} shared={true} />
-
-  //               {visibleDemandSeries[activeDay] !== false && activeDay && (
-  //                 <Line
-  //                   yAxisId="left"
-  //                   type="monotone"
-  //                   name={`Demanda kW - ${activeDay}`}
-  //                   dataKey={activeDay}
-  //                   stroke="#f97316"
-  //                   strokeWidth={2.5}
-  //                   dot={false}
-  //                   connectNulls={true}
-  //                   animationDuration={150}
-  //                 />
-  //               )}
-
-  //               {visibleReactiveSeries["kvar_capacitivo"] !== false && activeDay && (
-  //                 <Line
-  //                   yAxisId="right"
-  //                   type="linear"
-  //                   name={`Ntotcap+ - ${activeDay}`}
-  //                   dataKey={`capacitiva_${activeDay}`}
-  //                   stroke={REACTIVE_COLOR_CAPACITIVE}
-  //                   strokeWidth={1.5}
-  //                   dot={false}
-  //                   connectNulls={true}
-  //                   isAnimationActive={false}
-  //                 />
-  //               )}
-
-  //               {visibleReactiveSeries["kvar_inductivo"] !== false && activeDay && (
-  //                 <Line
-  //                   yAxisId="right"
-  //                   type="linear"
-  //                   name={`Ntotind+ - ${activeDay}`}
-  //                   dataKey={`inductiva_${activeDay}`}
-  //                   stroke={REACTIVE_COLOR_INDUCTIVE}
-  //                   strokeWidth={1.5}
-  //                   dot={false}
-  //                   connectNulls={true}
-  //                   isAnimationActive={false}
-  //                 />
-  //               )}
-  //             </LineChart>
-  //           </ResponsiveContainer>
-  //         </div>
-  //       </div>
-  //     </section>
-  //   );
-  // };
-
-  /* TODO: SEPARADOR */
 
   // ── ESTADOS PARA RECIBO Y COSTO DE ENERGÍA (HP / FP) ──
   // 1. Inicializa leyendo directamente del tablero si ya existen en la base de datos
@@ -680,8 +568,8 @@ const BoardDetailPage = () => {
       const res = await uploadReceiptBill(board._id, file);
       if (res?.data) {
         setRates({
-          hp: Number(res.data.tarifaHP) || 0.3095, //[cite: 1, 2]
-          fp: Number(res.data.tarifaFP) || 0.2616, //[cite: 1, 2]
+          hp: Number(res.data.tarifaHP) || 0.3095,
+          fp: Number(res.data.tarifaFP) || 0.2616,
         });
         alert("¡Tarifas extraídas y actualizadas correctamente con OpenAI!");
       }
@@ -692,102 +580,6 @@ const BoardDetailPage = () => {
       e.target.value = "";
     }
   };
-
-  /* TODO: SEPARADOR */
-
-  // const renderSolarEnergySection = () => {
-  //   const solarData = energiaPorDiaData
-  //     .filter(d => visibleSolarSeries[d.name] !== false)
-  //     .map(item => {
-  //       const solarKWh = (item.kWh || 0) * FACTOR_GENERACION_SOLAR_DIARIO;
-  //       return {
-  //         name: item.name,
-  //         solarKWh: Number(solarKWh.toFixed(1)),
-  //         consumoTotal: item.kWh
-  //       };
-  //     });
-
-  //   const totalSolar = solarData.reduce((acc, curr) => acc + curr.solarKWh, 0);
-
-  //   return (
-  //     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
-  //       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
-  //         <div className="flex items-center gap-3">
-  //           <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600">
-  //             <Sun size={20} className="sm:size-[22px]" />
-  //           </div>
-  //           <div>
-  //             <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">Potencial de Energía Solar por Día</h2>
-  //             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Estimación de generación fotovoltaica por día expresada en KiloVatios-Hora (kWh)</p>
-  //           </div>
-  //         </div>
-  //       </div>
-
-  //       <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-  //         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
-  //           <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Generación Solar Estimada Total</p>
-  //           <p className="mt-1 text-2xl font-black text-emerald-950">
-  //             {totalSolar.toFixed(1)} <span className="text-xs font-bold text-emerald-600">kWh</span>
-  //           </p>
-  //           <p className="mt-1 text-[10px] text-emerald-600">Ahorro verde equivalente en el periodo filtrado</p>
-  //         </div>
-
-  //         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4">
-  //           <p className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Cobertura Solar Estimada</p>
-  //           <p className="mt-1 text-2xl font-black text-emerald-950">
-  //             {(FACTOR_GENERACION_SOLAR_DIARIO * 100).toFixed(0)}% <span className="text-xs font-bold text-emerald-600">del consumo</span>
-  //           </p>
-  //           <p className="mt-1 text-[10px] text-emerald-600">Proyección de autogeneración sobre la demanda</p>
-  //         </div>
-  //       </div>
-
-  //       <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none">
-  //         <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1">Días:</span>
-  //         {seriesKeys.map((key) => (
-  //           <button
-  //             key={key}
-  //             type="button"
-  //             onClick={() => toggleSolarDay(key)}
-  //             className={`rounded-xl px-3 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${visibleSolarSeries[key] !== false
-  //               ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm'
-  //               : 'bg-white border-slate-200 text-slate-400'
-  //               }`}
-  //           >
-  //             {key}
-  //           </button>
-  //         ))}
-  //       </div>
-
-  //       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-  //         <div className="h-72 sm:h-80 md:h-[380px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
-  //           {solarData.length === 0 ? (
-  //             <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
-  //               Selecciona al menos un día para visualizar los datos del gráfico.
-  //             </div>
-  //           ) : (
-  //             <ResponsiveContainer width="100%" height="100%">
-  //               <BarChart data={solarData} margin={{ top: 25, right: 15, left: 10, bottom: 30 }} style={{ outline: 'none', border: 'none' }}>
-  //                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-  //                 <XAxis dataKey="name" tickLine={false} stroke="#94a3b8" dy={8} tick={{ fontSize: '10px', fontWeight: '700', fill: '#475569' }}>
-  //                   <Label value="Días del Periodo" position="insideBottom" offset={-20} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-  //                 </XAxis>
-  //                 <YAxis tickLine={false} stroke="#94a3b8" width={55} tick={{ fontSize: '10px' }}>
-  //                   <Label value="Energía Solar (kWh)" angle={-90} position="insideLeft" offset={-5} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
-  //                 </YAxis>
-  //                 <Tooltip
-  //                   cursor={{ fill: '#f1f5f9', opacity: 0.6 }}
-  //                   formatter={(val: any) => [`${Number(val).toFixed(1)} kWh`, 'Energía Solar']}
-  //                   contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-  //                 />
-  //                 <Bar dataKey="solarKWh" fill="#059669" radius={[6, 6, 0, 0]} maxBarSize={50} />
-  //               </BarChart>
-  //             </ResponsiveContainer>
-  //           )}
-  //         </div>
-  //       </div>
-  //     </section>
-  //   );
-  // };
 
   const renderField = (label: string, data: unknown, index: number) => (
     <div style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${index * 30}ms` }} className="rounded-2xl bg-slate-50 p-4 transition-all hover:bg-slate-100/80">
@@ -966,8 +758,6 @@ const BoardDetailPage = () => {
               onToggleReactiveDay={toggleReactiveDay}
             />
 
-            {/* {renderCombinedDemandAndReactiveSection()} */}
-
             <ThdVoltageSection
               rawChartData={rawChartData}
               seriesKeys={seriesKeys}
@@ -977,8 +767,6 @@ const BoardDetailPage = () => {
               onToggleThdFase={toggleThdFase}
             />
 
-            {/* {renderThdCurrentSection()} */}
-
             <IticCurveSection
               iticEvents={iticEvents}
               tensionNominal={board?.tensionNominal}
@@ -987,30 +775,28 @@ const BoardDetailPage = () => {
             />
 
             <EnergyBarSection
-              energiaPorDiaData={energiaPorDiaData}
+              energiaPorDiaData={energiaPorDiaSemanaData}
               visibleEnergySeries={visibleEnergySeries}
-              seriesKeys={seriesKeys}
+              seriesKeys={weekdaySeriesKeys}
               onToggleEnergyDay={toggleEnergyDay}
             />
 
             <CarbonEmissionsSection
-              energiaPorDiaData={energiaPorDiaData}
+              energiaPorDiaData={energiaPorDiaSemanaData}
               visibleCarbonSeries={visibleCarbonSeries}
-              seriesKeys={seriesKeys}
+              seriesKeys={weekdaySeriesKeys}
               onToggleCarbonDay={toggleCarbonDay}
             />
 
             <EnergyCostSection
               rates={rates}
-              energiaPorDiaData={energiaPorDiaData}
+              energiaPorDiaData={energiaPorDiaSemanaData}
               visibleCostSeries={visibleCostSeries}
-              seriesKeys={seriesKeys}
+              seriesKeys={weekdaySeriesKeys}
               onToggleCostDay={toggleCostDay}
               isUploadingBill={isUploadingBill}
               onBillUpload={handleBillUpload}
             />
-
-            {/* {renderSolarEnergySection()} */}
           </>
         )}
 
@@ -1045,7 +831,7 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* ── PLAN BÁSICO: LEYENDA Y CIRCUITION ── */}
+        {/* ── PLAN BÁSICO: LEYENDA DE CIRCUITOS ── */}
         {board.circuits && board.circuits.length > 0 && (
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-3 font-bold text-slate-950 text-base">Leyenda de circuitos</h2>

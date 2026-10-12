@@ -119,7 +119,7 @@ const CompanyDashboardPage = () => {
           </h1>
 
           <p className="mt-0.5 text-sm text-slate-500">
-            Lista de administradores de empresas registrados en Voltguard.
+            Lista de administradores de empresas registrados en VoltGuard.
           </p>
         </div>
 

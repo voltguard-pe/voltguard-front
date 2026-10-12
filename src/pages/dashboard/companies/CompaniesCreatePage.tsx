@@ -69,7 +69,7 @@ const CompaniesCreatePage = () => {
 
           <p className="text-sm text-slate-500">
             Registra una nueva empresa en
-            Voltguard.
+            VoltGuard.
           </p>
         </div>
       </div>

@@ -4,7 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   Label,
   LabelList,
   ResponsiveContainer,
@@ -20,27 +19,31 @@ interface CarbonEmissionsSectionProps {
   onToggleCarbonDay: (key: string) => void;
 }
 
-const FACTOR_EMISION_PERU = 0.00021;
+// Factor de emisión del SEIN (g CO₂ por kWh). Verifica el valor vigente (MINAM / COES).
+const FACTOR_EMISION_G_KWH = 210;
 
-// Tooltip con los valores reales en tCO2 y kg CO2
+// Formatea gramos con separador de miles
+const formatGramos = (g: number) =>
+  Math.round(g).toLocaleString("es-PE");
+
+// Tooltip con gramos y kg
 const CustomCarbonTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
-    const tCO2 = Number(data.tCO2) || 0;
-    const kgCO2 = Number(data.kgCO2) || 0;
+    const gCO2 = Number(data.gCO2) || 0;
 
     return (
       <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[210px] backdrop-blur-sm">
         <div className="border-b border-slate-100 pb-2 mb-2 flex items-center justify-between">
           <span className="font-bold text-slate-800 text-xs">{label}</span>
           <span className="font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 text-[11px]">
-            {tCO2.toFixed(4)} tCO₂
+            {formatGramos(gCO2)} g CO₂
           </span>
         </div>
         <div className="flex items-center justify-between">
           <span className="text-slate-500 font-semibold">Equivalente:</span>
           <span className="font-extrabold text-slate-900 tabular-nums">
-            {kgCO2.toFixed(2)} kg CO₂
+            {(gCO2 / 1000).toFixed(2)} kg CO₂
           </span>
         </div>
       </div>
@@ -55,36 +58,57 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
   seriesKeys,
   onToggleCarbonDay
 }) => {
-  // 1. Datos reales directos calculados desde la data visible
+  // 1. Emisiones por día (en gramos) de los días visibles
   const emisionesData = energiaPorDiaData
     .filter((d) => visibleCarbonSeries[d.name] !== false)
-    .map((item) => {
-      const tCO2_dia = (item.kWh || 0) * FACTOR_EMISION_PERU;
-      return {
-        name: item.name,
-        tCO2: Number(tCO2_dia.toFixed(4)),
-        kgCO2: Number((tCO2_dia * 1000).toFixed(2))
-      };
-    });
+    .map((item) => ({
+      name: item.name,
+      gCO2: Math.round((item.kWh || 0) * FACTOR_EMISION_G_KWH)
+    }));
 
-  // 2. LÓGICA DINÁMICA DE RANGO Y ALINEACIÓN (CERO HARDCODING)
-  const rawValues = emisionesData.map((d) => d.tCO2);
+  // ── ESTADOS DE SELECCIÓN ──
+  const isAllSelected =
+    seriesKeys.length > 0 &&
+    seriesKeys.every((key) => visibleCarbonSeries[key] !== false);
+
+  const activeDaysCount = seriesKeys.filter(
+    (key) => visibleCarbonSeries[key] !== false
+  ).length;
+
+  // Impide desmarcar el último día activo (evita un gráfico en blanco)
+  const handleSafeToggleDay = (key: string) => {
+    const isCurrentlySelected = visibleCarbonSeries[key] !== false;
+    if (isCurrentlySelected && activeDaysCount <= 1) {
+      return;
+    }
+    onToggleCarbonDay(key);
+  };
+
+  const handleSelectAll = () => {
+    seriesKeys.forEach((key) => {
+      if (visibleCarbonSeries[key] === false) {
+        onToggleCarbonDay(key);
+      }
+    });
+  };
+
+  // 2. LÓGICA DINÁMICA DE RANGO Y ALINEACIÓN DEL EJE Y (en gramos)
+  const rawValues = emisionesData.map((d) => d.gCO2);
   const minVal = rawValues.length > 0 ? Math.min(...rawValues) : 0;
   const maxVal = rawValues.length > 0 ? Math.max(...rawValues) : 0;
 
   const rawDelta = maxVal - minVal;
-  const step = rawDelta > 0 ? rawDelta : (minVal > 0 ? minVal * 0.02 : 0.0001);
+  const step = rawDelta > 0 ? rawDelta : (minVal > 0 ? minVal * 0.02 : 1);
 
-  const yMin = Math.max(0, Number((minVal - step).toFixed(4)));
-  const yMax = Number((maxVal + step * 0.3).toFixed(4));
+  const yMin = Math.max(0, Math.round(minVal - step));
+  const yMax = Math.round(maxVal + step * 0.3);
   const yTicks = Array.from(new Set([yMin, minVal, maxVal])).sort((a, b) => a - b);
 
-  // 3. Cálculos de Totales y Proyecciones reales
-  const totalTCO2Semana = emisionesData.reduce((acc, curr) => acc + curr.tCO2, 0);
-  const promedioTCO2Diario =
-    emisionesData.length > 0 ? totalTCO2Semana / emisionesData.length : 0;
-  const proyeccionTCO2Mes = promedioTCO2Diario * 30;
-  const proyeccionTCO2Ano = promedioTCO2Diario * 365;
+  // 3. Promedio y proyecciones (en gramos)
+  const totalG = emisionesData.reduce((acc, curr) => acc + curr.gCO2, 0);
+  const promedioGDiario = emisionesData.length > 0 ? totalG / emisionesData.length : 0;
+  const proyeccionGMes = promedioGDiario * 30;
+  const proyeccionGAno = promedioGDiario * 365;
 
   return (
     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
@@ -95,10 +119,10 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
           </div>
           <div>
             <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
-              Emisiones de CO₂ por Día (Huella de Carbono)
+              Emisiones de CO₂ Estimadas (Huella de Carbono)
             </h2>
             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
-              Dióxido de Carbono equivalente emitido por el consumo eléctrico (tCO₂eq - SEIN Perú)
+              Promedio por día de la semana según el período medido · Factor SEIN Perú: {FACTOR_EMISION_G_KWH} g CO₂/kWh
             </p>
           </div>
         </div>
@@ -110,15 +134,11 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
             Emisión Diaria Promedio
           </p>
           <p className="mt-1 text-2xl font-black text-slate-950">
-            {promedioTCO2Diario < 0.01
-              ? (promedioTCO2Diario * 1000).toFixed(2)
-              : promedioTCO2Diario.toFixed(3)}
-            <span className="text-xs font-bold text-slate-600 ml-1">
-              {promedioTCO2Diario < 0.01 ? "kg CO₂/día" : "tCO₂/día"}
-            </span>
+            {formatGramos(promedioGDiario)}
+            <span className="text-xs font-bold text-slate-600 ml-1">g CO₂/día</span>
           </p>
           <p className="mt-1 text-[10px] text-slate-500">
-            Equivalencia del periodo filtrado
+            Promedio de los días de la semana seleccionados
           </p>
         </div>
 
@@ -127,54 +147,86 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
             Proyección Mensual (30 días)
           </p>
           <p className="mt-1 text-2xl font-black text-slate-950">
-            {proyeccionTCO2Mes.toFixed(3)}{" "}
-            <span className="text-xs font-bold text-slate-600">tCO₂/mes</span>
+            {formatGramos(proyeccionGMes)}{" "}
+            <span className="text-xs font-bold text-slate-600">g CO₂/mes</span>
           </p>
           <p className="mt-1 text-[10px] text-slate-500">
-            Estimación a 30 días de operación
+            Promedio diario × 30 días
           </p>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-4 shadow-sm">
           <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">
-            Proyección Anual (365 días)
+            Proyección Anual Estimada
           </p>
           <p className="mt-1 text-2xl font-black text-slate-950">
-            {proyeccionTCO2Ano.toFixed(2)}{" "}
-            <span className="text-xs font-bold text-slate-600">tCO₂/año</span>
+            {formatGramos(proyeccionGAno)}{" "}
+            <span className="text-xs font-bold text-slate-600">g CO₂/año</span>
           </p>
           <p className="mt-1 text-[10px] text-slate-500">
-            Estimación a 365 días de operación
+            ≈ {(proyeccionGAno / 1_000_000).toFixed(2)} tCO₂ · Promedio diario × 365 (extrapolado del período medido)
           </p>
         </div>
       </div>
 
-      <div className="flex gap-1.5 overflow-x-auto pb-2 mb-4 p-2 rounded-2xl bg-slate-100 border border-slate-200/40 scrollbar-none items-center">
-        <span className="text-[10px] font-black uppercase text-slate-400 self-center mr-1 px-2">
-          Días:
-        </span>
-        {seriesKeys.map((key) => {
-          const isActive = visibleCarbonSeries[key] !== false;
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => onToggleCarbonDay(key)}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all duration-200 border cursor-pointer shrink-0 shadow-sm ${
-                isActive
-                  ? "border-transparent text-white shadow-slate-600/25 scale-[1.02]"
-                  : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
-              }`}
-              style={
-                isActive
-                  ? { background: "linear-gradient(to bottom, #475569, #1e293b)" }
-                  : undefined
-              }
-            >
-              {key}
-            </button>
-          );
-        })}
+      {/* ── SECCIÓN DE FILTROS ── */}
+      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs font-sans">
+
+        {/* IZQUIERDA */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-xs font-black uppercase text-slate-400 mr-1 tracking-wider">Filtros:</span>
+        </div>
+
+        {/* CENTRO: Días de la semana (protegidos para no vaciar el gráfico) */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 justify-start flex-1">
+          {seriesKeys.map((key) => {
+            const isSelected = visibleCarbonSeries[key] !== false;
+            const isLastActive = isSelected && activeDaysCount === 1;
+
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => handleSafeToggleDay(key)}
+                title={isLastActive ? "Debe mantener al menos un día visible" : undefined}
+                className={`flex flex-col items-center justify-center min-w-[78px] px-3.5 py-2 rounded-xl transition-all border cursor-pointer shrink-0 active:scale-95 ${
+                  isSelected
+                    ? "border-transparent text-white shadow-md shadow-slate-600/10"
+                    : "bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"
+                } ${isLastActive ? "cursor-not-allowed opacity-90 ring-2 ring-white/50" : ""}`}
+                style={
+                  isSelected
+                    ? { background: "linear-gradient(to bottom, #475569, #1e293b)" }
+                    : undefined
+                }
+              >
+                <span className="text-xs font-extrabold">{key}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* DERECHA: Botón Todos */}
+        <div className="flex items-center gap-2 shrink-0 justify-end">
+          <button
+            type="button"
+            onClick={handleSelectAll}
+            className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border active:scale-95 flex items-center gap-1.5 ${
+              isAllSelected
+                ? "text-white border-slate-600/30 shadow-lg shadow-slate-600/25 ring-2 ring-slate-400/40"
+                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100 hover:border-slate-400 shadow-xs"
+            }`}
+            style={
+              isAllSelected
+                ? { background: "linear-gradient(to right, #475569, #1e293b)" }
+                : undefined
+            }
+          >
+            {isAllSelected && <span className="size-1.5 rounded-full bg-white animate-pulse" />}
+            <span>Todos</span>
+          </button>
+        </div>
+
       </div>
 
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
@@ -211,7 +263,7 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                   tick={{ fontSize: "10px", fontWeight: "700", fill: "#475569" }}
                 >
                   <Label
-                    value="Días del Periodo"
+                    value="Días de la Semana"
                     position="insideBottom"
                     offset={-20}
                     style={{
@@ -232,10 +284,10 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                   stroke="#94a3b8"
                   width={68}
                   tick={{ fontSize: "10px" }}
-                  tickFormatter={(val) => Number(val).toFixed(4)}
+                  tickFormatter={(val) => formatGramos(Number(val))}
                 >
                   <Label
-                    value="Emisiones (tCO₂)"
+                    value="Emisiones (g CO₂)"
                     angle={-90}
                     position="insideLeft"
                     offset={-5}
@@ -253,18 +305,15 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                   content={<CustomCarbonTooltip />}
                 />
                 <Bar
-                  dataKey="tCO2"
+                  dataKey="gCO2"
                   fill="url(#gradCarbon)"
                   radius={[8, 8, 0, 0]}
                   maxBarSize={50}
                 >
-                  {emisionesData.map((_, i) => (
-                    <Cell key={`carbon-cell-${i}`} fill="url(#gradCarbon)" />
-                  ))}
                   <LabelList
-                    dataKey="tCO2"
+                    dataKey="gCO2"
                     position="top"
-                    formatter={(val: any) => `${Number(val).toFixed(4)}`}
+                    formatter={(val: any) => formatGramos(Number(val))}
                     style={{
                       fontSize: "11px",
                       fontWeight: "800",

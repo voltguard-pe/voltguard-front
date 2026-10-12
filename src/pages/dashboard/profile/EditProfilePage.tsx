@@ -100,7 +100,7 @@ const EditProfilePage = () => {
           </h1>
 
           <p className="text-sm text-slate-500">
-            Actualiza tu información personal dentro de Voltguard.
+            Actualiza tu información personal dentro de VoltGuard.
           </p>
         </div>
       </div>

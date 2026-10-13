@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { Container } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Container, ChevronLeft, ChevronRight, Upload, Loader2, ReceiptText } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -13,23 +13,26 @@ import {
 } from "recharts";
 
 export interface EnergyMonthItem {
-  name: string; // "Abr 26"
+  name: string; // "May 25"
   kWh: number;
   kwhHP: number;
   kwhFP: number;
   dias: number;
 }
 
-// Las props de filtro por semana ya no se usan (el recibo no trae datos diarios).
-// Se dejan opcionales para no romper BoardDetailPage; puedes quitarlas cuando quieras.
 interface EnergyBarSectionProps {
   energiaPorMesData: EnergyMonthItem[];
+  ahorroMeta?: number;
+  onAhorroChange?: (pct: number) => void;
   visibleEnergySeries?: { [key: string]: boolean };
   onToggleEnergyDay?: (key: string) => void;
+  isUploadingBill?: boolean;
+  // Modificamos para aceptar el archivo directamente o manejar el fetch
+  onBillUpload?: (file: File) => Promise<void>;
 }
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Dic"];
-const GROWTH_OPTIONS = [0, 5, 10];
+const AHORRO_DEFAULT = 5;
 
 const fmt = (n: number, decimals = 0) =>
   Number(n).toLocaleString("es-PE", {
@@ -37,7 +40,6 @@ const fmt = (n: number, decimals = 0) =>
     maximumFractionDigits: decimals
   });
 
-// "Abr 26" -> { year: 2026, month: 3 }
 const parsePeriod = (name: string) => {
   const m = String(name || "").match(/^([A-Za-zñÑ]{3})\s+(\d{2})$/);
   if (!m) return null;
@@ -45,132 +47,257 @@ const parsePeriod = (name: string) => {
   return idx < 0 ? null : { year: 2000 + Number(m[2]), month: idx };
 };
 
-// Recharts 3 tipa el formatter de LabelList como (label: RenderableText) => RenderableText,
-// por eso recibe "unknown" y se convierte a número aquí.
 const fmtK = (v: unknown) => {
   const n = Number(v);
   return n > 0 ? `${(n / 1000).toFixed(1)}k` : "";
 };
 
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+const yy = (y: number) => String(y).slice(-2);
 
 interface ChartRow {
   name: string;
-  esProyeccion: boolean;
-  kwhFP: number;
-  kwhHP: number;
-  proyFP: number;
-  proyHP: number;
-  total: number;
-  totalReal?: number; // solo en meses facturados (para la etiqueta superior)
-  totalProy?: number; // solo en meses proyectados
+  realName: string;
+  proyName: string;
+  hasReal: boolean;
+  realTotal: number;
+  proyTotal: number;
 }
 
-const EnergyTooltip = ({ active, payload }: any) => {
+/* ── TOOLTIP / CARTILLA ── */
+const EnergyTooltip = ({ active, payload, ahorroPct }: any) => {
   if (!active || !payload?.length) return null;
   const r: ChartRow = payload[0].payload;
-  const hp = r.esProyeccion ? r.proyHP : r.kwhHP;
-  const fp = r.esProyeccion ? r.proyFP : r.kwhFP;
+
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[220px] backdrop-blur-sm">
-      <div className="border-b border-slate-100 pb-2 mb-2 flex items-center justify-between gap-3">
-        <span className="font-bold text-slate-800">
-          {r.name}
-          {r.esProyeccion && <span className="ml-1.5 font-semibold text-slate-400">(proyección)</span>}
-        </span>
-        <span className="font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[11px]">
-          {fmt(r.total)} kWh
-        </span>
-      </div>
-      <div className="space-y-1.5">
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-slate-500 font-semibold">
-            <span className="size-2 rounded-full bg-rose-500" /> Hora Punta (HP):
+    <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-2xl font-sans text-xs min-w-[250px] backdrop-blur-sm z-50 space-y-3">
+      {r.hasReal && (
+        <>
+          <div>
+            <div className="mb-1.5 flex items-center justify-between gap-3">
+              <span className="font-extrabold text-slate-800 text-sm">{r.realName}</span>
+              <span className="font-black text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 text-xs">
+                {fmt(r.realTotal)} kWh
+              </span>
+            </div>
+          </div>
+          <div className="border-t border-slate-100" />
+        </>
+      )}
+
+      <div>
+        <div className="mb-1.5 flex items-center justify-between gap-3">
+          <span className="font-extrabold text-rose-600 text-sm">{r.proyName}</span>
+          <span className="font-black text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 text-xs">
+            {fmt(r.proyTotal)} kWh
           </span>
-          <span className="font-extrabold text-slate-900 tabular-nums">{fmt(hp)} kWh</span>
         </div>
-        <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-slate-500 font-semibold">
-            <span className="size-2 rounded-full bg-blue-500" /> Fuera de Punta (FP):
-          </span>
-          <span className="font-extrabold text-slate-900 tabular-nums">{fmt(fp)} kWh</span>
-        </div>
+
+        {ahorroPct > 0 && (
+          <div className="mb-1.5 text-[11px] font-black text-emerald-600">
+            Meta: -{fmt(ahorroPct, 1)}% de consumo
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({ energiaPorMesData }) => {
-  const [growth, setGrowth] = useState(0); // crecimiento anual esperado (%)
+export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
+  energiaPorMesData,
+  ahorroMeta = AHORRO_DEFAULT,
+  isUploadingBill = false,
+  onBillUpload
+}) => {
+  const [ahorroLocal, setAhorroLocal] = useState<number>(ahorroMeta);
+  const [visibleSeries, setVisibleSeries] = useState<{ [key: string]: boolean }>({});
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const billFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setAhorroLocal(ahorroMeta);
+  }, [ahorroMeta]);
+
+  const seriesKeys = useMemo(() => {
+    return (energiaPorMesData ?? []).map((m) => m.name);
+  }, [energiaPorMesData]);
+
+  useEffect(() => {
+    if (seriesKeys.length > 0 && Object.keys(visibleSeries).length === 0) {
+      const initial: { [key: string]: boolean } = {};
+      seriesKeys.forEach((key) => {
+        initial[key] = true;
+      });
+      setVisibleSeries(initial);
+    }
+  }, [seriesKeys]);
+
+  const activeCount = useMemo(
+    () => seriesKeys.filter((key) => visibleSeries[key] !== false).length,
+    [seriesKeys, visibleSeries]
+  );
+
+  const isAllSelected = useMemo(
+    () => seriesKeys.length > 0 && seriesKeys.every((key) => visibleSeries[key] !== false),
+    [seriesKeys, visibleSeries]
+  );
+
+  const handleToggleSeries = (key: string) => {
+    const isSelected = visibleSeries[key] !== false;
+    if (isSelected && activeCount <= 1) return;
+    setVisibleSeries((prev) => ({ ...prev, [key]: !isSelected }));
+  };
+
+  const handleSelectAll = () => {
+    const updated: { [key: string]: boolean } = {};
+    seriesKeys.forEach((key) => {
+      updated[key] = true;
+    });
+    setVisibleSeries(updated);
+  };
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollContainerRef.current) {
+      const scrollAmount = direction === "left" ? -180 : 180;
+      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (onBillUpload) {
+      await onBillUpload(file); // Pasamos el File limpio
+    }
+    if (e.target) {
+      e.target.value = ""; 
+    }
+  };
+
+  const ahorroPct = ahorroLocal;
 
   const model = useMemo(() => {
-    const real = energiaPorMesData ?? [];
+    const real = (energiaPorMesData ?? []).filter((m) => visibleSeries[m.name] !== false);
     if (real.length === 0) return null;
 
-    const last12 = real.slice(-12);
+    const last12 = real;
     const completo = real.length >= 12;
-    const avgHP = sum(last12.map((m) => m.kwhHP)) / last12.length;
-    const avgFP = sum(last12.map((m) => m.kwhFP)) / last12.length;
-    const factor = 1 + growth / 100;
+    const factor = 1 - ahorroPct / 100;
 
-    // Filas reales
-    const rows: ChartRow[] = real.map((m) => ({
-      name: m.name,
-      esProyeccion: false,
-      kwhFP: m.kwhFP,
-      kwhHP: m.kwhHP,
-      proyFP: 0,
-      proyHP: 0,
-      total: m.kWh,
-      totalReal: m.kWh
-    }));
-
-    // Filas proyectadas: mismo mes del año anterior × (1 + crecimiento).
-    // Si el recibo no trajo 12 meses, se usa el promedio mensual disponible.
     const lastP = parsePeriod(real[real.length - 1].name);
-    const proj: ChartRow[] = Array.from({ length: 12 }, (_, i) => {
-      const base = completo ? last12[i] : { kwhHP: avgHP, kwhFP: avgFP };
-      let name = `Proy. ${i + 1}`;
-      if (lastP) {
-        const t = lastP.year * 12 + lastP.month + i + 1;
-        name = `${MESES[t % 12]} ${String(Math.floor(t / 12)).slice(-2)}`;
+    const firstP = parsePeriod(last12[0].name);
+
+    const rows: ChartRow[] = last12.map((match) => {
+      let realName = match.name;
+      let proyName = `Proy. 1`;
+
+      const parsed = parsePeriod(match.name);
+      if (parsed) {
+        proyName = `${MESES[parsed.month]} ${yy(parsed.year + 1)}`;
       }
-      const hp = base.kwhHP * factor;
-      const fp = base.kwhFP * factor;
-      return { name, esProyeccion: true, kwhFP: 0, kwhHP: 0, proyFP: fp, proyHP: hp, total: hp + fp, totalProy: hp + fp };
+
+      const baseTotal = match.kWh;
+      const proyTotal = baseTotal * factor;
+
+      return {
+        name: realName,
+        realName,
+        proyName,
+        hasReal: true,
+        realTotal: match.kWh,
+        proyTotal
+      };
     });
 
-    const anualReal = completo ? sum(last12.map((m) => m.kWh)) : (sum(last12.map((m) => m.kWh)) / last12.length) * 12;
-    const anualProy = sum(proj.map((p) => p.total));
-    const hpAnual = completo ? sum(last12.map((m) => m.kwhHP)) : avgHP * 12;
+    const anualReal = sum(last12.map((m) => m.kWh));
+    const anualProy = sum(rows.map((p) => p.proyTotal));
+    const hpAnual = sum(last12.map((m) => m.kwhHP));
     const ultimo = real[real.length - 1];
 
+    let labelReal = "26";
+    let labelProy = "27";
+    if (lastP && firstP) {
+      labelReal =
+        firstP.year === lastP.year ? yy(firstP.year) : `${yy(firstP.year)}/${yy(lastP.year)}`;
+      labelProy =
+        firstP.year === lastP.year
+          ? yy(firstP.year + 1)
+          : `${yy(firstP.year)}/${yy(firstP.year + 1)}`;
+    }
+
+    const ahorro = anualReal > 0 ? (1 - anualProy / anualReal) * 100 : 0;
+    const ahorroKwh = anualReal - anualProy;
+
     return {
-      data: [...rows, ...proj],
+      data: rows,
       ultimo,
       completo,
       mesesReales: real.length,
       anualReal,
       anualProy,
       pctHP: anualReal > 0 ? (hpAnual / anualReal) * 100 : 0,
-      variacion: anualReal > 0 ? (anualProy / anualReal - 1) * 100 : 0
+      ahorro,
+      ahorroKwh,
+      labelReal,
+      labelProy
     };
-  }, [energiaPorMesData, growth]);
+  }, [energiaPorMesData, visibleSeries, ahorroPct]);
+
+  const fileInput = (
+    <input
+      type="file"
+      ref={billFileInputRef}
+      onChange={handleFileChange}
+      accept="image/*,application/pdf"
+      className="hidden"
+      disabled={isUploadingBill}
+    />
+  );
 
   if (!model) {
     return (
-      <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/50 font-sans mt-6">
-        <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-slate-400 font-semibold text-sm">
-          Sube tu recibo de luz con “Cambiar Recibo de Luz” (sección Costo de Energía) para ver el consumo.
+      <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xl font-sans mt-6">
+        {fileInput}
+        <div className="flex flex-col items-center justify-center h-48 w-full rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-slate-400 font-semibold text-sm gap-3">
+          <p>Sube tu recibo de luz para ver el consumo.</p>
+          <button
+            type="button"
+            disabled={isUploadingBill}
+            onClick={() => billFileInputRef.current?.click()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+          >
+            {isUploadingBill ? (
+              <>
+                <Loader2 size={14} className="animate-spin text-white" />
+                <span>Analizando recibo...</span>
+              </>
+            ) : (
+              <>
+                <Upload size={14} /> Subir recibo de luz
+              </>
+            )}
+          </button>
         </div>
       </section>
     );
   }
 
-  const { data, ultimo, completo, mesesReales, anualReal, anualProy, pctHP, variacion } = model;
+  const {
+    data,
+    ultimo,
+    completo,
+    mesesReales,
+    anualReal,
+    anualProy,
+    pctHP,
+    ahorro,
+    ahorroKwh,
+    labelReal,
+    labelProy
+  } = model;
 
-  // Eje Y desde 0 con pasos redondos
-  const maxVal = Math.max(0, ...data.map((d) => d.total));
+  const maxVal = Math.max(0, ...data.map((d) => Math.max(d.realTotal, d.proyTotal)));
   const niceStep = (max: number) => {
     const raw = (max || 1) / 5;
     const mag = Math.pow(10, Math.floor(Math.log10(raw)));
@@ -183,134 +310,249 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({ energiaPorMe
   for (let v = 0; v <= yMax + 0.0001; v += step) yTicks.push(Number(v.toFixed(2)));
 
   const notaAnual = completo
-    ? "Suma de los 12 meses facturados en el recibo"
-    : `Promedio de ${mesesReales} mes${mesesReales > 1 ? "es" : ""} del recibo × 12 (el recibo no trajo los 12 meses)`;
+    ? `Suma de los ${mesesReales} meses seleccionados`
+    : `Promedio de ${mesesReales} mes(es) seleccionados`;
 
-  const metricCard = "relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm";
+  const metricCard =
+    "relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm";
 
   return (
-    <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/50 transition-all duration-300 hover:border-slate-300 font-sans mt-6">
-      {/* Cabecera */}
-      <div className="mb-8 flex items-center gap-4 border-b border-slate-100 pb-6">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 to-indigo-500/10 text-blue-600 shadow-inner border border-blue-500/20">
-          <Container size={24} />
+    <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xl font-sans mt-6">
+      {fileInput}
+
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-6">
+        <div className="flex items-center gap-4">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 to-indigo-500/10 text-blue-600 border border-blue-500/20">
+            <Container size={24} />
+          </div>
+          <div>
+            <h2 className="font-extrabold text-slate-900 text-lg sm:text-xl tracking-tight">
+              Consumo de Energía y Meta de Ahorro
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+              Comparación mes a mes del año facturado vs. la proyección con ahorro, en kiloVatios-hora (kWh)
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
-            Consumo de Energía y Proyección Anual
-          </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Historial facturado en tu recibo de luz y proyección a 12 meses, en kiloVatios-hora (kWh)
-          </p>
-        </div>
+
+        {/* Botón para subir recibo de luz con estado de carga */}
+        <button
+          type="button"
+          disabled={isUploadingBill}
+          onClick={() => billFileInputRef.current?.click()}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold text-xs sm:text-sm hover:from-blue-700 hover:to-indigo-700 transition-all cursor-pointer shadow-md shrink-0 disabled:opacity-50"
+        >
+          {isUploadingBill ? (
+            <>
+              <Loader2 size={16} className="animate-spin text-white" />
+              <span>Analizando recibo...</span>
+            </>
+          ) : (
+            <>
+              <ReceiptText size={16} className="text-white" />
+              <span>Subir recibo de luz</span>
+            </>
+          )}
+        </button>
       </div>
 
-      {/* Métricas */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className={metricCard}>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Último mes facturado</p>
-          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
-            {fmt(ultimo.kWh)} <span className="text-sm font-bold text-blue-600">kWh</span>
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Último mes facturado</p>
+          <p className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            {fmt(ultimo?.kWh || 0)} <span className="text-base font-bold text-blue-600">kWh</span>
           </p>
-          <p className="mt-2 text-xs text-slate-500 font-medium">
-            {ultimo.name} · {fmt(ultimo.kWh / (ultimo.dias || 30), 0)} kWh/día
-          </p>
+          <p className="mt-2 text-xs text-slate-500 font-medium">{ultimo?.name || "—"}</p>
         </div>
 
         <div className={metricCard}>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Consumo anual real</p>
-          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
-            {fmt(anualReal)} <span className="text-sm font-bold text-blue-600">kWh/año</span>
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Consumo filtrado</p>
+          <p className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            {fmt(anualReal)} <span className="text-base font-bold text-blue-600">kWh</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">{notaAnual}</p>
         </div>
 
         <div className={metricCard}>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Proyección próx. 12 meses</p>
-          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
-            {fmt(anualProy)} <span className="text-sm font-bold text-blue-600">kWh/año</span>
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Proyección con ahorro</p>
+          <p className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            {fmt(anualProy)} <span className="text-base font-bold text-blue-600">kWh</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">
-            {growth === 0
-              ? "Mismo patrón estacional, sin crecimiento"
-              : `${variacion >= 0 ? "+" : ""}${fmt(variacion, 1)}% vs. el año real`}
+            {ahorroPct === 0
+              ? "Sin ahorro"
+              : `${fmt(ahorro, 1)}% menos (${fmt(ahorroKwh)} kWh)`}
           </p>
         </div>
 
         <div className={metricCard}>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Hora Punta del año</p>
-          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
-            {fmt(pctHP, 1)} <span className="text-sm font-bold text-blue-600">%</span>
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Hora Punta del periodo</p>
+          <p className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+            {fmt(pctHP, 1)} <span className="text-base font-bold text-blue-600">%</span>
           </p>
-          <p className="mt-2 text-xs text-slate-500 font-medium">Parte del consumo anual en HP</p>
+          <p className="mt-2 text-xs text-slate-500 font-medium">Parte del consumo en HP</p>
         </div>
       </div>
 
-      {/* Escenario de crecimiento + leyenda */}
-      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-black uppercase text-slate-400 tracking-wider mr-1">Crecimiento anual:</span>
-          {GROWTH_OPTIONS.map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => setGrowth(g)}
-              className={`px-3.5 py-1.5 text-xs font-black rounded-xl border transition-all cursor-pointer active:scale-95 ${
-                growth === g
-                  ? "text-white border-transparent shadow-md shadow-blue-500/20"
-                  : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
-              }`}
-              style={growth === g ? { background: "linear-gradient(to bottom, #3b82f6, #1d4ed8)" } : undefined}
+      {/* ── BARRA DE FILTROS DE MESES ── */}
+      <div className="mb-6 flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50/90 border border-slate-200/90 font-sans">
+        <div className="flex items-center gap-1.5 pl-2 shrink-0">
+          <span className="text-xs font-black uppercase text-slate-400 tracking-widest">Meses:</span>
+        </div>
+
+        <div className="relative flex items-center flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => scroll("left")}
+            className="hidden sm:flex items-center justify-center size-8 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 shrink-0 mr-1.5 cursor-pointer shadow-2xs"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          <div
+            ref={scrollContainerRef}
+            className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 px-0.5 scroll-smooth flex-1"
+          >
+            {seriesKeys.map((key) => {
+              const isSelected = visibleSeries[key] !== false;
+              const isLastActive = isSelected && activeCount === 1;
+
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleToggleSeries(key)}
+                  title={isLastActive ? "Debe mantener al menos un mes visible" : undefined}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold border shrink-0 cursor-pointer transition-all ${
+                    isSelected
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-xs"
+                      : "bg-white border-slate-200 text-slate-500 hover:text-slate-800"
+                  } ${isLastActive ? "cursor-not-allowed opacity-80" : ""}`}
+                >
+                  {key}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => scroll("right")}
+            className="hidden sm:flex items-center justify-center size-8 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 shrink-0 ml-1.5 cursor-pointer shadow-2xs"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
+        <div className="pl-2 border-l border-slate-200 shrink-0">
+          <button
+            type="button"
+            onClick={handleSelectAll}
+            className={`px-4 py-1.5 text-xs font-black rounded-full border cursor-pointer transition-all ${
+              isAllSelected
+                ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                : "bg-white border-slate-200 text-blue-600 hover:bg-blue-50"
+            }`}
+          >
+            Todos
+          </button>
+        </div>
+      </div>
+
+      {/* ── LEYENDA SUPERIOR ── */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
+        <div className="flex flex-wrap items-center gap-8 text-sm sm:text-base font-extrabold text-slate-800">
+          <span className="flex items-center gap-2.5">
+            <span className="size-4 rounded-full bg-blue-500 shadow-sm shrink-0" />
+            <span>Barra Azul: Mes Real ({labelReal})</span>
+          </span>
+          <span className="flex items-center gap-2.5">
+            <span className="size-4 rounded-full bg-rose-500 shadow-sm shrink-0" />
+            <span>Barra Roja: Mismo Mes Próx. Año ({labelProy})</span>
+          </span>
+        </div>
+
+        <div className="inline-flex items-center gap-3 self-start sm:self-auto rounded-2xl border-2 border-emerald-400 bg-emerald-50 px-6 py-2.5 shadow-sm">
+          <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-600">Ahorro</span>
+          <span className="text-2xl sm:text-3xl font-black tabular-nums text-emerald-600">{fmt(ahorro, 1)}%</span>
+        </div>
+      </div>
+
+      <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-3 scrollbar-thin">
+        <div className="h-[600px] md:h-[680px] w-[1000px] lg:w-full text-xs font-semibold text-slate-600 select-none">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <BarChart
+              data={data}
+              margin={{ top: 60, right: 20, left: 20, bottom: 65 }}
+              barCategoryGap="16%"
+              barGap={10}
+              style={{ outline: "none", border: "none" }}
             >
-              {g === 0 ? "Sin crecimiento" : `+${g}%`}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-500">
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-blue-500" /> Fuera de Punta (FP)
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-rose-500" /> Hora Punta (HP)
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full border border-dashed border-slate-400 bg-slate-200" /> Proyección
-          </span>
-        </div>
-      </div>
-
-      {/* Gráfico */}
-      <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-        <div className="h-80 sm:h-96 md:h-[420px] w-[900px] lg:w-full text-xs font-medium text-slate-500 select-none">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 35, right: 15, left: 30, bottom: 30 }} style={{ outline: "none", border: "none" }}>
               <defs>
-                <linearGradient id="fpGradient" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="realBlueGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#3b82f6" />
                   <stop offset="100%" stopColor="#1d4ed8" />
                 </linearGradient>
-                <linearGradient id="hpGradient" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="proyRedGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#fb7185" />
                   <stop offset="100%" stopColor="#e11d48" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+
               <XAxis
-                dataKey="name"
+                dataKey="realName"
                 tickLine={false}
                 stroke="#94a3b8"
                 interval={0}
-                dy={8}
-                tick={{ fontSize: "10px", fontWeight: "700", fill: "#334155" }}
+                height={70}
+                tick={({ x, y, payload }) => {
+                  const row = data.find((d) => d.realName === payload.value);
+                  const count = data.length;
+                  const dynamicOffset = count <= 2 ? 110 : count <= 4 ? 60 : count <= 6 ? 40 : 25;
+
+                  return (
+                    <g transform={`translate(${x},${y})`}>
+                      <text
+                        x={-dynamicOffset}
+                        y={14}
+                        textAnchor="end"
+                        fill="#1d4ed8"
+                        fontSize={12}
+                        fontWeight={900}
+                        transform={`rotate(-35, ${-dynamicOffset}, 14)`}
+                      >
+                        {row?.realName}
+                      </text>
+                      <text
+                        x={dynamicOffset}
+                        y={14}
+                        textAnchor="end"
+                        fill="#e11d48"
+                        fontSize={12}
+                        fontWeight={900}
+                        transform={`rotate(-35, ${dynamicOffset}, 14)`}
+                      >
+                        {row?.proyName}
+                      </text>
+                    </g>
+                  );
+                }}
               >
                 <Label
-                  value="Meses (izquierda: facturado · derecha: proyección)"
+                  value={`Meses facturados (Azul: ${labelReal} · Rojo: ${labelProy})`}
                   position="insideBottom"
-                  offset={-20}
-                  style={{ textAnchor: "middle", fill: "#64748b", fontWeight: "800", fontSize: "10px", letterSpacing: "0.05em" }}
+                  offset={-38}
+                  style={{
+                    textAnchor: "middle",
+                    fill: "#64748b",
+                    fontWeight: "800",
+                    fontSize: "12px",
+                    letterSpacing: "0.05em"
+                  }}
                 />
               </XAxis>
+
               <YAxis
                 domain={[0, yMax]}
                 ticks={yTicks}
@@ -318,8 +560,8 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({ energiaPorMe
                 allowDataOverflow
                 tickLine={false}
                 stroke="#94a3b8"
-                width={65}
-                tick={{ fontSize: "11px", fill: "#64748b" }}
+                width={75}
+                tick={{ fontSize: "12px", fontWeight: "700", fill: "#64748b" }}
                 tickFormatter={(v) => Number(v).toLocaleString("es-PE")}
               >
                 <Label
@@ -327,30 +569,61 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({ energiaPorMe
                   angle={-90}
                   position="insideLeft"
                   offset={-5}
-                  style={{ textAnchor: "middle", fill: "#64748b", fontWeight: "800", fontSize: "10px", letterSpacing: "0.05em" }}
+                  style={{
+                    textAnchor: "middle",
+                    fill: "#64748b",
+                    fontWeight: "800",
+                    fontSize: "12px",
+                    letterSpacing: "0.05em"
+                  }}
                 />
               </YAxis>
-              <Tooltip cursor={{ fill: "rgba(59, 130, 246, 0.05)" }} content={<EnergyTooltip />} />
 
-              {/* Real */}
-              <Bar dataKey="kwhFP" stackId="e" fill="url(#fpGradient)" maxBarSize={28} />
-              <Bar dataKey="kwhHP" stackId="e" fill="url(#hpGradient)" maxBarSize={28}>
+              <Tooltip
+                cursor={{ fill: "rgba(59, 130, 246, 0.05)" }}
+                content={<EnergyTooltip ahorroPct={ahorroPct} />}
+              />
+
+              <Bar dataKey="realTotal" fill="url(#realBlueGradient)" maxBarSize={38}>
                 <LabelList
-                  dataKey="totalReal"
+                  dataKey="realTotal"
                   position="top"
                   formatter={fmtK}
-                  style={{ fontSize: 10, fontWeight: 800, fill: "#0f172a" }}
+                  style={{ fontSize: 13, fontWeight: 900, fill: "#0f172a" }}
                 />
               </Bar>
 
-              {/* Proyección: mismos colores, más claros y con borde punteado */}
-              <Bar dataKey="proyFP" stackId="e" fill="#3b82f6" fillOpacity={0.35} stroke="#3b82f6" strokeDasharray="3 2" maxBarSize={28} />
-              <Bar dataKey="proyHP" stackId="e" fill="#e11d48" fillOpacity={0.35} stroke="#e11d48" strokeDasharray="3 2" maxBarSize={28}>
+              <Bar
+                dataKey="proyTotal"
+                fill="url(#proyRedGradient)"
+                fillOpacity={0.4}
+                stroke="#e11d48"
+                strokeDasharray="3 2"
+                maxBarSize={38}
+              >
                 <LabelList
-                  dataKey="totalProy"
+                  dataKey="proyTotal"
                   position="top"
                   formatter={fmtK}
-                  style={{ fontSize: 10, fontWeight: 800, fill: "#64748b" }}
+                  style={{ fontSize: 13, fontWeight: 900, fill: "#475569" }}
+                />
+                <LabelList
+                  dataKey="proyTotal"
+                  content={(p: any) => {
+                    if (!ahorroPct || !p?.value) return null;
+                    return (
+                      <text
+                        x={Number(p.x) + Number(p.width) / 2}
+                        y={Number(p.y) - 24}
+                        textAnchor="middle"
+                        fontSize={13}
+                        fontWeight={900}
+                        fill="#059669"
+                      >
+                        -{fmt(ahorroPct, 1)}%
+                      </text>
+                    );
+                  }}
                 />
               </Bar>
             </BarChart>

@@ -670,13 +670,31 @@ const BoardDetailPage = () => {
 
   // const companyName = typeof board.company === "object" ? board.company.name : "Sin empresa";
 
-  const isElcorsaBoard = board?.boardCode === "ELC-MIR-TE-001" || code === "ELC-MIR-TE-001";
+  // TODO:  Harcodeado para DEMO
+  const isDemoAccount = true; // REEMPLAZAR POR TU LÓGICA REAL DE DETECCIÓN DE CUENTA DEMO
 
-const companyName = isElcorsaBoard
-  ? "ELCORSA"
-  : typeof board.company === "object"
-    ? board.company.name
-    : "Sin empresa";
+  const currentCode = board?.boardCode || code;
+
+  // 1. Detección de tableros específicos
+  const isElcorsaBoard = currentCode === "ELC-MIR-TE-001";
+  const isBbvaDemoBoard = isDemoAccount && currentCode === "BBVA-SB-TE-001"; // Lógica solicitada
+
+  // 2. Lógica para el Nombre de la Empresa
+  // Orden de prioridad: BBVA Demo > Elcorsa > Datos de DB > Por defecto
+  const companyName = isBbvaDemoBoard
+    ? "BBVA" // Valor forzado para DEMO BBVA
+    : isElcorsaBoard
+      ? "ELCORSA"
+      : typeof board.company === "object" && board.company.name
+        ? board.company.name
+        : "Sin empresa";
+
+  // 3. Lógica para la Ubicación (Nueva)
+  // Orden de prioridad: BBVA Demo > Datos de DB > Por defecto
+  const boardLocation = isBbvaDemoBoard
+    ? "SAN BORJA" // Valor forzado para DEMO BBVA
+    : board.location || "Sin ubicación";
+  // TODO:  Harcodeado para DEMO
 
   return (
     <>
@@ -725,7 +743,8 @@ const companyName = isElcorsaBoard
         <div className="grid grid-cols-2 gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-4">
           {[
             { l: "Empresa", v: companyName, icon: Building2, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
-            { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+            // { l: "Ubicación", v: board.location, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
+            { l: "Ubicación", v: boardLocation, icon: MapPin, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             { l: "Sistema", v: getSistemaCompleto(board), icon: Info, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
             { l: "Estado", v: board.estadoGeneral, icon: CheckCircle2, textCls: "text-slate-800", iconCls: "text-[#3aaa35]" }
           ].map((item, i) => {

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { Container } from "lucide-react";
 import {
   Bar,
@@ -12,345 +12,349 @@ import {
   YAxis
 } from "recharts";
 
-interface EnergyBarSectionProps {
-  energiaPorDiaData: any[];
-  visibleEnergySeries: { [key: string]: boolean };
-  seriesKeys: string[];
-  onToggleEnergyDay: (key: string) => void;
+export interface EnergyMonthItem {
+  name: string; // "Abr 26"
+  kWh: number;
+  kwhHP: number;
+  kwhFP: number;
+  dias: number;
 }
 
-// La corrección del ×12 del backend ya se aplica en BoardDetailPage.tsx,
-// por eso aquí el divisor es 1 (no dividir dos veces).
-const DIVISOR_CORRECCION_BACKEND = 1;
+// Las props de filtro por semana ya no se usan (el recibo no trae datos diarios).
+// Se dejan opcionales para no romper BoardDetailPage; puedes quitarlas cuando quieras.
+interface EnergyBarSectionProps {
+  energiaPorMesData: EnergyMonthItem[];
+  visibleEnergySeries?: { [key: string]: boolean };
+  onToggleEnergyDay?: (key: string) => void;
+}
 
-// Tooltip con consumo exacto
-const CustomEnergyTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    const kWh = Number(data.kWh) || 0;
+const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Dic"];
+const GROWTH_OPTIONS = [0, 5, 10];
 
-    return (
-      <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[200px] backdrop-blur-sm">
-        <div className="border-b border-slate-100 pb-2 mb-2 flex items-center justify-between">
-          <span className="font-bold text-slate-800 text-xs">{label}</span>
-          <span className="font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[11px]">
-            {kWh.toFixed(2)} kWh
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-slate-500 font-semibold">Consumo promedio:</span>
-          <span className="font-extrabold text-slate-900 tabular-nums">
-            {kWh.toFixed(2)} kWh
-          </span>
-        </div>
-      </div>
-    );
-  }
-  return null;
+const fmt = (n: number, decimals = 0) =>
+  Number(n).toLocaleString("es-PE", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+
+// "Abr 26" -> { year: 2026, month: 3 }
+const parsePeriod = (name: string) => {
+  const m = String(name || "").match(/^([A-Za-zñÑ]{3})\s+(\d{2})$/);
+  if (!m) return null;
+  const idx = MESES.findIndex((x) => x.toLowerCase() === m[1].toLowerCase());
+  return idx < 0 ? null : { year: 2000 + Number(m[2]), month: idx };
 };
 
-export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
-  energiaPorDiaData,
-  visibleEnergySeries,
-  seriesKeys,
-  onToggleEnergyDay
-}) => {
-  // 1. Filtrado de series visibles (con la corrección del backend aplicada)
-  const barrasVisibles = energiaPorDiaData
-    .filter((d) => visibleEnergySeries[d.name] !== false)
-    .map((item) => ({
-      name: item.name,
-      kWh: Number(((item.kWh || 0) / DIVISOR_CORRECCION_BACKEND).toFixed(2))
+// Recharts 3 tipa el formatter de LabelList como (label: RenderableText) => RenderableText,
+// por eso recibe "unknown" y se convierte a número aquí.
+const fmtK = (v: unknown) => {
+  const n = Number(v);
+  return n > 0 ? `${(n / 1000).toFixed(1)}k` : "";
+};
+
+const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+
+interface ChartRow {
+  name: string;
+  esProyeccion: boolean;
+  kwhFP: number;
+  kwhHP: number;
+  proyFP: number;
+  proyHP: number;
+  total: number;
+  totalReal?: number; // solo en meses facturados (para la etiqueta superior)
+  totalProy?: number; // solo en meses proyectados
+}
+
+const EnergyTooltip = ({ active, payload }: any) => {
+  if (!active || !payload?.length) return null;
+  const r: ChartRow = payload[0].payload;
+  const hp = r.esProyeccion ? r.proyHP : r.kwhHP;
+  const fp = r.esProyeccion ? r.proyFP : r.kwhFP;
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[220px] backdrop-blur-sm">
+      <div className="border-b border-slate-100 pb-2 mb-2 flex items-center justify-between gap-3">
+        <span className="font-bold text-slate-800">
+          {r.name}
+          {r.esProyeccion && <span className="ml-1.5 font-semibold text-slate-400">(proyección)</span>}
+        </span>
+        <span className="font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200 text-[11px]">
+          {fmt(r.total)} kWh
+        </span>
+      </div>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-slate-500 font-semibold">
+            <span className="size-2 rounded-full bg-rose-500" /> Hora Punta (HP):
+          </span>
+          <span className="font-extrabold text-slate-900 tabular-nums">{fmt(hp)} kWh</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 text-slate-500 font-semibold">
+            <span className="size-2 rounded-full bg-blue-500" /> Fuera de Punta (FP):
+          </span>
+          <span className="font-extrabold text-slate-900 tabular-nums">{fmt(fp)} kWh</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({ energiaPorMesData }) => {
+  const [growth, setGrowth] = useState(0); // crecimiento anual esperado (%)
+
+  const model = useMemo(() => {
+    const real = energiaPorMesData ?? [];
+    if (real.length === 0) return null;
+
+    const last12 = real.slice(-12);
+    const completo = real.length >= 12;
+    const avgHP = sum(last12.map((m) => m.kwhHP)) / last12.length;
+    const avgFP = sum(last12.map((m) => m.kwhFP)) / last12.length;
+    const factor = 1 + growth / 100;
+
+    // Filas reales
+    const rows: ChartRow[] = real.map((m) => ({
+      name: m.name,
+      esProyeccion: false,
+      kwhFP: m.kwhFP,
+      kwhHP: m.kwhHP,
+      proyFP: 0,
+      proyHP: 0,
+      total: m.kWh,
+      totalReal: m.kWh
     }));
 
-  // ── ESTADOS DE SELECCIÓN ──
-  const isAllSelected =
-    seriesKeys.length > 0 &&
-    seriesKeys.every((key) => visibleEnergySeries[key] !== false);
-
-  const activeDaysCount = seriesKeys.filter(
-    (key) => visibleEnergySeries[key] !== false
-  ).length;
-
-  // Impide desmarcar el último día activo (evita un gráfico en blanco)
-  const handleSafeToggleDay = (key: string) => {
-    const isCurrentlySelected = visibleEnergySeries[key] !== false;
-    if (isCurrentlySelected && activeDaysCount <= 1) {
-      return;
-    }
-    onToggleEnergyDay(key);
-  };
-
-  const handleSelectAll = () => {
-    seriesKeys.forEach((key) => {
-      if (visibleEnergySeries[key] === false) {
-        onToggleEnergyDay(key);
+    // Filas proyectadas: mismo mes del año anterior × (1 + crecimiento).
+    // Si el recibo no trajo 12 meses, se usa el promedio mensual disponible.
+    const lastP = parsePeriod(real[real.length - 1].name);
+    const proj: ChartRow[] = Array.from({ length: 12 }, (_, i) => {
+      const base = completo ? last12[i] : { kwhHP: avgHP, kwhFP: avgFP };
+      let name = `Proy. ${i + 1}`;
+      if (lastP) {
+        const t = lastP.year * 12 + lastP.month + i + 1;
+        name = `${MESES[t % 12]} ${String(Math.floor(t / 12)).slice(-2)}`;
       }
+      const hp = base.kwhHP * factor;
+      const fp = base.kwhFP * factor;
+      return { name, esProyeccion: true, kwhFP: 0, kwhHP: 0, proyFP: fp, proyHP: hp, total: hp + fp, totalProy: hp + fp };
     });
+
+    const anualReal = completo ? sum(last12.map((m) => m.kWh)) : (sum(last12.map((m) => m.kWh)) / last12.length) * 12;
+    const anualProy = sum(proj.map((p) => p.total));
+    const hpAnual = completo ? sum(last12.map((m) => m.kwhHP)) : avgHP * 12;
+    const ultimo = real[real.length - 1];
+
+    return {
+      data: [...rows, ...proj],
+      ultimo,
+      completo,
+      mesesReales: real.length,
+      anualReal,
+      anualProy,
+      pctHP: anualReal > 0 ? (hpAnual / anualReal) * 100 : 0,
+      variacion: anualReal > 0 ? (anualProy / anualReal - 1) * 100 : 0
+    };
+  }, [energiaPorMesData, growth]);
+
+  if (!model) {
+    return (
+      <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/50 font-sans mt-6">
+        <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 text-center text-slate-400 font-semibold text-sm">
+          Sube tu recibo de luz con “Cambiar Recibo de Luz” (sección Costo de Energía) para ver el consumo.
+        </div>
+      </section>
+    );
+  }
+
+  const { data, ultimo, completo, mesesReales, anualReal, anualProy, pctHP, variacion } = model;
+
+  // Eje Y desde 0 con pasos redondos
+  const maxVal = Math.max(0, ...data.map((d) => d.total));
+  const niceStep = (max: number) => {
+    const raw = (max || 1) / 5;
+    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const n = raw / mag;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
   };
-
-  // 2. LÓGICA DE ESCALA GRADUADA Y UNIFORME EN EL EJE Y
-  const rawValues = barrasVisibles.map((d) => d.kWh);
-  const minVal = rawValues.length > 0 ? Math.min(...rawValues) : 0;
-  const maxVal = rawValues.length > 0 ? Math.max(...rawValues) : 10;
-
-  const diff = maxVal - minVal;
-
-  let stepIncrement = 0.1;
-  if (diff > 5000) stepIncrement = 1000;
-  else if (diff > 1000) stepIncrement = 200;
-  else if (diff > 200) stepIncrement = 50;
-  else if (diff > 50) stepIncrement = 10;
-  else if (diff > 5) stepIncrement = 1;
-  else if (diff > 2) stepIncrement = 0.5;
-  else if (diff > 0.8) stepIncrement = 0.2;
-  else stepIncrement = 0.1;
-
-  // Piso: 1 o 2 pasos regulares debajo del mínimo
-  const yMin = Math.max(0, Number((Math.floor(minVal / stepIncrement) * stepIncrement - stepIncrement).toFixed(2)));
-  // Techo: 1 paso regular por encima del máximo para acomodar la etiqueta
-  const yMax = Number((Math.ceil(maxVal / stepIncrement) * stepIncrement + stepIncrement).toFixed(2));
-
+  const step = niceStep(maxVal);
+  const yMax = Math.ceil((maxVal * 1.1) / step) * step || step;
   const yTicks: number[] = [];
-  for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
-    yTicks.push(Number(val.toFixed(2)));
-  }
-  while (yTicks.length > 12 && stepIncrement > 0) {
-    stepIncrement *= 2;
-    yTicks.length = 0;
-    for (let val = yMin; val <= yMax + 0.0001; val += stepIncrement) {
-      yTicks.push(Number(val.toFixed(2)));
-    }
-  }
+  for (let v = 0; v <= yMax + 0.0001; v += step) yTicks.push(Number(v.toFixed(2)));
 
-  // 3. Totales y Proyecciones
-  const totalKWhSemana = barrasVisibles.reduce(
-    (acc, curr) => acc + (curr.kWh || 0),
-    0
-  );
-  const promedioKWhDiario =
-    barrasVisibles.length > 0 ? totalKWhSemana / barrasVisibles.length : 0;
-  const proyeccionKWhMes = promedioKWhDiario * 30;
-  const proyeccionKWhAno = promedioKWhDiario * 365;
+  const notaAnual = completo
+    ? "Suma de los 12 meses facturados en el recibo"
+    : `Promedio de ${mesesReales} mes${mesesReales > 1 ? "es" : ""} del recibo × 12 (el recibo no trajo los 12 meses)`;
+
+  const metricCard = "relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm";
 
   return (
     <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xl shadow-slate-200/50 transition-all duration-300 hover:border-slate-300 font-sans mt-6">
-      {/* Cabecera Principal */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-6">
-        <div className="flex items-center gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 to-indigo-500/10 text-blue-600 shadow-inner border border-blue-500/20">
-            <Container size={24} />
-          </div>
-          <div>
-            <h2 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
-              Energía Consumida Estimada
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Promedio por día de la semana según el período medido, expresado en KiloVatios-Hora (kWh)
-            </p>
-          </div>
+      {/* Cabecera */}
+      <div className="mb-8 flex items-center gap-4 border-b border-slate-100 pb-6">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 to-indigo-500/10 text-blue-600 shadow-inner border border-blue-500/20">
+          <Container size={24} />
         </div>
-      </div>
-
-      {/* Tarjetas de Métricas Premium */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {/* Card 1 */}
-        <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-300">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-            Consumo Diario Promedio
-          </p>
-          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
-            {promedioKWhDiario.toFixed(1)}{" "}
-            <span className="text-sm font-bold text-blue-600">kWh/día</span>
-          </p>
-          <p className="mt-2 text-xs text-slate-500 font-medium">
-            Promedio sobre los días de la semana seleccionados
-          </p>
-        </div>
-
-        {/* Card 2 */}
-        <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-300">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-            Proyección Mensual (30 días)
-          </p>
-          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
-            {proyeccionKWhMes.toFixed(1)}{" "}
-            <span className="text-sm font-bold text-blue-600">kWh/mes</span>
-          </p>
-          <p className="mt-2 text-xs text-slate-500 font-medium">
-            Promedio diario × 30 días
-          </p>
-        </div>
-
-        {/* Card 3 */}
-        <div className="relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-blue-300">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">
-            Proyección Anual Estimada
-          </p>
-          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
-            {proyeccionKWhAno.toFixed(0)}{" "}
-            <span className="text-sm font-bold text-blue-600">kWh/año</span>
-          </p>
-          <p className="mt-2 text-xs text-slate-500 font-medium">
-            Promedio diario × 365 (extrapolado del período medido)
+        <div>
+          <h2 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight">
+            Consumo de Energía y Proyección Anual
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Historial facturado en tu recibo de luz y proyección a 12 meses, en kiloVatios-hora (kWh)
           </p>
         </div>
       </div>
 
-      {/* ── SECCIÓN DE FILTROS ── */}
-      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs font-sans">
-
-        {/* IZQUIERDA */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs font-black uppercase text-slate-400 mr-1 tracking-wider">Filtros:</span>
+      {/* Métricas */}
+      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className={metricCard}>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Último mes facturado</p>
+          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
+            {fmt(ultimo.kWh)} <span className="text-sm font-bold text-blue-600">kWh</span>
+          </p>
+          <p className="mt-2 text-xs text-slate-500 font-medium">
+            {ultimo.name} · {fmt(ultimo.kWh / (ultimo.dias || 30), 0)} kWh/día
+          </p>
         </div>
 
-        {/* CENTRO: Días de la semana (protegidos para no vaciar el gráfico) */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 justify-start flex-1">
-          {seriesKeys.map((key) => {
-            const isSelected = visibleEnergySeries[key] !== false;
-            const isLastActive = isSelected && activeDaysCount === 1;
-
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => handleSafeToggleDay(key)}
-                title={isLastActive ? "Debe mantener al menos un día visible" : undefined}
-                className={`flex flex-col items-center justify-center min-w-[78px] px-3.5 py-2 rounded-xl transition-all border cursor-pointer shrink-0 active:scale-95 ${
-                  isSelected
-                    ? "border-transparent text-white shadow-md shadow-blue-500/10"
-                    : "bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"
-                } ${isLastActive ? "cursor-not-allowed opacity-90 ring-2 ring-white/50" : ""}`}
-                style={
-                  isSelected
-                    ? { background: "linear-gradient(to bottom, #3b82f6, #1d4ed8)" }
-                    : undefined
-                }
-              >
-                <span className="text-xs font-extrabold">{key}</span>
-              </button>
-            );
-          })}
+        <div className={metricCard}>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Consumo anual real</p>
+          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
+            {fmt(anualReal)} <span className="text-sm font-bold text-blue-600">kWh/año</span>
+          </p>
+          <p className="mt-2 text-xs text-slate-500 font-medium">{notaAnual}</p>
         </div>
 
-        {/* DERECHA: Botón Todos */}
-        <div className="flex items-center gap-2 shrink-0 justify-end">
-          <button
-            type="button"
-            onClick={handleSelectAll}
-            className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border active:scale-95 flex items-center gap-1.5 ${
-              isAllSelected
-                ? "text-white border-blue-500/30 shadow-lg shadow-blue-500/25 ring-2 ring-blue-400/40"
-                : "bg-white border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 shadow-xs"
-            }`}
-            style={
-              isAllSelected
-                ? { background: "linear-gradient(to right, #3b82f6, #1d4ed8)" }
-                : undefined
-            }
-          >
-            {isAllSelected && <span className="size-1.5 rounded-full bg-white animate-pulse" />}
-            <span>Todos</span>
-          </button>
+        <div className={metricCard}>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Proyección próx. 12 meses</p>
+          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
+            {fmt(anualProy)} <span className="text-sm font-bold text-blue-600">kWh/año</span>
+          </p>
+          <p className="mt-2 text-xs text-slate-500 font-medium">
+            {growth === 0
+              ? "Mismo patrón estacional, sin crecimiento"
+              : `${variacion >= 0 ? "+" : ""}${fmt(variacion, 1)}% vs. el año real`}
+          </p>
         </div>
 
+        <div className={metricCard}>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-blue-600">Hora Punta del año</p>
+          <p className="mt-2 text-3xl font-black text-slate-900 tracking-tight">
+            {fmt(pctHP, 1)} <span className="text-sm font-bold text-blue-600">%</span>
+          </p>
+          <p className="mt-2 text-xs text-slate-500 font-medium">Parte del consumo anual en HP</p>
+        </div>
+      </div>
+
+      {/* Escenario de crecimiento + leyenda */}
+      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-black uppercase text-slate-400 tracking-wider mr-1">Crecimiento anual:</span>
+          {GROWTH_OPTIONS.map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGrowth(g)}
+              className={`px-3.5 py-1.5 text-xs font-black rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                growth === g
+                  ? "text-white border-transparent shadow-md shadow-blue-500/20"
+                  : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+              }`}
+              style={growth === g ? { background: "linear-gradient(to bottom, #3b82f6, #1d4ed8)" } : undefined}
+            >
+              {g === 0 ? "Sin crecimiento" : `+${g}%`}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-500">
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-blue-500" /> Fuera de Punta (FP)
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full bg-rose-500" /> Hora Punta (HP)
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="size-2.5 rounded-full border border-dashed border-slate-400 bg-slate-200" /> Proyección
+          </span>
+        </div>
       </div>
 
       {/* Gráfico */}
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-        <div className="h-80 sm:h-96 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
-          {barrasVisibles.length === 0 ? (
-            <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
-              Selecciona al menos un día para visualizar los datos del gráfico.
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={barrasVisibles}
-                margin={{ top: 35, right: 15, left: 10, bottom: 30 }}
-                style={{ outline: "none", border: "none" }}
+        <div className="h-80 sm:h-96 md:h-[420px] w-[900px] lg:w-full text-xs font-medium text-slate-500 select-none">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 35, right: 15, left: 30, bottom: 30 }} style={{ outline: "none", border: "none" }}>
+              <defs>
+                <linearGradient id="fpGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#1d4ed8" />
+                </linearGradient>
+                <linearGradient id="hpGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#fb7185" />
+                  <stop offset="100%" stopColor="#e11d48" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <XAxis
+                dataKey="name"
+                tickLine={false}
+                stroke="#94a3b8"
+                interval={0}
+                dy={8}
+                tick={{ fontSize: "10px", fontWeight: "700", fill: "#334155" }}
               >
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" />
-                    <stop offset="100%" stopColor="#1d4ed8" />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#e2e8f0"
-                  vertical={false}
+                <Label
+                  value="Meses (izquierda: facturado · derecha: proyección)"
+                  position="insideBottom"
+                  offset={-20}
+                  style={{ textAnchor: "middle", fill: "#64748b", fontWeight: "800", fontSize: "10px", letterSpacing: "0.05em" }}
                 />
-                <XAxis
-                  dataKey="name"
-                  tickLine={false}
-                  stroke="#94a3b8"
-                  dy={8}
-                  tick={{ fontSize: "11px", fontWeight: "700", fill: "#334155" }}
-                >
-                  <Label
-                    value="Días de la Semana"
-                    position="insideBottom"
-                    offset={-20}
-                    style={{
-                      textAnchor: "middle",
-                      fill: "#64748b",
-                      fontWeight: "800",
-                      fontSize: "10px",
-                      letterSpacing: "0.05em"
-                    }}
-                  />
-                </XAxis>
-                <YAxis
-                  domain={[yMin, yMax]}
-                  ticks={yTicks}
-                  interval={0}
-                  allowDataOverflow={true}
-                  tickLine={false}
-                  stroke="#94a3b8"
-                  width={55}
-                  tick={{ fontSize: "11px", fill: "#64748b" }}
-                  tickFormatter={(val) => Number(val).toFixed(1)}
-                >
-                  <Label
-                    value="Energía Activa (kWh)"
-                    angle={-90}
-                    position="insideLeft"
-                    offset={-5}
-                    style={{
-                      textAnchor: "middle",
-                      fill: "#64748b",
-                      fontWeight: "800",
-                      fontSize: "10px",
-                      letterSpacing: "0.05em"
-                    }}
-                  />
-                </YAxis>
-                <Tooltip
-                  cursor={{ fill: "rgba(59, 130, 246, 0.05)" }}
-                  content={<CustomEnergyTooltip />}
+              </XAxis>
+              <YAxis
+                domain={[0, yMax]}
+                ticks={yTicks}
+                interval={0}
+                allowDataOverflow
+                tickLine={false}
+                stroke="#94a3b8"
+                width={65}
+                tick={{ fontSize: "11px", fill: "#64748b" }}
+                tickFormatter={(v) => Number(v).toLocaleString("es-PE")}
+              >
+                <Label
+                  value="Energía Activa (kWh)"
+                  angle={-90}
+                  position="insideLeft"
+                  offset={-5}
+                  style={{ textAnchor: "middle", fill: "#64748b", fontWeight: "800", fontSize: "10px", letterSpacing: "0.05em" }}
                 />
-                <Bar
-                  dataKey="kWh"
-                  fill="url(#barGradient)"
-                  radius={[8, 8, 0, 0]}
-                  maxBarSize={45}
-                >
-                  <LabelList
-                    dataKey="kWh"
-                    position="top"
-                    formatter={(val: any) => `${Number(val).toFixed(2)}`}
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: "800",
-                      fill: "#0f172a"
-                    }}
-                  />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+              </YAxis>
+              <Tooltip cursor={{ fill: "rgba(59, 130, 246, 0.05)" }} content={<EnergyTooltip />} />
+
+              {/* Real */}
+              <Bar dataKey="kwhFP" stackId="e" fill="url(#fpGradient)" maxBarSize={28} />
+              <Bar dataKey="kwhHP" stackId="e" fill="url(#hpGradient)" maxBarSize={28}>
+                <LabelList
+                  dataKey="totalReal"
+                  position="top"
+                  formatter={fmtK}
+                  style={{ fontSize: 10, fontWeight: 800, fill: "#0f172a" }}
+                />
+              </Bar>
+
+              {/* Proyección: mismos colores, más claros y con borde punteado */}
+              <Bar dataKey="proyFP" stackId="e" fill="#3b82f6" fillOpacity={0.35} stroke="#3b82f6" strokeDasharray="3 2" maxBarSize={28} />
+              <Bar dataKey="proyHP" stackId="e" fill="#e11d48" fillOpacity={0.35} stroke="#e11d48" strokeDasharray="3 2" maxBarSize={28}>
+                <LabelList
+                  dataKey="totalProy"
+                  position="top"
+                  formatter={fmtK}
+                  style={{ fontSize: 10, fontWeight: 800, fill: "#64748b" }}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </section>

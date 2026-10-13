@@ -1,5 +1,5 @@
 import { ArrowLeft, Building2, CheckCircle2, Info, MapPin, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { CarbonEmissionsSection } from "../../../components/dashboard/sections/CarbonEmissionsSection";
@@ -46,14 +46,6 @@ const WEEKDAYS_ES = [
 // Cuando se corrija en el backend, cambiar este valor a 1
 // (y dejar DIVISOR_CORRECCION_BACKEND = 1 en EnergyBarSection.tsx).
 const FACTOR_CORRECCION_BACKEND = 12;
-
-const weekdayFromYmd = (fechaYMD: string): (typeof WEEKDAYS_ES)[number] | null => {
-  const [year, month, day] = (fechaYMD || "").split("-").map(Number);
-  if (!year || !month || !day) return null;
-  const date = new Date(year, month - 1, day);
-  if (Number.isNaN(date.getTime())) return null;
-  return WEEKDAYS_ES[(date.getDay() + 6) % 7];
-};
 
 const BoardDetailPage = () => {
   const { auth, loading: authLoading } = useAuth();
@@ -115,9 +107,6 @@ const BoardDetailPage = () => {
     ahorroEstimado: number;
   } | null>(null);
 
-  const [energiaPorDiaSemanaData, setEnergiaPorDiaSemanaData] = useState<any[]>([]);
-  const [weekdaySeriesKeys, setWeekdaySeriesKeys] = useState<string[]>([]);
-
   const fetchChartData = async (boardId: string, start?: string, end?: string) => {
     try {
       const res: any = await getDemandChartData(boardId, start, end);
@@ -127,8 +116,6 @@ const BoardDetailPage = () => {
       if (!agrupado || Object.keys(agrupado).length === 0) {
         setRawChartData([]);
         setSeriesKeys([]);
-        setEnergiaPorDiaSemanaData([]);
-        setWeekdaySeriesKeys([]);
         setHoraPicoMaximo(null);
         setAnalisisPotencia(null);
         return;
@@ -206,89 +193,12 @@ const BoardDetailPage = () => {
         return `${dia}/${mes} (${diaNombre})`;
       });
 
-      const barrasProcesadas = sortedCleanKeys.map((key) => {
-        // Filtrar las lecturas válidas del día
-        const puntosValidos = formattedData.filter(
-          (d) => d[key] !== undefined && d[key] !== null
-        );
-
-        let sumaKwFP = 0;
-        let countFP = 0;
-        let sumaKwHP = 0;
-        let countHP = 0;
-
-        puntosValidos.forEach((d) => {
-          const val = Number(d[key]) || 0;
-          const hora = d.horaMinuto; // Ej: "18:25"
-          if (!hora) return;
-
-          const [h] = hora.split(":").map(Number);
-          // Hora Punta (HP): 18:00 a 23:00 hrs (18, 19, 20, 21, 22)
-          const esHP = h >= 18 && h < 23;
-
-          if (esHP) {
-            sumaKwHP += val;
-            countHP++;
-          } else {
-            sumaKwFP += val;
-            countFP++;
-          }
-        });
-
-        // Potencia promedio × horas del bloque (5 h de HP y 19 h de FP)
-        const kwhHP = countHP > 0 ? (sumaKwHP / countHP) * 5 : 0;
-        const kwhFP = countFP > 0 ? (sumaKwFP / countFP) * 19 : 0;
-        const totalKWh = kwhHP + kwhFP;
-
-        return {
-          name: key,
-          kWh: Math.round(totalKWh * 100) / 100,
-          kwhHP: Math.round(kwhHP * 100) / 100,
-          kwhFP: Math.round(kwhFP * 100) / 100,
-        };
-      });
-
-      const weekdayAgg: {
-        [day: string]: { kWh: number; kwhHP: number; kwhFP: number; count: number };
-      } = {};
-      WEEKDAYS_ES.forEach((day) => {
-        weekdayAgg[day] = { kWh: 0, kwhHP: 0, kwhFP: 0, count: 0 };
-      });
-      barrasProcesadas.forEach((item, idx) => {
-        const fechaYMD = (rawKeys[idx] || "").split(" ")[0];
-        const weekday = weekdayFromYmd(fechaYMD);
-        if (!weekday) return;
-        weekdayAgg[weekday].kWh += item.kWh;
-        weekdayAgg[weekday].kwhHP += item.kwhHP;
-        weekdayAgg[weekday].kwhFP += item.kwhFP;
-        weekdayAgg[weekday].count += 1;
-      });
-
-      const weekdayKeys = [...WEEKDAYS_ES];
-      const barrasPorDiaSemana = weekdayKeys.map((day) => {
-        const n = weekdayAgg[day].count;
-        return {
-          name: day,
-          kWh: n > 0 ? Math.round((weekdayAgg[day].kWh / n) * 100) / 100 : 0,
-          kwhHP: n > 0 ? Math.round((weekdayAgg[day].kwhHP / n) * 100) / 100 : 0,
-          kwhFP: n > 0 ? Math.round((weekdayAgg[day].kwhFP / n) * 100) / 100 : 0,
-          count: n,
-        };
-      });
-
-      setEnergiaPorDiaSemanaData(barrasPorDiaSemana);
-      setWeekdaySeriesKeys(weekdayKeys);
       setRawChartData(formattedData);
       setSeriesKeys(sortedCleanKeys);
       setSelectedReactiveDay(prev => (prev && sortedCleanKeys.includes(prev) ? prev : sortedCleanKeys[0] || null));
 
       // Recalcular métricas de picos e indicadores eléctricos inmediatamente con los datos frescos
       calcularMetricasLuzDelSur(formattedData);
-
-      const initialWeekdayVisibility: { [key: string]: boolean } = {};
-      weekdayKeys.forEach((k) => {
-        initialWeekdayVisibility[k] = true;
-      });
 
       setVisibleDemandSeries(prev => {
         const visibility: any = {
@@ -305,27 +215,6 @@ const BoardDetailPage = () => {
         "kvar_capacitivo": prev["kvar_capacitivo"] ?? true
       }));
 
-      setVisibleEnergySeries((prev) => {
-        const next: { [key: string]: boolean } = {};
-        weekdayKeys.forEach((k) => {
-          next[k] = prev[k] !== undefined ? prev[k] : true;
-        });
-        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
-      });
-      setVisibleCarbonSeries((prev) => {
-        const next: { [key: string]: boolean } = {};
-        weekdayKeys.forEach((k) => {
-          next[k] = prev[k] !== undefined ? prev[k] : true;
-        });
-        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
-      });
-      setVisibleCostSeries((prev) => {
-        const next: { [key: string]: boolean } = {};
-        weekdayKeys.forEach((k) => {
-          next[k] = prev[k] !== undefined ? prev[k] : true;
-        });
-        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
-      });
     } catch (err) {
       console.error("Error cargando curvas de demanda en Recharts:", err);
     }
@@ -391,15 +280,15 @@ const BoardDetailPage = () => {
   };
 
   const toggleEnergyDay = (key: string) => {
-    setVisibleEnergySeries(prev => ({ ...prev, [key]: !prev[key] }));
+    setVisibleEnergySeries(prev => ({ ...prev, [key]: prev[key] === false }));
   };
 
   const toggleCarbonDay = (key: string) => {
-    setVisibleCarbonSeries(prev => ({ ...prev, [key]: !prev[key] }));
+    setVisibleCarbonSeries(prev => ({ ...prev, [key]: prev[key] === false }));
   };
 
   const toggleCostDay = (key: string) => {
-    setVisibleCostSeries(prev => ({ ...prev, [key]: !prev[key] }));
+    setVisibleCostSeries(prev => ({ ...prev, [key]: prev[key] === false }));
   };
 
   const toggleThdFase = (fase: string) => {
@@ -548,6 +437,9 @@ const BoardDetailPage = () => {
 
   const [isUploadingBill, setIsUploadingBill] = useState(false);
 
+  // Historial de consumos extraído del recibo (kWh HP / FP por periodo facturado)
+  const [billHistory, setBillHistory] = useState<any[]>([]);
+
   // 2. Sincronizar cuando el tablero termine de cargar desde la API
   useEffect(() => {
     const energyRates = (board as any)?.energyRates;
@@ -557,7 +449,50 @@ const BoardDetailPage = () => {
         fp: Number(energyRates.tarifaFP),
       });
     }
+    const h = energyRates?.history;
+    setBillHistory(Array.isArray(h) ? h : []);
   }, [board]);
+
+  // ── ENERGÍA DESDE EL RECIBO (única fuente para Energía, Carbono y Costo) ──
+  // Consumo mensual (HP / FP) de los últimos 12 meses facturados
+  const energiaMensualRecibo = useMemo(() => {
+    if (!rates || billHistory.length === 0) return [];
+
+    return billHistory
+      .map((h: any, i: number) => {
+        const dias = Number(h.dias) > 0 ? Number(h.dias) : 30;
+        // Respaldo para recibos antiguos: kWh = costo ÷ tarifa
+        const kwhHP = Number(h.kwhHP) || (Number(h.costoHP) > 0 ? Number(h.costoHP) / rates.hp : 0);
+        const kwhFP = Number(h.kwhFP) || (Number(h.costoFP) > 0 ? Number(h.costoFP) / rates.fp : 0);
+        return {
+          name: String(h.period || `Mes ${i + 1}`),
+          dias,
+          kwhHP: Math.round(kwhHP * 100) / 100,
+          kwhFP: Math.round(kwhFP * 100) / 100,
+          kWh: Math.round((kwhHP + kwhFP) * 100) / 100,
+        };
+      })
+      .filter((m) => m.kWh > 0);
+  }, [billHistory, rates]);
+
+  // Carbono y Costo siguen recibiendo datos por día de la semana:
+  // se arma un "día promedio" con el recibo (sin CSV), igual para los 7 días.
+  const energiaDiariaRecibo = useMemo(() => {
+    if (energiaMensualRecibo.length === 0) return [];
+    const totalDias = energiaMensualRecibo.reduce((a, m) => a + m.dias, 0);
+    const diarioHP = energiaMensualRecibo.reduce((a, m) => a + m.kwhHP, 0) / totalDias;
+    const diarioFP = energiaMensualRecibo.reduce((a, m) => a + m.kwhFP, 0) / totalDias;
+    return WEEKDAYS_ES.map((day) => ({
+      name: day,
+      kWh: Math.round((diarioHP + diarioFP) * 100) / 100,
+      kwhHP: Math.round(diarioHP * 100) / 100,
+      kwhFP: Math.round(diarioFP * 100) / 100,
+      count: 1,
+      fuente: "recibo",
+    }));
+  }, [energiaMensualRecibo]);
+
+  const diasSemanaKeys = [...WEEKDAYS_ES];
 
   const handleBillUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -571,7 +506,9 @@ const BoardDetailPage = () => {
           hp: Number(res.data.tarifaHP) || 0.3095,
           fp: Number(res.data.tarifaFP) || 0.2616,
         });
-        alert("¡Tarifas extraídas y actualizadas correctamente con OpenAI!");
+        const historyFromBill = (res.data as any).history;
+        setBillHistory(Array.isArray(historyFromBill) ? historyFromBill : []);
+        alert("¡Tarifas y consumo extraídos y actualizados correctamente!");
       }
     } catch (err: any) {
       alert("Error al procesar recibo: " + (err.response?.data?.error || err.message));
@@ -775,24 +712,23 @@ const BoardDetailPage = () => {
             />
 
             <EnergyBarSection
-              energiaPorDiaData={energiaPorDiaSemanaData}
+              energiaPorMesData={energiaMensualRecibo}
               visibleEnergySeries={visibleEnergySeries}
-              seriesKeys={weekdaySeriesKeys}
               onToggleEnergyDay={toggleEnergyDay}
             />
 
             <CarbonEmissionsSection
-              energiaPorDiaData={energiaPorDiaSemanaData}
+              energiaPorDiaData={energiaDiariaRecibo}
               visibleCarbonSeries={visibleCarbonSeries}
-              seriesKeys={weekdaySeriesKeys}
+              seriesKeys={diasSemanaKeys}
               onToggleCarbonDay={toggleCarbonDay}
             />
 
             <EnergyCostSection
               rates={rates}
-              energiaPorDiaData={energiaPorDiaSemanaData}
+              energiaPorDiaData={energiaDiariaRecibo}
               visibleCostSeries={visibleCostSeries}
-              seriesKeys={weekdaySeriesKeys}
+              seriesKeys={diasSemanaKeys}
               onToggleCostDay={toggleCostDay}
               isUploadingBill={isUploadingBill}
               onBillUpload={handleBillUpload}

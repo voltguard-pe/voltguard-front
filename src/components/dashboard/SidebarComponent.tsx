@@ -16,6 +16,7 @@ import {
   LogOut,
   MoreVertical,
   Plus,
+  Receipt,
   ShieldCheck,
   Sun,
   User2,
@@ -504,6 +505,33 @@ const SidebarComponent = ({
       },
       // ── NUEVAS CARPETAS ──
       {
+        id: "billing",
+        name: "Facturación",
+        color: "text-amber-500",
+        iconColor: "#f59e0b",
+        count: 0,
+        loading: false,
+        createTitle: "Subir Recibo de Luz",
+        onCreate: () => navigate(`/dashboard/companies/${code}/billing`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            <NavLink
+              to={`/dashboard/companies/${code}/billing`}
+              onClick={onClose}
+              className={({ isActive }) =>
+                `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive
+                  ? "text-amber-600 font-bold bg-amber-50"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`
+              }
+            >
+              <Receipt size={12} className="shrink-0 text-amber-500" />
+              <span className="truncate">Recibo de Luz</span>
+            </NavLink>
+          </div>
+        ),
+      },
+      {
         id: "medical-reports",
         name: "Reporte Médico",
         color: "text-rose-500",
@@ -633,17 +661,16 @@ const SidebarComponent = ({
               <span className="truncate">Equipos UPS</span>
             </NavLink>
             <NavLink
-          to={`/dashboard/companies/${code}/ups/new`}
-          onClick={onClose}
-          className={({ isActive }) =>
-            `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${
-              isActive ? "bg-teal-50 text-teal-700 font-bold" : "text-slate-500 hover:bg-slate-100 italic"
-            }`
-          }
-        >
-          <Plus size={12} className="shrink-0 text-slate-400" />
-          <span className="truncate">Agregar equipo UPS</span>
-        </NavLink>
+              to={`/dashboard/companies/${code}/ups/new`}
+              onClick={onClose}
+              className={({ isActive }) =>
+                `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive ? "bg-teal-50 text-teal-700 font-bold" : "text-slate-500 hover:bg-slate-100 italic"
+                }`
+              }
+            >
+              <Plus size={12} className="shrink-0 text-slate-400" />
+              <span className="truncate">Agregar equipo UPS</span>
+            </NavLink>
           </div>
         ),
       },

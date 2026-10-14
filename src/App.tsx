@@ -41,6 +41,8 @@ import ContactSalesLayout from './layouts/ContactSalesLayout'
 import GroundingDashboardPage from './pages/dashboard/spat/GroundingDashboardPage'
 import { SidebarProvider } from './contexts/SidebarContext'
 import DocumentViewerPage from './pages/dashboard/document/DocumentViewerPage'
+import { SolarPanelDashboardPage } from './pages/dashboard/solar-panel/SolarPanelDashboardPage'
+import BillingDashboardPage from './pages/dashboard/billing/BillingDashboardPage'
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div className="p-6">
@@ -109,13 +111,16 @@ function App() {
                 {/* 3. DOCUMENTOS ITSE */}
                 <Route path="documents/view/:id" element={<DocumentViewerPage />} />
 
+                <Route path="billing" element={<BillingDashboardPage />} />
+                <Route path="companies/:publicCode/billing" element={<BillingDashboardPage />} />
+
                 {/* 4. REPORTE MÉDICO */}
                 <Route path="companies/:publicCode/medical-reports" element={<PlaceholderPage title="Reportes Médicos" />} />
                 <Route path="companies/:publicCode/medical-reports/new" element={<PlaceholderPage title="Nuevo Reporte Médico" />} />
 
                 {/* 5. PANELES SOLARES */}
-                <Route path="companies/:publicCode/solar" element={<PlaceholderPage title="Paneles Solares" />} />
-                <Route path="companies/:publicCode/solar/new" element={<PlaceholderPage title="Nueva Instalación Solar" />} />
+                <Route path="companies/:publicCode/solar" element={<SolarPanelDashboardPage />} />
+                <Route path="companies/:publicCode/solar/new" element={<SolarPanelDashboardPage />} />
 
                 {/* 6. SUBESTACIÓN */}
                 <Route path="companies/:publicCode/substations" element={<PlaceholderPage title="Subestaciones" />} />

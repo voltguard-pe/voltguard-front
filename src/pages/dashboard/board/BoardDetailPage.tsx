@@ -41,7 +41,29 @@ const WEEKDAYS_ES = [
   "Domingo",
 ] as const;
 
-const FACTOR_CORRECCION_BACKEND = 12;
+// El backend ya entrega los kW reales (importMetrel detecta Ptot en W o Eptot en Wh),
+// por eso no se aplica ninguna corrección adicional.
+const FACTOR_CORRECCION_BACKEND = 1;
+
+// Cada punto de la curva representa 5 minutos
+const HORAS_POR_PUNTO = 5 / 60;
+
+// Un día con menos de este % de puntos con dato se considera incompleto
+// (típico del primer y último día de la medición) y no entra al promedio
+const MIN_COBERTURA_DIA = 0.9;
+
+const DIA_ABREV_A_NOMBRE: Record<string, (typeof WEEKDAYS_ES)[number]> = {
+  lun: "Lunes", mon: "Lunes",
+  mar: "Martes", tue: "Martes",
+  mie: "Miércoles", wed: "Miércoles",
+  jue: "Jueves", thu: "Jueves",
+  vie: "Viernes", fri: "Viernes",
+  sab: "Sábado", sat: "Sábado",
+  dom: "Domingo", sun: "Domingo",
+};
+
+const normalizarDia = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().slice(0, 3);
 
 const BoardDetailPage = () => {
   const { auth, loading: authLoading } = useAuth();
@@ -425,6 +447,7 @@ const BoardDetailPage = () => {
     }
   }, [board]);
 
+  // Energía mensual según el recibo de luz (solo se usa en EnergyBarSection)
   const energiaMensualRecibo = useMemo(() => {
     if (!rates || billHistory.length === 0) return [];
 
@@ -446,22 +469,57 @@ const BoardDetailPage = () => {
       .filter((m) => m.kWh > 0);
   }, [billHistory, rates]);
 
-  const energiaDiariaRecibo = useMemo(() => {
-    if (energiaMensualRecibo.length === 0) return [];
-    const totalDias = energiaMensualRecibo.reduce((a, m) => a + m.dias, 0);
-    const diarioHP = energiaMensualRecibo.reduce((a, m) => a + m.kwhHP, 0) / totalDias;
-    const diarioFP = energiaMensualRecibo.reduce((a, m) => a + m.kwhFP, 0) / totalDias;
-    return WEEKDAYS_ES.map((day) => ({
-      name: day,
-      kWh: Math.round((diarioHP + diarioFP) * 100) / 100,
-      kwhHP: Math.round(diarioHP * 100) / 100,
-      kwhFP: Math.round(diarioFP * 100) / 100,
-      count: 1,
-      fuente: "recibo",
-    }));
-  }, [energiaMensualRecibo]);
+  // kWh por día de la semana calculados SOLO con las mediciones del CSV (sin recibo de luz)
+  const energiaDiariaMedida = useMemo(() => {
+    if (rawChartData.length === 0 || seriesKeys.length === 0) return [];
 
-  const diasSemanaKeys = [...WEEKDAYS_ES];
+    const candidatos: { nombre: string; kWh: number; cobertura: number }[] = [];
+
+    seriesKeys.forEach((key) => {
+      // key tiene el formato "dd/mm (Lun)"
+      const match = key.match(/\(([^)]+)\)/);
+      const nombre = match ? DIA_ABREV_A_NOMBRE[normalizarDia(match[1])] : undefined;
+      if (!nombre) return;
+
+      let sumaKw = 0;
+      let puntosConDato = 0;
+      rawChartData.forEach((row) => {
+        const v = Number(row[key]);
+        if (Number.isFinite(v) && v > 0) {
+          sumaKw += v;
+          puntosConDato++;
+        }
+      });
+
+      candidatos.push({
+        nombre,
+        kWh: sumaKw * HORAS_POR_PUNTO,
+        cobertura: puntosConDato / rawChartData.length,
+      });
+    });
+
+    // Descarta días incompletos (si todos lo fueran, usa todos)
+    const completos = candidatos.filter((c) => c.cobertura >= MIN_COBERTURA_DIA);
+    const usados = completos.length > 0 ? completos : candidatos;
+
+    // Promedia por día de la semana
+    return WEEKDAYS_ES.map((day) => {
+      const delDia = usados.filter((u) => u.nombre === day);
+      if (delDia.length === 0) return null;
+      const prom = delDia.reduce((a, u) => a + u.kWh, 0) / delDia.length;
+      return {
+        name: day,
+        kWh: Math.round(prom * 100) / 100,
+        count: delDia.length,
+        fuente: "medicion",
+      };
+    }).filter((d): d is NonNullable<typeof d> => d !== null);
+  }, [rawChartData, seriesKeys]);
+
+  // Solo se muestran los botones de los días que tienen medición
+  const diasSemanaKeys = WEEKDAYS_ES.filter((d) =>
+    energiaDiariaMedida.some((x) => x.name === d)
+  );
 
   const handleBillUpload = async (file: File) => {
     if (!file || !board?._id) return;
@@ -744,7 +802,6 @@ const BoardDetailPage = () => {
               </div>
             </div>
 
-            {/* Gráfico de Consumo de Energía Actualizado con el Botón para Subir Recibo */}
             {/* Gráfico de Consumo de Energía con el Botón para Subir Recibo */}
             <EnergyBarSection
               energiaPorMesData={energiaMensualRecibo}
@@ -754,10 +811,10 @@ const BoardDetailPage = () => {
               isUploadingBill={isUploadingBill}
               onBillUpload={handleBillUpload}
             />
-            
 
+            {/* Huella de carbono: calculada solo con las mediciones del CSV */}
             <CarbonEmissionsSection
-              energiaPorDiaData={energiaDiariaRecibo}
+              energiaPorDiaData={energiaDiariaMedida}
               visibleCarbonSeries={visibleCarbonSeries}
               seriesKeys={diasSemanaKeys}
               onToggleCarbonDay={toggleCarbonDay}

@@ -27,7 +27,6 @@ interface EnergyBarSectionProps {
   visibleEnergySeries?: { [key: string]: boolean };
   onToggleEnergyDay?: (key: string) => void;
   isUploadingBill?: boolean;
-  // Modificamos para aceptar el archivo directamente o manejar el fetch
   onBillUpload?: (file: File) => Promise<void>;
 }
 
@@ -168,7 +167,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     if (!file) return;
 
     if (onBillUpload) {
-      await onBillUpload(file); // Pasamos el File limpio
+      await onBillUpload(file);
     }
     if (e.target) {
       e.target.value = ""; 
@@ -215,15 +214,15 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     const hpAnual = sum(last12.map((m) => m.kwhHP));
     const ultimo = real[real.length - 1];
 
-    let labelReal = "26";
-    let labelProy = "27";
+    let labelReal = "25/26";
+    let labelProy = "26/27";
     if (lastP && firstP) {
       labelReal =
         firstP.year === lastP.year ? yy(firstP.year) : `${yy(firstP.year)}/${yy(lastP.year)}`;
       labelProy =
         firstP.year === lastP.year
           ? yy(firstP.year + 1)
-          : `${yy(firstP.year)}/${yy(firstP.year + 1)}`;
+          : `${yy(firstP.year + 1)}/${yy(lastP.year + 1)}`;
     }
 
     const ahorro = anualReal > 0 ? (1 - anualProy / anualReal) * 100 : 0;
@@ -297,17 +296,13 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     labelProy
   } = model;
 
+  const yMin = 40000;
   const maxVal = Math.max(0, ...data.map((d) => Math.max(d.realTotal, d.proyTotal)));
-  const niceStep = (max: number) => {
-    const raw = (max || 1) / 5;
-    const mag = Math.pow(10, Math.floor(Math.log10(raw)));
-    const n = raw / mag;
-    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * mag;
-  };
-  const step = niceStep(maxVal);
-  const yMax = Math.ceil((maxVal * 1.1) / step) * step || step;
+  const yMax = Math.ceil((maxVal * 1.10) / 10000) * 10000;
+  
   const yTicks: number[] = [];
-  for (let v = 0; v <= yMax + 0.0001; v += step) yTicks.push(Number(v.toFixed(2)));
+  const step = 20000;
+  for (let v = yMin; v <= yMax; v += step) yTicks.push(v);
 
   const notaAnual = completo
     ? `Suma de los ${mesesReales} meses seleccionados`
@@ -335,7 +330,6 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
           </div>
         </div>
 
-        {/* Botón para subir recibo de luz con estado de carga */}
         <button
           type="button"
           disabled={isUploadingBill}
@@ -483,55 +477,52 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart
               data={data}
-              margin={{ top: 60, right: 20, left: 20, bottom: 65 }}
-              barCategoryGap="16%"
-              barGap={10}
+              margin={{ top: 75, right: 30, left: 30, bottom: 65 }}
+              barCategoryGap="12%"
+              barGap={6}
               style={{ outline: "none", border: "none" }}
             >
               <defs>
                 <linearGradient id="realBlueGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" />
-                  <stop offset="100%" stopColor="#1d4ed8" />
+                  <stop offset="0%" stopColor="#2563eb" />
+                  <stop offset="100%" stopColor="#1e3a8a" />
                 </linearGradient>
                 <linearGradient id="proyRedGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#fb7185" />
-                  <stop offset="100%" stopColor="#e11d48" />
+                  <stop offset="0%" stopColor="#f43f5e" />
+                  <stop offset="100%" stopColor="#be123c" />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+              <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
 
               <XAxis
                 dataKey="realName"
                 tickLine={false}
-                stroke="#94a3b8"
+                stroke="#64748b"
                 interval={0}
-                height={70}
+                height={75}
                 tick={({ x, y, payload }) => {
                   const row = data.find((d) => d.realName === payload.value);
-                  const count = data.length;
-                  const dynamicOffset = count <= 2 ? 110 : count <= 4 ? 60 : count <= 6 ? 40 : 25;
-
                   return (
                     <g transform={`translate(${x},${y})`}>
                       <text
-                        x={-dynamicOffset}
-                        y={14}
+                        x={-18}
+                        y={18}
                         textAnchor="end"
                         fill="#1d4ed8"
-                        fontSize={12}
+                        fontSize={14}
                         fontWeight={900}
-                        transform={`rotate(-35, ${-dynamicOffset}, 14)`}
+                        transform={`rotate(-35, -18, 18)`}
                       >
                         {row?.realName}
                       </text>
                       <text
-                        x={dynamicOffset}
-                        y={14}
+                        x={18}
+                        y={18}
                         textAnchor="end"
                         fill="#e11d48"
-                        fontSize={12}
+                        fontSize={14}
                         fontWeight={900}
-                        transform={`rotate(-35, ${dynamicOffset}, 14)`}
+                        transform={`rotate(-35, 18, 18)`}
                       >
                         {row?.proyName}
                       </text>
@@ -539,42 +530,42 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   );
                 }}
               >
+                {/* ETIQUETA INFERIOR ACTUALIZADA EXPLÍCITAMENTE A ROJO 26/27 */}
                 <Label
                   value={`Meses facturados (Azul: ${labelReal} · Rojo: ${labelProy})`}
                   position="insideBottom"
-                  offset={-38}
+                  offset={-40}
                   style={{
                     textAnchor: "middle",
-                    fill: "#64748b",
-                    fontWeight: "800",
-                    fontSize: "12px",
+                    fill: "#334155",
+                    fontWeight: "900",
+                    fontSize: "14px",
                     letterSpacing: "0.05em"
                   }}
                 />
               </XAxis>
 
               <YAxis
-                domain={[0, yMax]}
+                domain={[yMin, yMax]}
                 ticks={yTicks}
                 interval={0}
                 allowDataOverflow
                 tickLine={false}
-                stroke="#94a3b8"
-                width={75}
-                tick={{ fontSize: "12px", fontWeight: "700", fill: "#64748b" }}
+                stroke="#64748b"
+                width={80}
+                tick={{ fontSize: "13px", fontWeight: "800", fill: "#475569" }}
                 tickFormatter={(v) => Number(v).toLocaleString("es-PE")}
               >
                 <Label
                   value="Energía Activa (kWh)"
                   angle={-90}
                   position="insideLeft"
-                  offset={-5}
+                  offset={-10}
                   style={{
                     textAnchor: "middle",
-                    fill: "#64748b",
-                    fontWeight: "800",
-                    fontSize: "12px",
-                    letterSpacing: "0.05em"
+                    fill: "#334155",
+                    fontWeight: "900",
+                    fontSize: "14px"
                   }}
                 />
               </YAxis>
@@ -584,44 +575,68 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                 content={<EnergyTooltip ahorroPct={ahorroPct} />}
               />
 
-              <Bar dataKey="realTotal" fill="url(#realBlueGradient)" maxBarSize={38}>
+              <Bar 
+                dataKey="realTotal" 
+                fill="url(#realBlueGradient)" 
+                maxBarSize={48}
+                radius={[6, 6, 0, 0]}
+              >
                 <LabelList
                   dataKey="realTotal"
                   position="top"
                   formatter={fmtK}
-                  style={{ fontSize: 13, fontWeight: 900, fill: "#0f172a" }}
+                  style={{ fontSize: 14, fontWeight: 900, fill: "#1e40af" }}
+                  offset={8}
                 />
               </Bar>
 
               <Bar
                 dataKey="proyTotal"
                 fill="url(#proyRedGradient)"
-                fillOpacity={0.4}
-                stroke="#e11d48"
-                strokeDasharray="3 2"
-                maxBarSize={38}
+                fillOpacity={0.85}
+                stroke="#be123c"
+                strokeWidth={1.5}
+                maxBarSize={48}
+                radius={[6, 6, 0, 0]}
               >
                 <LabelList
                   dataKey="proyTotal"
                   position="top"
                   formatter={fmtK}
-                  style={{ fontSize: 13, fontWeight: 900, fill: "#475569" }}
+                  style={{ fontSize: 14, fontWeight: 900, fill: "#be123c" }}
+                  offset={8}
                 />
+                
                 <LabelList
                   dataKey="proyTotal"
                   content={(p: any) => {
                     if (!ahorroPct || !p?.value) return null;
+                    const barHeight = Number(p.height);
+                    if (barHeight < 40) return null;
+
                     return (
-                      <text
-                        x={Number(p.x) + Number(p.width) / 2}
-                        y={Number(p.y) - 24}
-                        textAnchor="middle"
-                        fontSize={13}
-                        fontWeight={900}
-                        fill="#059669"
-                      >
-                        -{fmt(ahorroPct, 1)}%
-                      </text>
+                      <g transform={`translate(${Number(p.x) + Number(p.width) / 2}, ${Number(p.y) + 20})`}>
+                        <rect
+                          x={-21}
+                          y={-10}
+                          width={42}
+                          height={20}
+                          rx={5}
+                          fill="#ffffff"
+                          opacity={0.95}
+                        />
+                        <text
+                          x={0}
+                          y={1}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fontSize={11}
+                          fontWeight={900}
+                          fill="#047857"
+                        >
+                          -{fmt(ahorroPct, 1)}%
+                        </text>
+                      </g>
                     );
                   }}
                 />

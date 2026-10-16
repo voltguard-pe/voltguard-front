@@ -230,13 +230,13 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
       </div>
 
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-        <div className="h-80 sm:h-96 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
+        <div className="h-80 sm:h-96 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
           {emisionesData.length === 0 ? (
             <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
               Selecciona al menos un día para visualizar los datos del gráfico.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <BarChart
                 data={emisionesData}
                 margin={{ top: 35, right: 15, left: 10, bottom: 30 }}

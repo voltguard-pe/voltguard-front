@@ -370,8 +370,8 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
 
       {/* Gráfico THD-U con Curvas Trifásicas en Colores Sólidos */}
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
-        <div className="h-72 sm:h-80 md:h-[360px] w-[850px] sm:w-full text-xs select-none">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-72 sm:h-80 md:h-[360px] w-[850px] sm:w-full text-xs select-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart
               data={rawChartData}
               margin={{ top: 20, right: 25, left: 10, bottom: 25 }}

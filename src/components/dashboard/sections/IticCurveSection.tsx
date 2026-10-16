@@ -298,8 +298,8 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
       })()}
 
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2">
-        <div className="h-[480px] w-[950px] sm:w-full text-xs select-none">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-[480px] w-[950px] sm:w-full text-xs select-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <ScatterChart margin={{ top: 20, right: 30, left: 10, bottom: 35 }}>
               <defs>
                 {/* Degradado para la zona superior (Sobretensión) */}

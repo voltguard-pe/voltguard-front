@@ -549,14 +549,15 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
       </div>
 
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-3 scrollbar-thin">
-        <div className="h-[600px] md:h-[680px] w-[1000px] lg:w-full text-xs font-semibold text-slate-600 select-none">
+        {/* Añadimos las clases para eliminar el outline en elementos internos como rectángulos y textos */}
+        <div className="h-[600px] md:h-[680px] w-[1000px] lg:w-full text-xs font-semibold text-slate-600 select-none focus:outline-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart
               data={data}
               margin={{ top: 75, right: 30, left: 30, bottom: 65 }}
               barCategoryGap={pocasBarras ? "30%" : "12%"}
               barGap={GAP}
-              style={{ outline: "none", border: "none" }}
+              style={{ outline: "none", border: "none", boxShadow: "none" }}
             >
               <defs>
                 <linearGradient id="realBlueGradient" x1="0" y1="0" x2="0" y2="1">

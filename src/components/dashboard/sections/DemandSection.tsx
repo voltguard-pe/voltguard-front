@@ -241,8 +241,8 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
           </div>
 
           <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-            <div className="h-72 sm:h-80 md:h-[420px] w-[850px] sm:w-full text-xs font-medium text-slate-500 select-none">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-72 sm:h-80 md:h-[420px] w-[850px] sm:w-full text-xs font-medium text-slate-500 select-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart
                   data={rawChartData}
                   margin={{ top: 25, right: 15, left: 10, bottom: 25 }}

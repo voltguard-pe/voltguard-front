@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Container, ChevronLeft, ChevronRight, Upload, Loader2, ReceiptText } from "lucide-react";
+import { Container, Upload, Loader2, ReceiptText } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -28,10 +28,19 @@ interface EnergyBarSectionProps {
   onToggleEnergyDay?: (key: string) => void;
   isUploadingBill?: boolean;
   onBillUpload?: (file: File) => Promise<void>;
+  // kWh del mes facturado según el detalle del recibo (lo devuelve el backend). Sirve para detectar datos viejos.
+  kwhFacturadoRecibo?: number | null;
 }
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Dic"];
 const AHORRO_DEFAULT = 5;
+// Por debajo de este consumo mensual máximo (kWh) no se ofrece ampliar el eje
+const UMBRAL_AMPLIAR = 20000;
+
+// Medidas de las barras (px). Con pocas barras se fijan para que queden juntas y centradas.
+const BAR = 48;
+const GAP = 6;
+const POCAS_BARRAS = 4;
 
 const fmt = (n: number, decimals = 0) =>
   Number(n).toLocaleString("es-PE", {
@@ -53,6 +62,20 @@ const fmtK = (v: unknown) => {
 
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 const yy = (y: number) => String(y).slice(-2);
+
+// El total del mes se calcula SIEMPRE como HP + FP; "kWh" solo es respaldo si no hay desglose.
+const kwhDe = (m: EnergyMonthItem) => {
+  const t = (Number(m.kwhHP) || 0) + (Number(m.kwhFP) || 0);
+  return t > 0 ? t : Number(m.kWh) || 0;
+};
+
+// Paso "bonito" (1, 2, 5 × 10^n) para dividir un rango en ~5 intervalos
+const niceStep = (range: number) => {
+  const raw = Math.max(range, 1) / 5;
+  const pow = Math.pow(10, Math.floor(Math.log10(raw)));
+  const n = raw / pow;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
+};
 
 interface ChartRow {
   name: string;
@@ -106,11 +129,12 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   energiaPorMesData,
   ahorroMeta = AHORRO_DEFAULT,
   isUploadingBill = false,
-  onBillUpload
+  onBillUpload,
+  kwhFacturadoRecibo = null
 }) => {
   const [ahorroLocal, setAhorroLocal] = useState<number>(ahorroMeta);
   const [visibleSeries, setVisibleSeries] = useState<{ [key: string]: boolean }>({});
-  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const [ejeDesdeCero, setEjeDesdeCero] = useState<boolean>(true);
   const billFileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -121,15 +145,17 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     return (energiaPorMesData ?? []).map((m) => m.name);
   }, [energiaPorMesData]);
 
+  // Cada vez que cambian los meses disponibles (p. ej. se sube otro recibo) se muestran todos
+  // de nuevo, para no arrastrar filtros de una subida anterior.
+  const seriesSignature = seriesKeys.join("|");
   useEffect(() => {
-    if (seriesKeys.length > 0 && Object.keys(visibleSeries).length === 0) {
-      const initial: { [key: string]: boolean } = {};
-      seriesKeys.forEach((key) => {
-        initial[key] = true;
-      });
-      setVisibleSeries(initial);
-    }
-  }, [seriesKeys]);
+    const initial: { [key: string]: boolean } = {};
+    seriesKeys.forEach((key) => {
+      initial[key] = true;
+    });
+    setVisibleSeries(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seriesSignature]);
 
   const activeCount = useMemo(
     () => seriesKeys.filter((key) => visibleSeries[key] !== false).length,
@@ -141,10 +167,29 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     [seriesKeys, visibleSeries]
   );
 
-  const handleToggleSeries = (key: string) => {
-    const isSelected = visibleSeries[key] !== false;
-    if (isSelected && activeCount <= 1) return;
-    setVisibleSeries((prev) => ({ ...prev, [key]: !isSelected }));
+  // Chips fijos Ene → Dic. Cada uno apunta a los periodos del recibo que caen en ese mes.
+  const chipsMeses = useMemo(() => {
+    const chips: { label: string; keys: string[] }[] = MESES.map((label, idx) => ({
+      label,
+      keys: seriesKeys.filter((k) => parsePeriod(k)?.month === idx)
+    }));
+    seriesKeys
+      .filter((k) => !parsePeriod(k))
+      .forEach((k) => chips.push({ label: k, keys: [k] }));
+    return chips;
+  }, [seriesKeys]);
+
+  const handleToggleMes = (keys: string[]) => {
+    if (keys.length === 0) return;
+    const isSelected = keys.every((k) => visibleSeries[k] !== false);
+    if (isSelected && activeCount - keys.length <= 0) return; // al menos un mes visible
+    setVisibleSeries((prev) => {
+      const next = { ...prev };
+      keys.forEach((k) => {
+        next[k] = !isSelected;
+      });
+      return next;
+    });
   };
 
   const handleSelectAll = () => {
@@ -155,13 +200,6 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     setVisibleSeries(updated);
   };
 
-  const scroll = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      const scrollAmount = direction === "left" ? -180 : 180;
-      scrollContainerRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
-    }
-  };
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -170,14 +208,16 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
       await onBillUpload(file);
     }
     if (e.target) {
-      e.target.value = ""; 
+      e.target.value = "";
     }
   };
 
   const ahorroPct = ahorroLocal;
 
   const model = useMemo(() => {
-    const real = (energiaPorMesData ?? []).filter((m) => visibleSeries[m.name] !== false);
+    const real = (energiaPorMesData ?? []).filter(
+      (m) => visibleSeries[m.name] !== false && kwhDe(m) > 0
+    );
     if (real.length === 0) return null;
 
     const last12 = real;
@@ -188,34 +228,32 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     const firstP = parsePeriod(last12[0].name);
 
     const rows: ChartRow[] = last12.map((match) => {
-      let realName = match.name;
-      let proyName = `Proy. 1`;
+      const realName = match.name;
+      let proyName = `Proy. ${match.name}`;
 
       const parsed = parsePeriod(match.name);
       if (parsed) {
         proyName = `${MESES[parsed.month]} ${yy(parsed.year + 1)}`;
       }
 
-      const baseTotal = match.kWh;
-      const proyTotal = baseTotal * factor;
-
+      const baseTotal = kwhDe(match);
       return {
         name: realName,
         realName,
         proyName,
         hasReal: true,
-        realTotal: match.kWh,
-        proyTotal
+        realTotal: baseTotal,
+        proyTotal: baseTotal * factor
       };
     });
 
-    const anualReal = sum(last12.map((m) => m.kWh));
+    const anualReal = sum(last12.map((m) => kwhDe(m)));
     const anualProy = sum(rows.map((p) => p.proyTotal));
-    const hpAnual = sum(last12.map((m) => m.kwhHP));
+    const hpAnual = sum(last12.map((m) => Number(m.kwhHP) || 0));
     const ultimo = real[real.length - 1];
 
-    let labelReal = "25/26";
-    let labelProy = "26/27";
+    let labelReal = "actual";
+    let labelProy = "próx. año";
     if (lastP && firstP) {
       labelReal =
         firstP.year === lastP.year ? yy(firstP.year) : `${yy(firstP.year)}/${yy(lastP.year)}`;
@@ -296,17 +334,44 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     labelProy
   } = model;
 
-  const yMin = 40000;
+  const ultimoKwh = ultimo ? kwhDe(ultimo) : 0;
+
+  // Si el último mes pintado no coincide con el del recibo, los datos guardados son viejos o erróneos
+  const datosDesactualizados =
+    kwhFacturadoRecibo != null &&
+    kwhFacturadoRecibo > 0 &&
+    Math.abs(ultimoKwh - kwhFacturadoRecibo) / kwhFacturadoRecibo > 0.02;
+
+  /* ── Escala del eje Y dinámica ── */
   const maxVal = Math.max(0, ...data.map((d) => Math.max(d.realTotal, d.proyTotal)));
-  const yMax = Math.ceil((maxVal * 1.10) / 10000) * 10000;
-  
+  const minVal = Math.min(...data.flatMap((d) => [d.realTotal, d.proyTotal]));
+
+  const topRaw = Math.max(maxVal * 1.1, 1);
+  const zoomBase = Math.max(0, minVal * 0.85);
+
+  const stepZoom = niceStep(topRaw - zoomBase);
+  const puedeAmpliar =
+    maxVal > UMBRAL_AMPLIAR && Math.floor(zoomBase / stepZoom) * stepZoom > 0;
+  const usarZoom = puedeAmpliar && !ejeDesdeCero;
+
+  const bottomRaw = usarZoom ? zoomBase : 0;
+
+  const step = niceStep(topRaw - bottomRaw);
+  const yMin = Math.floor(bottomRaw / step) * step;
+  const yMax = Math.ceil(topRaw / step) * step;
+
   const yTicks: number[] = [];
-  const step = 20000;
-  for (let v = yMin; v <= yMax; v += step) yTicks.push(v);
+  for (let v = yMin; v <= yMax + step / 2; v += step) {
+    yTicks.push(Math.round(v * 100) / 100);
+  }
+
+  // Con pocas barras: se fija su ancho y se dejan juntas (si no, Recharts las separa cientos de px)
+  const pocasBarras = data.length <= POCAS_BARRAS;
+  const off = (BAR + GAP) / 2; // la etiqueta de cada barra se centra bajo ella
 
   const notaAnual = completo
     ? `Suma de los ${mesesReales} meses seleccionados`
-    : `Promedio de ${mesesReales} mes(es) seleccionados`;
+    : `Suma de ${mesesReales} mes(es) seleccionado(s)`;
 
   const metricCard =
     "relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm";
@@ -350,11 +415,18 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
         </button>
       </div>
 
+      {datosDesactualizados && (
+        <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs font-bold text-amber-800">
+          ⚠ El último mes de la gráfica ({fmt(ultimoKwh)} kWh) no coincide con el del recibo ({fmt(kwhFacturadoRecibo ?? 0)} kWh).
+          Vuelve a subir el recibo para reemplazar los datos guardados.
+        </div>
+      )}
+
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className={metricCard}>
           <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Último mes facturado</p>
           <p className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            {fmt(ultimo?.kWh || 0)} <span className="text-base font-bold text-blue-600">kWh</span>
+            {fmt(ultimoKwh)} <span className="text-base font-bold text-blue-600">kWh</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">{ultimo?.name || "—"}</p>
         </div>
@@ -388,57 +460,44 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
         </div>
       </div>
 
-      {/* ── BARRA DE FILTROS DE MESES ── */}
-      <div className="mb-6 flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50/90 border border-slate-200/90 font-sans">
-        <div className="flex items-center gap-1.5 pl-2 shrink-0">
-          <span className="text-xs font-black uppercase text-slate-400 tracking-widest">Meses:</span>
+      {/* ── FILTROS DE MESES ── */}
+      <div className="mb-6 flex flex-col gap-3 p-3 rounded-2xl bg-slate-50/90 border border-slate-200/90 font-sans sm:flex-row sm:items-center">
+        <span className="pl-2 text-xs font-black uppercase text-slate-400 tracking-widest shrink-0">Meses:</span>
+
+        <div className="flex flex-1 flex-wrap items-center gap-2">
+          {chipsMeses.map(({ label, keys }) => {
+            const hasData = keys.length > 0;
+            const isSelected = hasData && keys.every((k) => visibleSeries[k] !== false);
+            const isLastActive = isSelected && activeCount === keys.length;
+
+            return (
+              <button
+                key={label}
+                type="button"
+                disabled={!hasData}
+                onClick={() => handleToggleMes(keys)}
+                title={
+                  !hasData
+                    ? "Este mes no figura en el recibo"
+                    : isLastActive
+                      ? "Debe mantener al menos un mes visible"
+                      : keys.join(", ")
+                }
+                className={`min-w-[56px] px-3.5 py-1.5 rounded-full text-xs font-bold border text-center transition-all ${
+                  !hasData
+                    ? "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed"
+                    : isSelected
+                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-xs cursor-pointer"
+                      : "bg-white border-slate-200 text-slate-500 hover:text-slate-800 cursor-pointer"
+                } ${isLastActive ? "cursor-not-allowed opacity-80" : ""}`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="relative flex items-center flex-1 min-w-0">
-          <button
-            type="button"
-            onClick={() => scroll("left")}
-            className="hidden sm:flex items-center justify-center size-8 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 shrink-0 mr-1.5 cursor-pointer shadow-2xs"
-          >
-            <ChevronLeft size={16} />
-          </button>
-
-          <div
-            ref={scrollContainerRef}
-            className="flex items-center gap-2 overflow-x-auto scrollbar-none py-1 px-0.5 scroll-smooth flex-1"
-          >
-            {seriesKeys.map((key) => {
-              const isSelected = visibleSeries[key] !== false;
-              const isLastActive = isSelected && activeCount === 1;
-
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handleToggleSeries(key)}
-                  title={isLastActive ? "Debe mantener al menos un mes visible" : undefined}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold border shrink-0 cursor-pointer transition-all ${
-                    isSelected
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-xs"
-                      : "bg-white border-slate-200 text-slate-500 hover:text-slate-800"
-                  } ${isLastActive ? "cursor-not-allowed opacity-80" : ""}`}
-                >
-                  {key}
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => scroll("right")}
-            className="hidden sm:flex items-center justify-center size-8 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-100 shrink-0 ml-1.5 cursor-pointer shadow-2xs"
-          >
-            <ChevronRight size={16} />
-          </button>
-        </div>
-
-        <div className="pl-2 border-l border-slate-200 shrink-0">
+        <div className="shrink-0 sm:pl-3 sm:border-l border-slate-200">
           <button
             type="button"
             onClick={handleSelectAll}
@@ -466,9 +525,26 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
           </span>
         </div>
 
-        <div className="inline-flex items-center gap-3 self-start sm:self-auto rounded-2xl border-2 border-emerald-400 bg-emerald-50 px-6 py-2.5 shadow-sm">
-          <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-600">Ahorro</span>
-          <span className="text-2xl sm:text-3xl font-black tabular-nums text-emerald-600">{fmt(ahorro, 1)}%</span>
+        <div className="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+          {puedeAmpliar && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setEjeDesdeCero((v) => !v)}
+                className="px-3 py-1.5 rounded-full text-xs font-bold border cursor-pointer bg-white border-slate-200 text-slate-600 hover:bg-slate-50 transition-all"
+              >
+                {ejeDesdeCero ? "Ampliar diferencias" : "Eje desde 0"}
+              </button>
+              {usarZoom && (
+                <span className="text-[11px] font-bold text-amber-600">⚠ El eje no inicia en 0</span>
+              )}
+            </div>
+          )}
+
+          <div className="inline-flex items-center gap-3 rounded-2xl border-2 border-emerald-400 bg-emerald-50 px-6 py-2.5 shadow-sm">
+            <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-600">Ahorro</span>
+            <span className="text-2xl sm:text-3xl font-black tabular-nums text-emerald-600">{fmt(ahorro, 1)}%</span>
+          </div>
         </div>
       </div>
 
@@ -478,8 +554,8 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             <BarChart
               data={data}
               margin={{ top: 75, right: 30, left: 30, bottom: 65 }}
-              barCategoryGap="12%"
-              barGap={6}
+              barCategoryGap={pocasBarras ? "30%" : "12%"}
+              barGap={GAP}
               style={{ outline: "none", border: "none" }}
             >
               <defs>
@@ -500,29 +576,31 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                 stroke="#64748b"
                 interval={0}
                 height={75}
-                tick={({ x, y, payload }) => {
+                tick={({ x, y, payload }: any) => {
                   const row = data.find((d) => d.realName === payload.value);
+                  // Con muchas barras las dos etiquetas van en el mismo punto; con pocas, cada una bajo su barra
+                  const dx = pocasBarras ? off : 18;
                   return (
                     <g transform={`translate(${x},${y})`}>
                       <text
-                        x={-18}
+                        x={-dx}
                         y={18}
                         textAnchor="end"
                         fill="#1d4ed8"
                         fontSize={14}
                         fontWeight={900}
-                        transform={`rotate(-35, -18, 18)`}
+                        transform={`rotate(-35, ${-dx}, 18)`}
                       >
                         {row?.realName}
                       </text>
                       <text
-                        x={18}
+                        x={dx}
                         y={18}
                         textAnchor="end"
                         fill="#e11d48"
                         fontSize={14}
                         fontWeight={900}
-                        transform={`rotate(-35, 18, 18)`}
+                        transform={`rotate(-35, ${dx}, 18)`}
                       >
                         {row?.proyName}
                       </text>
@@ -530,9 +608,8 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   );
                 }}
               >
-                {/* ETIQUETA INFERIOR ACTUALIZADA EXPLÍCITAMENTE A ROJO 26/27 */}
                 <Label
-                  value={`Meses facturados (Azul: ${labelReal} · Rojo: ${labelProy})`}
+                  value={`Azul: consumo real (${labelReal}) · Rojo: proyección con ahorro (${labelProy})`}
                   position="insideBottom"
                   offset={-40}
                   style={{
@@ -549,7 +626,6 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                 domain={[yMin, yMax]}
                 ticks={yTicks}
                 interval={0}
-                allowDataOverflow
                 tickLine={false}
                 stroke="#64748b"
                 width={80}
@@ -575,10 +651,11 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                 content={<EnergyTooltip ahorroPct={ahorroPct} />}
               />
 
-              <Bar 
-                dataKey="realTotal" 
-                fill="url(#realBlueGradient)" 
-                maxBarSize={48}
+              <Bar
+                dataKey="realTotal"
+                fill="url(#realBlueGradient)"
+                barSize={pocasBarras ? BAR : undefined}
+                maxBarSize={BAR}
                 radius={[6, 6, 0, 0]}
               >
                 <LabelList
@@ -596,7 +673,8 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                 fillOpacity={0.85}
                 stroke="#be123c"
                 strokeWidth={1.5}
-                maxBarSize={48}
+                barSize={pocasBarras ? BAR : undefined}
+                maxBarSize={BAR}
                 radius={[6, 6, 0, 0]}
               >
                 <LabelList
@@ -606,7 +684,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   style={{ fontSize: 14, fontWeight: 900, fill: "#be123c" }}
                   offset={8}
                 />
-                
+
                 <LabelList
                   dataKey="proyTotal"
                   content={(p: any) => {
@@ -616,15 +694,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
 
                     return (
                       <g transform={`translate(${Number(p.x) + Number(p.width) / 2}, ${Number(p.y) + 20})`}>
-                        <rect
-                          x={-21}
-                          y={-10}
-                          width={42}
-                          height={20}
-                          rx={5}
-                          fill="#ffffff"
-                          opacity={0.95}
-                        />
+                        <rect x={-21} y={-10} width={42} height={20} rx={5} fill="#ffffff" opacity={0.95} />
                         <text
                           x={0}
                           y={1}

@@ -43,6 +43,9 @@ import { SidebarProvider } from './contexts/SidebarContext'
 import DocumentViewerPage from './pages/dashboard/document/DocumentViewerPage'
 import { SolarPanelDashboardPage } from './pages/dashboard/solar-panel/SolarPanelDashboardPage'
 import BillingDashboardPage from './pages/dashboard/billing/BillingDashboardPage'
+import { PermissionsView } from './pages/dashboard/perissions/PermissionsView'
+import { AdminLicensesView } from './pages/dashboard/licenses/AdminLicensesView'
+import { CompanySubscriptionView } from './pages/dashboard/CompanySubscriptionView'
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div className="p-6">
@@ -148,6 +151,10 @@ function App() {
                   <Route path="admins/create" element={<CompanyCreatePage />} />
                   <Route path="admins/:id/edit" element={<CompanyEditPage />} />
 
+                  <Route path="/dashboard/permissions" element={<PermissionsView />} />
+
+                  <Route path="licenses" element={<AdminLicensesView />} />
+
                   <Route path="companies" element={<CompaniesDashboardPages />} />
                   <Route path="companies/create" element={<CompaniesCreatePage />} />
                   <Route path="companies/:publicCode/edit" element={<CompaniesEditPage />} />
@@ -158,6 +165,10 @@ function App() {
                 <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
                   <Route path="boards/create" element={<BoardsCreatePage />} />
                   <Route path="boards/:publicCode/:code/edit" element={<BoardsEditPage />} />
+                </Route>
+                
+                <Route element={<ProtectedRoute allowedRoles={["ADMIN", "USER"]} />}>
+                  <Route path="subscription" element={<CompanySubscriptionView />} />
                 </Route>
               </Route>
             </Route>

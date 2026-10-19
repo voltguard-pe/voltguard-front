@@ -252,7 +252,7 @@ export const ReactivePowerSection: React.FC<ReactivePowerSectionProps> = ({
                     textAnchor: "middle",
                     fill: "#475569",
                     fontWeight: "800",
-                    fontSize: "9px",
+                    fontSize: "14px",
                     letterSpacing: "0.05em"
                   }}
                 />
@@ -277,7 +277,7 @@ export const ReactivePowerSection: React.FC<ReactivePowerSectionProps> = ({
                     textAnchor: "middle",
                     fill: "#475569",
                     fontWeight: "800",
-                    fontSize: "9px"
+                    fontSize: "14px"
                   }}
                 />
               </YAxis>

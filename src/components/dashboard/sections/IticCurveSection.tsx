@@ -361,7 +361,7 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
                   value="Duración del evento (segundos)"
                   position="insideBottom"
                   offset={-20}
-                  style={{ textAnchor: "middle", fill: "#0f172a", fontWeight: "800", fontSize: "11px" }}
+                  style={{ textAnchor: "middle", fill: "#0f172a", fontWeight: "800", fontSize: "14px" }}
                 />
               </XAxis>
 
@@ -387,7 +387,7 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
                   angle={-90}
                   position="insideLeft"
                   offset={-5}
-                  style={{ textAnchor: "middle", fill: "#0f172a", fontWeight: "800", fontSize: "11px" }}
+                  style={{ textAnchor: "middle", fill: "#0f172a", fontWeight: "800", fontSize: "14px" }}
                 />
               </YAxis>
 

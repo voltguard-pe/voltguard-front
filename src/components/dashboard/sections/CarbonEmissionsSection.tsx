@@ -240,7 +240,7 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                     value="Días de la Semana"
                     position="insideBottom"
                     offset={-20}
-                    style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "9px" }}
+                    style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "14px" }}
                   />
                 </XAxis>
                 <YAxis
@@ -259,7 +259,7 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                     angle={-90}
                     position="insideLeft"
                     offset={-5}
-                    style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "9px" }}
+                    style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "14px" }}
                   />
                 </YAxis>
 

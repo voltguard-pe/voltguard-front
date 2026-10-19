@@ -302,7 +302,7 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                     tick={{ angle: -45, textAnchor: 'end', fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
                     height={60}
                   >
-                    <Label value="Hora del Día" position="insideBottom" offset={-15} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                    <Label value="Hora del Día" position="insideBottom" offset={-10} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '14px', letterSpacing: '0.05em' }} />
                   </XAxis>
 
                   <YAxis
@@ -316,8 +316,18 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                     tick={{ fontSize: '10px' }}
                     tickFormatter={(val) => `${Number(val).toFixed(stepIncrement < 1 ? 1 : 0)}`}
                   >
-                    <Label value="Demanda de Potencia Activa (kW)" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                    <Label value="Demanda de Potencia Activa (kW)" angle={-90}
+                  position="insideLeft"
+                  offset={-5}
+                  style={{
+                    textAnchor: "middle",
+                    fill: "#334155",
+                    fontWeight: "900",
+                    fontSize: "14px"
+                  }}
+                />
                   </YAxis>
+
 
                   <Tooltip content={<CustomTooltip />} shared={true} />
 

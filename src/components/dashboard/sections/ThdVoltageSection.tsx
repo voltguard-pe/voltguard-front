@@ -393,7 +393,7 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
                     textAnchor: "middle",
                     fill: "#475569",
                     fontWeight: "800",
-                    fontSize: "9px"
+                    fontSize: "14px"
                   }}
                 />
               </XAxis>
@@ -415,9 +415,9 @@ export const ThdVoltageSection: React.FC<ThdVoltageSectionProps> = ({
                   offset={-5}
                   style={{
                     textAnchor: "middle",
-                    fill: "#d97706",
+                    fill: "#000000",
                     fontWeight: "800",
-                    fontSize: "9px"
+                    fontSize: "14px"
                   }}
                 />
               </YAxis>

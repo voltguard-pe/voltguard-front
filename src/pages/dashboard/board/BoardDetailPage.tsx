@@ -1,17 +1,16 @@
 import { ArrowLeft, Building2, CheckCircle2, Info, MapPin, X } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { CarbonEmissionsSection } from "../../../components/dashboard/sections/CarbonEmissionsSection";
 import { DemandSection } from "../../../components/dashboard/sections/DemandSection";
 import { EnergyBarSection } from "../../../components/dashboard/sections/EnergyBarSection";
-import { EnergyCostSection } from "../../../components/dashboard/sections/EnergyCostSection";
 import { IticCurveSection } from "../../../components/dashboard/sections/IticCurveSection";
 import { Nfpa70eSection } from "../../../components/dashboard/sections/Nfpa70eSection";
 import { ReactivePowerSection } from "../../../components/dashboard/sections/ReactivePowerSection";
 import { ThdVoltageSection } from "../../../components/dashboard/sections/ThdVoltageSection";
 import { ThermographySection } from "../../../components/dashboard/sections/ThermographySection";
-import { uploadReceiptBill } from "../../../services/bill.service";
+import { updateAhorroMeta, uploadReceiptBill } from "../../../services/bill.service";
 import { getBoardByCode } from "../../../services/board.service";
 import { getDemandChartData, uploadMetrelCsv } from "../../../services/measurement.service";
 import { getIticEvents, uploadIticCsv, type VoltageEventItem } from "../../../services/voltageEvent.service";
@@ -42,34 +41,42 @@ const WEEKDAYS_ES = [
   "Domingo",
 ] as const;
 
-// Corrección temporal: el backend entrega las potencias multiplicadas por 12.
-// Cuando se corrija en el backend, cambiar este valor a 1
-// (y dejar DIVISOR_CORRECCION_BACKEND = 1 en EnergyBarSection.tsx).
-const FACTOR_CORRECCION_BACKEND = 12;
+// El backend ya entrega los kW reales (importMetrel detecta Ptot en W o Eptot en Wh),
+// por eso no se aplica ninguna corrección adicional.
+const FACTOR_CORRECCION_BACKEND = 1;
 
-const weekdayFromYmd = (fechaYMD: string): (typeof WEEKDAYS_ES)[number] | null => {
-  const [year, month, day] = (fechaYMD || "").split("-").map(Number);
-  if (!year || !month || !day) return null;
-  const date = new Date(year, month - 1, day);
-  if (Number.isNaN(date.getTime())) return null;
-  return WEEKDAYS_ES[(date.getDay() + 6) % 7];
+// Cada punto de la curva representa 5 minutos
+const HORAS_POR_PUNTO = 5 / 60;
+
+// Un día con menos de este % de puntos con dato se considera incompleto
+// (típico del primer y último día de la medición) y no entra al promedio
+const MIN_COBERTURA_DIA = 0.9;
+
+const DIA_ABREV_A_NOMBRE: Record<string, (typeof WEEKDAYS_ES)[number]> = {
+  lun: "Lunes", mon: "Lunes",
+  mar: "Martes", tue: "Martes",
+  mie: "Miércoles", wed: "Miércoles",
+  jue: "Jueves", thu: "Jueves",
+  vie: "Viernes", fri: "Viernes",
+  sab: "Sábado", sat: "Sábado",
+  dom: "Domingo", sun: "Domingo",
 };
+
+const normalizarDia = (s: string) =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().slice(0, 3);
 
 const BoardDetailPage = () => {
   const { auth, loading: authLoading } = useAuth();
 
-  // Normalizamos a mayúsculas/minúsculas para evitar desajustes ('EMPRESARIAL' vs 'empresarial')
   const rawRole = (auth?.role || "USER").toUpperCase();
   const rawPlan = (auth?.plan || "basico").toLowerCase();
 
-  // 1. Determinar el rol efectivo
   const effectiveRole = rawRole === "SUPERADMIN"
     ? "SUPERADMIN"
     : rawPlan === "empresarial"
       ? "ADMIN"
       : "USER";
 
-  // 2. Banderas de control de vistas
   const isSuperAdmin = effectiveRole === "SUPERADMIN" || rawRole === "SUPERADMIN";
   const isEmpresarial = isSuperAdmin || rawPlan === "empresarial";
 
@@ -84,7 +91,6 @@ const BoardDetailPage = () => {
   const [rawChartData, setRawChartData] = useState<any[]>([]);
   const [seriesKeys, setSeriesKeys] = useState<string[]>([]);
   const [selectedReactiveDay, setSelectedReactiveDay] = useState<string | null>(null);
-  // ── ESTADOS PARA DISTORSIÓN ARMÓNICA ──
   const [selectedThdUDay, setSelectedThdUDay] = useState<string | null>(null);
 
   const [visibleThdFases, setVisibleThdFases] = useState<{ [key: string]: boolean }>({
@@ -102,7 +108,6 @@ const BoardDetailPage = () => {
   });
   const [visibleEnergySeries, setVisibleEnergySeries] = useState<{ [key: string]: boolean }>({});
   const [visibleCarbonSeries, setVisibleCarbonSeries] = useState<{ [key: string]: boolean }>({});
-  const [visibleCostSeries, setVisibleCostSeries] = useState<{ [key: string]: boolean }>({});
   const [importing, setImporting] = useState(false);
 
   const [tarifaContratada] = useState<number>(350);
@@ -115,20 +120,14 @@ const BoardDetailPage = () => {
     ahorroEstimado: number;
   } | null>(null);
 
-  const [energiaPorDiaSemanaData, setEnergiaPorDiaSemanaData] = useState<any[]>([]);
-  const [weekdaySeriesKeys, setWeekdaySeriesKeys] = useState<string[]>([]);
-
   const fetchChartData = async (boardId: string, start?: string, end?: string) => {
     try {
       const res: any = await getDemandChartData(boardId, start, end);
       const { agrupado } = res;
 
-      // Sin mediciones: limpiamos todo y salimos
       if (!agrupado || Object.keys(agrupado).length === 0) {
         setRawChartData([]);
         setSeriesKeys([]);
-        setEnergiaPorDiaSemanaData([]);
-        setWeekdaySeriesKeys([]);
         setHoraPicoMaximo(null);
         setAnalisisPotencia(null);
         return;
@@ -140,8 +139,6 @@ const BoardDetailPage = () => {
         const m = String((i * 5) % 60).padStart(2, '0');
         return `${h}:${m}`;
       });
-
-      const energiaAcumuladaAux: { [key: string]: number } = {};
 
       const formattedData = labelsX.map((hora) => {
         const row: any = { horaMinuto: hora };
@@ -159,14 +156,12 @@ const BoardDetailPage = () => {
 
           const punto = agrupado[diaKey]?.[hora];
 
-          // Potencias con la corrección del backend (÷ FACTOR_CORRECCION_BACKEND)
           const valP = (typeof punto === 'number' ? punto : (punto?.p ?? 0)) / FACTOR_CORRECCION_BACKEND;
           const valInd = (typeof punto === 'object' ? (punto?.ind ?? 0) : 0) / FACTOR_CORRECCION_BACKEND;
           const valCap = (typeof punto === 'object' ? (punto?.cap ?? 0) : 0) / FACTOR_CORRECCION_BACKEND;
 
           const valThdV = typeof punto === 'object' ? (punto?.thd_v ?? 0) : 0;
           const valThdI = typeof punto === 'object' ? (punto?.thd_i ?? 0) : 0;
-          // Leemos las tres fases individuales que envía el backend:
           const valU12 = typeof punto === 'object' ? (punto?.thd_u12 ?? 0) : 0;
           const valU23 = typeof punto === 'object' ? (punto?.thd_u23 ?? 0) : 0;
           const valU31 = typeof punto === 'object' ? (punto?.thd_u31 ?? 0) : 0;
@@ -177,7 +172,6 @@ const BoardDetailPage = () => {
           row[`thd_v_${labelCorto}`] = valThdV;
           row[`thd_i_${labelCorto}`] = valThdI;
 
-          // Inyectamos las tres líneas trifásicas por día:
           row[`thd_u12_${labelCorto}`] = valU12;
           row[`thd_u23_${labelCorto}`] = valU23;
           row[`thd_u31_${labelCorto}`] = valU31;
@@ -186,9 +180,6 @@ const BoardDetailPage = () => {
           sumaInd += valInd;
           sumaCap += valCap;
           count++;
-
-          if (!energiaAcumuladaAux[labelCorto]) energiaAcumuladaAux[labelCorto] = 0;
-          energiaAcumuladaAux[labelCorto] += valP;
         });
 
         row["Promedio_General"] = count > 0 ? Math.round((sumaP / count) * 100) / 100 : null;
@@ -206,89 +197,11 @@ const BoardDetailPage = () => {
         return `${dia}/${mes} (${diaNombre})`;
       });
 
-      const barrasProcesadas = sortedCleanKeys.map((key) => {
-        // Filtrar las lecturas válidas del día
-        const puntosValidos = formattedData.filter(
-          (d) => d[key] !== undefined && d[key] !== null
-        );
-
-        let sumaKwFP = 0;
-        let countFP = 0;
-        let sumaKwHP = 0;
-        let countHP = 0;
-
-        puntosValidos.forEach((d) => {
-          const val = Number(d[key]) || 0;
-          const hora = d.horaMinuto; // Ej: "18:25"
-          if (!hora) return;
-
-          const [h] = hora.split(":").map(Number);
-          // Hora Punta (HP): 18:00 a 23:00 hrs (18, 19, 20, 21, 22)
-          const esHP = h >= 18 && h < 23;
-
-          if (esHP) {
-            sumaKwHP += val;
-            countHP++;
-          } else {
-            sumaKwFP += val;
-            countFP++;
-          }
-        });
-
-        // Potencia promedio × horas del bloque (5 h de HP y 19 h de FP)
-        const kwhHP = countHP > 0 ? (sumaKwHP / countHP) * 5 : 0;
-        const kwhFP = countFP > 0 ? (sumaKwFP / countFP) * 19 : 0;
-        const totalKWh = kwhHP + kwhFP;
-
-        return {
-          name: key,
-          kWh: Math.round(totalKWh * 100) / 100,
-          kwhHP: Math.round(kwhHP * 100) / 100,
-          kwhFP: Math.round(kwhFP * 100) / 100,
-        };
-      });
-
-      const weekdayAgg: {
-        [day: string]: { kWh: number; kwhHP: number; kwhFP: number; count: number };
-      } = {};
-      WEEKDAYS_ES.forEach((day) => {
-        weekdayAgg[day] = { kWh: 0, kwhHP: 0, kwhFP: 0, count: 0 };
-      });
-      barrasProcesadas.forEach((item, idx) => {
-        const fechaYMD = (rawKeys[idx] || "").split(" ")[0];
-        const weekday = weekdayFromYmd(fechaYMD);
-        if (!weekday) return;
-        weekdayAgg[weekday].kWh += item.kWh;
-        weekdayAgg[weekday].kwhHP += item.kwhHP;
-        weekdayAgg[weekday].kwhFP += item.kwhFP;
-        weekdayAgg[weekday].count += 1;
-      });
-
-      const weekdayKeys = [...WEEKDAYS_ES];
-      const barrasPorDiaSemana = weekdayKeys.map((day) => {
-        const n = weekdayAgg[day].count;
-        return {
-          name: day,
-          kWh: n > 0 ? Math.round((weekdayAgg[day].kWh / n) * 100) / 100 : 0,
-          kwhHP: n > 0 ? Math.round((weekdayAgg[day].kwhHP / n) * 100) / 100 : 0,
-          kwhFP: n > 0 ? Math.round((weekdayAgg[day].kwhFP / n) * 100) / 100 : 0,
-          count: n,
-        };
-      });
-
-      setEnergiaPorDiaSemanaData(barrasPorDiaSemana);
-      setWeekdaySeriesKeys(weekdayKeys);
       setRawChartData(formattedData);
       setSeriesKeys(sortedCleanKeys);
       setSelectedReactiveDay(prev => (prev && sortedCleanKeys.includes(prev) ? prev : sortedCleanKeys[0] || null));
 
-      // Recalcular métricas de picos e indicadores eléctricos inmediatamente con los datos frescos
       calcularMetricasLuzDelSur(formattedData);
-
-      const initialWeekdayVisibility: { [key: string]: boolean } = {};
-      weekdayKeys.forEach((k) => {
-        initialWeekdayVisibility[k] = true;
-      });
 
       setVisibleDemandSeries(prev => {
         const visibility: any = {
@@ -305,27 +218,6 @@ const BoardDetailPage = () => {
         "kvar_capacitivo": prev["kvar_capacitivo"] ?? true
       }));
 
-      setVisibleEnergySeries((prev) => {
-        const next: { [key: string]: boolean } = {};
-        weekdayKeys.forEach((k) => {
-          next[k] = prev[k] !== undefined ? prev[k] : true;
-        });
-        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
-      });
-      setVisibleCarbonSeries((prev) => {
-        const next: { [key: string]: boolean } = {};
-        weekdayKeys.forEach((k) => {
-          next[k] = prev[k] !== undefined ? prev[k] : true;
-        });
-        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
-      });
-      setVisibleCostSeries((prev) => {
-        const next: { [key: string]: boolean } = {};
-        weekdayKeys.forEach((k) => {
-          next[k] = prev[k] !== undefined ? prev[k] : true;
-        });
-        return Object.keys(next).length ? next : { ...initialWeekdayVisibility };
-      });
     } catch (err) {
       console.error("Error cargando curvas de demanda en Recharts:", err);
     }
@@ -345,7 +237,6 @@ const BoardDetailPage = () => {
   const [iticEvents, setIticEvents] = useState<VoltageEventItem[]>([]);
   const [uploadingItic, setUploadingItic] = useState(false);
 
-  // Función para consultar los eventos del tablero
   const fetchIticData = async (boardId: string) => {
     try {
       const res = await getIticEvents(boardId);
@@ -357,14 +248,12 @@ const BoardDetailPage = () => {
     }
   };
 
-  // Disparar la consulta al cargar el tablero
   useEffect(() => {
     if (board?._id) {
       fetchIticData(board._id);
     }
   }, [board?._id]);
 
-  // Handler para subir el archivo CSV de la Curva ITIC
   const handleIticFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !board?._id) return;
@@ -391,15 +280,11 @@ const BoardDetailPage = () => {
   };
 
   const toggleEnergyDay = (key: string) => {
-    setVisibleEnergySeries(prev => ({ ...prev, [key]: !prev[key] }));
+    setVisibleEnergySeries(prev => ({ ...prev, [key]: prev[key] === false }));
   };
 
   const toggleCarbonDay = (key: string) => {
-    setVisibleCarbonSeries(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const toggleCostDay = (key: string) => {
-    setVisibleCostSeries(prev => ({ ...prev, [key]: !prev[key] }));
+    setVisibleCarbonSeries(prev => ({ ...prev, [key]: prev[key] === false }));
   };
 
   const toggleThdFase = (fase: string) => {
@@ -407,7 +292,6 @@ const BoardDetailPage = () => {
   };
 
   useEffect(() => {
-    // Si la autenticación aún se está resolviendo, esperamos
     if (authLoading) return;
 
     const fetchBoard = async () => {
@@ -427,7 +311,6 @@ const BoardDetailPage = () => {
     fetchBoard();
   }, [code, publicCode, authLoading, isEmpresarial]);
 
-  // Recalcula métricas al activar/desactivar días
   useEffect(() => {
     if (rawChartData.length > 0) {
       calcularMetricasLuzDelSur(rawChartData);
@@ -458,13 +341,11 @@ const BoardDetailPage = () => {
   const calcularMetricasLuzDelSur = (data: any[]) => {
     if (!data || data.length === 0) return;
 
-    // 1. Filtrar únicamente las series/días que están ACTIVOS actualmente
     const activeKeys = [
       ...seriesKeys,
       "Promedio_General"
     ].filter((key) => visibleDemandSeries[key] === true);
 
-    // Si no hay ninguna serie seleccionada, limpiamos métricas
     if (activeKeys.length === 0) {
       setHoraPicoMaximo(null);
       setAnalisisPotencia(null);
@@ -483,26 +364,22 @@ const BoardDetailPage = () => {
       const [horas, minutos] = horaStr.split(":").map(Number);
       const totalMinutos = horas * 60 + minutos;
 
-      // Hora Punta (HP): 18:00 a 23:00 hrs (1080 a 1380 minutos)
       const esHoraPunta = totalMinutos >= 18 * 60 && totalMinutos < 23 * 60;
 
       for (const key of activeKeys) {
         const valor = Number(row[key]);
 
         if (!isNaN(valor) && valor !== null && valor !== undefined && valor > 0) {
-          // Pico Máximo Absoluto
           if (valor > valorPicoAbsoluto) {
             valorPicoAbsoluto = valor;
             horaPicoAbsoluto = horaStr;
           }
 
-          // Evaluar tarjeta de Hora Punta (HP)
           if (esHoraPunta) {
             if (!maxHP || valor > maxHP.valor) {
               maxHP = { valor, hora: horaStr, fecha: key };
             }
           } else {
-            // Evaluar tarjeta de Hora Fuera de Punta (HFP)
             if (!maxHFP || valor > maxHFP.valor) {
               maxHFP = { valor, hora: horaStr, fecha: key };
             }
@@ -511,7 +388,6 @@ const BoardDetailPage = () => {
       }
     }
 
-    // Mover la línea vertical punteada al pico de los días activos
     if (horaPicoAbsoluto) {
       setHoraPicoMaximo(horaPicoAbsoluto);
     } else {
@@ -536,8 +412,6 @@ const BoardDetailPage = () => {
     });
   };
 
-  // ── ESTADOS PARA RECIBO Y COSTO DE ENERGÍA (HP / FP) ──
-  // 1. Inicializa leyendo directamente del tablero si ya existen en la base de datos
   const [rates, setRates] = useState<{ hp: number; fp: number } | null>(() => {
     const r = (board as any)?.energyRates;
     if (r?.tarifaHP && r?.tarifaFP) {
@@ -547,8 +421,14 @@ const BoardDetailPage = () => {
   });
 
   const [isUploadingBill, setIsUploadingBill] = useState(false);
+  const [ahorroMeta, setAhorroMeta] = useState<number>(5);
+  const [savingAhorro, setSavingAhorro] = useState(false);
+  const [ahorroGuardado, setAhorroGuardado] = useState<number | null>(null);
+  const [editandoAhorro, setEditandoAhorro] = useState(false);
+  const ahorroBloqueado = ahorroGuardado !== null && !editandoAhorro;
 
-  // 2. Sincronizar cuando el tablero termine de cargar desde la API
+  const [billHistory, setBillHistory] = useState<any[]>([]);
+
   useEffect(() => {
     const energyRates = (board as any)?.energyRates;
     if (energyRates?.tarifaHP && energyRates?.tarifaFP) {
@@ -557,27 +437,131 @@ const BoardDetailPage = () => {
         fp: Number(energyRates.tarifaFP),
       });
     }
+    const h = energyRates?.history;
+    setBillHistory(Array.isArray(h) ? h : []);
+
+    const metaGuardada = Number(energyRates?.ahorroMeta);
+    if (energyRates?.ahorroMeta !== undefined && energyRates?.ahorroMeta !== null && Number.isFinite(metaGuardada)) {
+      setAhorroMeta(metaGuardada);
+      setAhorroGuardado(metaGuardada);
+    }
   }, [board]);
 
-  const handleBillUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Energía mensual según el recibo de luz (solo se usa en EnergyBarSection)
+  const energiaMensualRecibo = useMemo(() => {
+    if (!rates || billHistory.length === 0) return [];
+
+    return billHistory
+      .map((h: any, i: number) => {
+        const dias = Number(h.dias) > 0 ? Number(h.dias) : 30;
+        const kwhHP = Number(h.kwhHP) || (Number(h.costoHP) > 0 ? Number(h.costoHP) / rates.hp : 0);
+        const kwhFP = Number(h.kwhFP) || (Number(h.costoFP) > 0 ? Number(h.costoFP) / rates.fp : 0);
+        return {
+          name: String(h.period || `Mes ${i + 1}`),
+          dias,
+          kwhHP: Math.round(kwhHP * 100) / 100,
+          kwhFP: Math.round(kwhFP * 100) / 100,
+          kWh: Math.round((kwhHP + kwhFP) * 100) / 100,
+          costoTotalRecibo: Number(h.costoTotal) > 0 ? Number(h.costoTotal) : null,
+          totalEsEstimado: Boolean(h.totalEsEstimado),
+        };
+      })
+      .filter((m) => m.kWh > 0);
+  }, [billHistory, rates]);
+
+  // kWh por día de la semana calculados SOLO con las mediciones del CSV (sin recibo de luz)
+  const energiaDiariaMedida = useMemo(() => {
+    if (rawChartData.length === 0 || seriesKeys.length === 0) return [];
+
+    const candidatos: { nombre: string; kWh: number; cobertura: number }[] = [];
+
+    seriesKeys.forEach((key) => {
+      // key tiene el formato "dd/mm (Lun)"
+      const match = key.match(/\(([^)]+)\)/);
+      const nombre = match ? DIA_ABREV_A_NOMBRE[normalizarDia(match[1])] : undefined;
+      if (!nombre) return;
+
+      let sumaKw = 0;
+      let puntosConDato = 0;
+      rawChartData.forEach((row) => {
+        const v = Number(row[key]);
+        if (Number.isFinite(v) && v > 0) {
+          sumaKw += v;
+          puntosConDato++;
+        }
+      });
+
+      candidatos.push({
+        nombre,
+        kWh: sumaKw * HORAS_POR_PUNTO,
+        cobertura: puntosConDato / rawChartData.length,
+      });
+    });
+
+    // Descarta días incompletos (si todos lo fueran, usa todos)
+    const completos = candidatos.filter((c) => c.cobertura >= MIN_COBERTURA_DIA);
+    const usados = completos.length > 0 ? completos : candidatos;
+
+    // Promedia por día de la semana
+    return WEEKDAYS_ES.map((day) => {
+      const delDia = usados.filter((u) => u.nombre === day);
+      if (delDia.length === 0) return null;
+      const prom = delDia.reduce((a, u) => a + u.kWh, 0) / delDia.length;
+      return {
+        name: day,
+        kWh: Math.round(prom * 100) / 100,
+        count: delDia.length,
+        fuente: "medicion",
+      };
+    }).filter((d): d is NonNullable<typeof d> => d !== null);
+  }, [rawChartData, seriesKeys]);
+
+  // Solo se muestran los botones de los días que tienen medición
+  const diasSemanaKeys = WEEKDAYS_ES.filter((d) =>
+    energiaDiariaMedida.some((x) => x.name === d)
+  );
+
+  const handleBillUpload = async (file: File) => {
     if (!file || !board?._id) return;
 
     try {
       setIsUploadingBill(true);
-      const res = await uploadReceiptBill(board._id, file);
+      const res = await uploadReceiptBill(
+        board._id,
+        file,
+        ahorroGuardado === null ? ahorroMeta : undefined
+      );
+      if (res?.data?.ahorroMeta != null) {
+        setAhorroGuardado(res.data.ahorroMeta);
+      }
       if (res?.data) {
         setRates({
           hp: Number(res.data.tarifaHP) || 0.3095,
           fp: Number(res.data.tarifaFP) || 0.2616,
         });
-        alert("¡Tarifas extraídas y actualizadas correctamente con OpenAI!");
+        const historyFromBill = (res.data as any).history;
+        setBillHistory(Array.isArray(historyFromBill) ? historyFromBill : []);
+        alert("¡Tarifas y consumo extraídos y actualizados correctamente!");
       }
     } catch (err: any) {
       alert("Error al procesar recibo: " + (err.response?.data?.error || err.message));
     } finally {
       setIsUploadingBill(false);
-      e.target.value = "";
+    }
+  };
+
+  const handleSaveAhorro = async () => {
+    if (!board?._id) return;
+    try {
+      setSavingAhorro(true);
+      await updateAhorroMeta(board._id, ahorroMeta);
+      setAhorroGuardado(ahorroMeta);
+      setEditandoAhorro(false);
+      alert("Meta de ahorro guardada.");
+    } catch (err: any) {
+      alert("Error al guardar la meta: " + (err.response?.data?.error || err.message));
+    } finally {
+      setSavingAhorro(false);
     }
   };
 
@@ -700,14 +684,13 @@ const BoardDetailPage = () => {
     <>
       <section className="mx-auto max-w-7xl space-y-6 opacity-0" style={{ animation: "fadeUp 0.5s ease forwards" }}>
 
-        {/* ── HEADER DEL TABLERO (SIEMPRE COMPACTO Y STICKY) ── */}
+        {/* ── HEADER DEL TABLERO ── */}
         <section className="sticky top-0 z-30 rounded-2xl border border-slate-200/80 bg-white/90 shadow-md backdrop-blur-md transition-all duration-300">
           <div className="relative rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] p-3.5 px-6 text-white transition-all duration-300">
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/5 to-transparent" />
 
             <div className="relative z-10 flex flex-row items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
-                {/* Botón Volver integrado en el Header */}
                 <button
                   type="button"
                   onClick={() => navigate(-1)}
@@ -728,7 +711,6 @@ const BoardDetailPage = () => {
                 </div>
               </div>
 
-              {/* Código del Tablero */}
               <div className="shrink-0 rounded-2xl border border-white/10 bg-white/15 px-3.5 py-1.5 backdrop-blur">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-white/70">Código</p>
                 <p className="text-sm font-black tracking-tight">
@@ -739,7 +721,7 @@ const BoardDetailPage = () => {
           </div>
         </section>
 
-        {/* ── GRILLA DE DETALLES (UBICACIÓN, TIPO, SISTEMA, ESTADO) ── */}
+        {/* ── GRILLA DE DETALLES (EMPRESA, UBICACIÓN, SISTEMA, ESTADO) ── */}
         <div className="grid grid-cols-2 gap-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm lg:grid-cols-4">
           {[
             { l: "Empresa", v: companyName, icon: Building2, textCls: "text-slate-800", iconCls: "text-[#0797d5]" },
@@ -759,7 +741,6 @@ const BoardDetailPage = () => {
           })}
         </div>
 
-        {/* ── PLAN EMPRESARIAL: ETIQUETADO DE SEGURIDAD (NFPA 70E) ── */}
         {isEmpresarial && board?.nfpa && (
           <Nfpa70eSection board={board} publicCode={publicCode} />
         )}
@@ -802,33 +783,74 @@ const BoardDetailPage = () => {
               onIticFileUpload={handleIticFileUpload}
             />
 
+            <div className="flex flex-col gap-3 rounded-3xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-base font-bold text-slate-950">Meta de ahorro de la empresa</h2>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Se guarda con el tablero y se envía junto con el recibo de luz.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  value={ahorroMeta}
+                  disabled={ahorroBloqueado}
+                  onChange={(e) =>
+                    setAhorroMeta(Math.min(100, Math.max(0, Number(e.target.value) || 0)))
+                  }
+                  className="w-24 rounded-xl border border-emerald-300 bg-white px-3 py-2 text-right text-sm font-black text-slate-800 disabled:bg-emerald-100/50 disabled:text-slate-500"
+                />
+                <span className="text-sm font-black text-emerald-700">%</span>
+
+                {ahorroBloqueado ? (
+                  isSuperAdmin ? (
+                    <button
+                      type="button"
+                      onClick={() => setEditandoAhorro(true)}
+                      className="cursor-pointer rounded-xl border border-emerald-600 px-4 py-2 text-xs font-black text-emerald-700 transition-all hover:bg-emerald-100 active:scale-95"
+                    >
+                      Editar
+                    </button>
+                  ) : (
+                    <span className="text-xs font-bold text-slate-400">🔒 Meta fijada</span>
+                  )
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSaveAhorro}
+                    disabled={savingAhorro}
+                    className="cursor-pointer rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
+                  >
+                    {savingAhorro ? "Guardando..." : "Guardar"}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Gráfico de Consumo de Energía con el Botón para Subir Recibo */}
             <EnergyBarSection
-              energiaPorDiaData={energiaPorDiaSemanaData}
+              energiaPorMesData={energiaMensualRecibo}
+              ahorroMeta={ahorroMeta}
               visibleEnergySeries={visibleEnergySeries}
-              seriesKeys={weekdaySeriesKeys}
               onToggleEnergyDay={toggleEnergyDay}
-            />
-
-            <CarbonEmissionsSection
-              energiaPorDiaData={energiaPorDiaSemanaData}
-              visibleCarbonSeries={visibleCarbonSeries}
-              seriesKeys={weekdaySeriesKeys}
-              onToggleCarbonDay={toggleCarbonDay}
-            />
-
-            <EnergyCostSection
-              rates={rates}
-              energiaPorDiaData={energiaPorDiaSemanaData}
-              visibleCostSeries={visibleCostSeries}
-              seriesKeys={weekdaySeriesKeys}
-              onToggleCostDay={toggleCostDay}
               isUploadingBill={isUploadingBill}
               onBillUpload={handleBillUpload}
+            />
+
+            {/* Huella de carbono: calculada solo con las mediciones del CSV */}
+            <CarbonEmissionsSection
+              energiaPorDiaData={energiaDiariaMedida}
+              visibleCarbonSeries={visibleCarbonSeries}
+              seriesKeys={diasSemanaKeys}
+              onToggleCarbonDay={toggleCarbonDay}
             />
           </>
         )}
 
-        {/* ── PLAN BÁSICO / BÁSICO COMÚN A TODOS ── */}
+        {/* ── PLAN BÁSICO / BÁSICO COMÚN ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-4 font-bold text-slate-950 text-base">Información general</h2>
@@ -859,7 +881,6 @@ const BoardDetailPage = () => {
           </div>
         </div>
 
-        {/* ── PLAN BÁSICO: LEYENDA DE CIRCUITOS ── */}
         {board.circuits && board.circuits.length > 0 && (
           <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 className="mb-3 font-bold text-slate-950 text-base">Leyenda de circuitos</h2>
@@ -894,12 +915,10 @@ const BoardDetailPage = () => {
           </div>
         )}
 
-        {/* ── PLAN EMPRESARIAL: MEDICIONES DE POZO A TIERRA / AISLAMIENTO (SPAT) ── */}
         {isEmpresarial && board.insulationMeasurements && board.insulationMeasurements.length > 0 && (
           renderInsulationMeasurements()
         )}
 
-        {/* ── PLAN EMPRESARIAL: INSPECCIÓN TERMOGRÁFICA (NFPA 70B) ── */}
         {isEmpresarial && board?._id && (
           <ThermographySection
             boardId={board._id}
@@ -909,7 +928,6 @@ const BoardDetailPage = () => {
 
       </section>
 
-      {/* MODAL PARA VISTA PREVIA DE IMAGEN */}
       {selectedImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 transition-all duration-300 animate-fade-in">
           <button

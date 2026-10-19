@@ -28,16 +28,13 @@ interface EnergyBarSectionProps {
   onToggleEnergyDay?: (key: string) => void;
   isUploadingBill?: boolean;
   onBillUpload?: (file: File) => Promise<void>;
-  // kWh del mes facturado según el detalle del recibo (lo devuelve el backend). Sirve para detectar datos viejos.
   kwhFacturadoRecibo?: number | null;
 }
 
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Set", "Oct", "Nov", "Dic"];
 const AHORRO_DEFAULT = 5;
-// Por debajo de este consumo mensual máximo (kWh) no se ofrece ampliar el eje
 const UMBRAL_AMPLIAR = 20000;
 
-// Medidas de las barras (px). Con pocas barras se fijan para que queden juntas y centradas.
 const BAR = 48;
 const GAP = 6;
 const POCAS_BARRAS = 4;
@@ -63,13 +60,11 @@ const fmtK = (v: unknown) => {
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 const yy = (y: number) => String(y).slice(-2);
 
-// El total del mes se calcula SIEMPRE como HP + FP; "kWh" solo es respaldo si no hay desglose.
 const kwhDe = (m: EnergyMonthItem) => {
   const t = (Number(m.kwhHP) || 0) + (Number(m.kwhFP) || 0);
   return t > 0 ? t : Number(m.kWh) || 0;
 };
 
-// Paso "bonito" (1, 2, 5 × 10^n) para dividir un rango en ~5 intervalos
 const niceStep = (range: number) => {
   const raw = Math.max(range, 1) / 5;
   const pow = Math.pow(10, Math.floor(Math.log10(raw)));
@@ -86,7 +81,6 @@ interface ChartRow {
   proyTotal: number;
 }
 
-/* ── TOOLTIP / CARTILLA ── */
 const EnergyTooltip = ({ active, payload, ahorroPct }: any) => {
   if (!active || !payload?.length) return null;
   const r: ChartRow = payload[0].payload;
@@ -98,7 +92,7 @@ const EnergyTooltip = ({ active, payload, ahorroPct }: any) => {
           <div>
             <div className="mb-1.5 flex items-center justify-between gap-3">
               <span className="font-extrabold text-slate-800 text-sm">{r.realName}</span>
-              <span className="font-black text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200 text-xs">
+              <span className="font-black text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200 text-xs">
                 {fmt(r.realTotal)} kWh
               </span>
             </div>
@@ -109,8 +103,8 @@ const EnergyTooltip = ({ active, payload, ahorroPct }: any) => {
 
       <div>
         <div className="mb-1.5 flex items-center justify-between gap-3">
-          <span className="font-extrabold text-rose-600 text-sm">{r.proyName}</span>
-          <span className="font-black text-rose-700 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 text-xs">
+          <span className="font-extrabold text-rose-500 text-sm">{r.proyName}</span>
+          <span className="font-black text-rose-600 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200 text-xs">
             {fmt(r.proyTotal)} kWh
           </span>
         </div>
@@ -145,8 +139,6 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     return (energiaPorMesData ?? []).map((m) => m.name);
   }, [energiaPorMesData]);
 
-  // Cada vez que cambian los meses disponibles (p. ej. se sube otro recibo) se muestran todos
-  // de nuevo, para no arrastrar filtros de una subida anterior.
   const seriesSignature = seriesKeys.join("|");
   useEffect(() => {
     const initial: { [key: string]: boolean } = {};
@@ -154,7 +146,6 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
       initial[key] = true;
     });
     setVisibleSeries(initial);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seriesSignature]);
 
   const activeCount = useMemo(
@@ -167,7 +158,6 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     [seriesKeys, visibleSeries]
   );
 
-  // Chips fijos Ene → Dic. Cada uno apunta a los periodos del recibo que caen en ese mes.
   const chipsMeses = useMemo(() => {
     const chips: { label: string; keys: string[] }[] = MESES.map((label, idx) => ({
       label,
@@ -182,7 +172,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
   const handleToggleMes = (keys: string[]) => {
     if (keys.length === 0) return;
     const isSelected = keys.every((k) => visibleSeries[k] !== false);
-    if (isSelected && activeCount - keys.length <= 0) return; // al menos un mes visible
+    if (isSelected && activeCount - keys.length <= 0) return;
     setVisibleSeries((prev) => {
       const next = { ...prev };
       keys.forEach((k) => {
@@ -302,7 +292,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             type="button"
             disabled={isUploadingBill}
             onClick={() => billFileInputRef.current?.click()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white font-bold text-xs hover:bg-blue-700 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs hover:bg-indigo-700 transition-all cursor-pointer shadow-sm disabled:opacity-50"
           >
             {isUploadingBill ? (
               <>
@@ -336,13 +326,11 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
 
   const ultimoKwh = ultimo ? kwhDe(ultimo) : 0;
 
-  // Si el último mes pintado no coincide con el del recibo, los datos guardados son viejos o erróneos
   const datosDesactualizados =
     kwhFacturadoRecibo != null &&
     kwhFacturadoRecibo > 0 &&
     Math.abs(ultimoKwh - kwhFacturadoRecibo) / kwhFacturadoRecibo > 0.02;
 
-  /* ── Escala del eje Y dinámica ── */
   const maxVal = Math.max(0, ...data.map((d) => Math.max(d.realTotal, d.proyTotal)));
   const minVal = Math.min(...data.flatMap((d) => [d.realTotal, d.proyTotal]));
 
@@ -365,16 +353,15 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
     yTicks.push(Math.round(v * 100) / 100);
   }
 
-  // Con pocas barras: se fija su ancho y se dejan juntas (si no, Recharts las separa cientos de px)
   const pocasBarras = data.length <= POCAS_BARRAS;
-  const off = (BAR + GAP) / 2; // la etiqueta de cada barra se centra bajo ella
+  const off = (BAR + GAP) / 2;
 
   const notaAnual = completo
     ? `Suma de los ${mesesReales} meses seleccionados`
     : `Suma de ${mesesReales} mes(es) seleccionado(s)`;
 
   const metricCard =
-    "relative overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-b from-blue-50/60 to-white p-5 shadow-sm";
+    "relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/60 to-white p-5 shadow-sm";
 
   return (
     <section className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xl font-sans mt-6">
@@ -382,7 +369,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
 
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-100 pb-6">
         <div className="flex items-center gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500/15 to-indigo-500/10 text-blue-600 border border-blue-500/20">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500/15 to-blue-500/10 text-indigo-600 border border-indigo-500/20">
             <Container size={24} />
           </div>
           <div>
@@ -399,7 +386,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
           type="button"
           disabled={isUploadingBill}
           onClick={() => billFileInputRef.current?.click()}
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold text-xs sm:text-sm hover:from-blue-700 hover:to-indigo-700 transition-all cursor-pointer shadow-md shrink-0 disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white font-extrabold text-xs sm:text-sm hover:from-indigo-700 hover:to-blue-700 transition-all cursor-pointer shadow-md shrink-0 disabled:opacity-50"
         >
           {isUploadingBill ? (
             <>
@@ -424,25 +411,25 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
 
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className={metricCard}>
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Último mes facturado</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">Último mes facturado</p>
           <p className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            {fmt(ultimoKwh)} <span className="text-base font-bold text-blue-600">kWh</span>
+            {fmt(ultimoKwh)} <span className="text-base font-bold text-indigo-600">kWh</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">{ultimo?.name || "—"}</p>
         </div>
 
         <div className={metricCard}>
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Consumo filtrado</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">Consumo filtrado</p>
           <p className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            {fmt(anualReal)} <span className="text-base font-bold text-blue-600">kWh</span>
+            {fmt(anualReal)} <span className="text-base font-bold text-indigo-600">kWh</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">{notaAnual}</p>
         </div>
 
         <div className={metricCard}>
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Proyección con ahorro</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">Proyección con ahorro</p>
           <p className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            {fmt(anualProy)} <span className="text-base font-bold text-blue-600">kWh</span>
+            {fmt(anualProy)} <span className="text-base font-bold text-indigo-600">kWh</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">
             {ahorroPct === 0
@@ -452,15 +439,14 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
         </div>
 
         <div className={metricCard}>
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Hora Punta del periodo</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-indigo-600">Hora Punta del periodo</p>
           <p className="mt-2 text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-            {fmt(pctHP, 1)} <span className="text-base font-bold text-blue-600">%</span>
+            {fmt(pctHP, 1)} <span className="text-base font-bold text-indigo-600">%</span>
           </p>
           <p className="mt-2 text-xs text-slate-500 font-medium">Parte del consumo en HP</p>
         </div>
       </div>
 
-      {/* ── FILTROS DE MESES ── */}
       <div className="mb-6 flex flex-col gap-3 p-3 rounded-2xl bg-slate-50/90 border border-slate-200/90 font-sans sm:flex-row sm:items-center">
         <span className="pl-2 text-xs font-black uppercase text-slate-400 tracking-widest shrink-0">Meses:</span>
 
@@ -487,7 +473,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   !hasData
                     ? "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed"
                     : isSelected
-                      ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-transparent shadow-xs cursor-pointer"
+                      ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white border-transparent shadow-xs cursor-pointer"
                       : "bg-white border-slate-200 text-slate-500 hover:text-slate-800 cursor-pointer"
                 } ${isLastActive ? "cursor-not-allowed opacity-80" : ""}`}
               >
@@ -503,8 +489,8 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             onClick={handleSelectAll}
             className={`px-4 py-1.5 text-xs font-black rounded-full border cursor-pointer transition-all ${
               isAllSelected
-                ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                : "bg-white border-slate-200 text-blue-600 hover:bg-blue-50"
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                : "bg-white border-slate-200 text-indigo-600 hover:bg-indigo-50"
             }`}
           >
             Todos
@@ -512,15 +498,15 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
         </div>
       </div>
 
-      {/* ── LEYENDA SUPERIOR ── */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-4">
         <div className="flex flex-wrap items-center gap-8 text-sm sm:text-base font-extrabold text-slate-800">
           <span className="flex items-center gap-2.5">
-            <span className="size-4 rounded-full bg-blue-500 shadow-sm shrink-0" />
+            <span className="size-4 rounded-full bg-indigo-600 shadow-sm shrink-0" />
             <span>Barra Azul: Mes Real ({labelReal})</span>
           </span>
           <span className="flex items-center gap-2.5">
-            <span className="size-4 rounded-full bg-rose-500 shadow-sm shrink-0" />
+            {/* Círculo de la leyenda unificado con el mismo tono rojo del gradiente */}
+            <span className="size-4 rounded-full bg-[#f43f5e] shadow-sm shrink-0" />
             <span>Barra Roja: Mismo Mes Próx. Año ({labelProy})</span>
           </span>
         </div>
@@ -549,7 +535,6 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
       </div>
 
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-3 scrollbar-thin">
-        {/* Añadimos las clases para eliminar el outline en elementos internos como rectángulos y textos */}
         <div className="h-[600px] md:h-[680px] w-[1000px] lg:w-full text-xs font-semibold text-slate-600 select-none focus:outline-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
           <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <BarChart
@@ -561,9 +546,10 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
             >
               <defs>
                 <linearGradient id="realBlueGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2563eb" />
-                  <stop offset="100%" stopColor="#1e3a8a" />
+                  <stop offset="0%" stopColor="#4f46e5" />
+                  <stop offset="100%" stopColor="#2563eb" />
                 </linearGradient>
+                {/* Gradiente Rojo unificado (#f43f5e a #be123c) */}
                 <linearGradient id="proyRedGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#f43f5e" />
                   <stop offset="100%" stopColor="#be123c" />
@@ -579,7 +565,6 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                 height={75}
                 tick={({ x, y, payload }: any) => {
                   const row = data.find((d) => d.realName === payload.value);
-                  // Con muchas barras las dos etiquetas van en el mismo punto; con pocas, cada una bajo su barra
                   const dx = pocasBarras ? off : 18;
                   return (
                     <g transform={`translate(${x},${y})`}>
@@ -587,7 +572,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                         x={-dx}
                         y={18}
                         textAnchor="end"
-                        fill="#1d4ed8"
+                        fill="#4f46e5"
                         fontSize={14}
                         fontWeight={900}
                         transform={`rotate(-35, ${-dx}, 18)`}
@@ -598,7 +583,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                         x={dx}
                         y={18}
                         textAnchor="end"
-                        fill="#e11d48"
+                        fill="#f43f5e"
                         fontSize={14}
                         fontWeight={900}
                         transform={`rotate(-35, ${dx}, 18)`}
@@ -648,7 +633,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
               </YAxis>
 
               <Tooltip
-                cursor={{ fill: "rgba(59, 130, 246, 0.05)" }}
+                cursor={{ fill: "rgba(79, 70, 229, 0.05)" }}
                 content={<EnergyTooltip ahorroPct={ahorroPct} />}
               />
 
@@ -663,7 +648,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   dataKey="realTotal"
                   position="top"
                   formatter={fmtK}
-                  style={{ fontSize: 14, fontWeight: 900, fill: "#1e40af" }}
+                  style={{ fontSize: 14, fontWeight: 900, fill: "#4f46e5" }}
                   offset={8}
                 />
               </Bar>
@@ -682,7 +667,7 @@ export const EnergyBarSection: React.FC<EnergyBarSectionProps> = ({
                   dataKey="proyTotal"
                   position="top"
                   formatter={fmtK}
-                  style={{ fontSize: 14, fontWeight: 900, fill: "#be123c" }}
+                  style={{ fontSize: 14, fontWeight: 900, fill: "#f43f5e" }}
                   offset={8}
                 />
 

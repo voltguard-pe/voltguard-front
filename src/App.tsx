@@ -7,9 +7,8 @@ import ChangePasswordPage from './pages/auth/ChangePasswordPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
-// 1. IMPORTA LA NUEVA PÁGINA DE VERIFICACIÓN AQUÍ:
 import VerifyEmailPage from './pages/auth/VerifyEmailPage'
-
+import { GlobalNoCreditsWatcher } from "./components/dashboard/modals/ImportBoardsAndNfpaModal";
 import AdminCreatePage from './pages/dashboard/admin/AdminCreatePage'
 import AdminDashboardPage from './pages/dashboard/admin/AdminDashboardPage'
 import AdminDetailPage from './pages/dashboard/admin/AdminDetailPage'
@@ -60,6 +59,8 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      {/* VIGILANTE GLOBAL DE CRÉDITOS DE IA (Actúa en toda la plataforma) */}
+      <GlobalNoCreditsWatcher />
       <AuthProvider>
         <SidebarProvider>
           <Routes>
@@ -80,10 +81,7 @@ function App() {
               <Route path='/auth' element={<AuthLayout />}>
                 <Route index element={<LoginPage />} />
                 <Route path='register' element={<RegisterPage />} />
-
-                {/* 2. AÑADE ESTA RUTA DINÁMICA CON EL PARÁMETRO :token */}
                 <Route path='verify-email/:token' element={<VerifyEmailPage />} />
-
                 <Route path='forgot-password' element={<ForgotPasswordPage />} />
                 <Route path='reset-password' element={<ChangePasswordPage />} />
               </Route>

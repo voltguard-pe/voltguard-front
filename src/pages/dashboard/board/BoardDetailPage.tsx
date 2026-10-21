@@ -16,6 +16,7 @@ import { getDemandChartData, uploadMetrelCsv } from "../../../services/measureme
 import { getIticEvents, uploadIticCsv, type VoltageEventItem } from "../../../services/voltageEvent.service";
 import { useAuth } from "../../../shared/hooks/useAuth";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
+import { isNoCreditsError, triggerGlobalNoCreditsModal } from "../../../components/dashboard/modals/ImportBoardsAndNfpaModal";
 
 // ── FUNCIONES AUXILIARES DE FORMATEO ──
 const value = (data: unknown) =>
@@ -544,6 +545,13 @@ const BoardDetailPage = () => {
         alert("¡Tarifas y consumo extraídos y actualizados correctamente!");
       }
     } catch (err: any) {
+      // 1. Si el error es por falta de créditos de OpenAI, disparamos nuestro modal corporativo
+      if (isNoCreditsError(err)) {
+        triggerGlobalNoCreditsModal();
+        return;
+      }
+
+      // 2. Si es cualquier otro error, se mantiene el alert habitual
       alert("Error al procesar recibo: " + (err.response?.data?.error || err.message));
     } finally {
       setIsUploadingBill(false);

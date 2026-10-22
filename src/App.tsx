@@ -35,7 +35,6 @@ import { AdminLicensesView } from './pages/dashboard/licenses/AdminLicensesView'
 import { PermissionsView } from './pages/dashboard/permissions/PermissionsView'
 import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
 import ProfileDashboardPage from './pages/dashboard/profile/ProfileDashboardPage'
-import { NewSolarInstallationView } from './pages/dashboard/solar-panel/NewSolarInstallationView'
 import { SolarInspectionReportView } from './pages/dashboard/solar-panel/SolarPanelsView'
 import GroundingDashboardPage from './pages/dashboard/spat/GroundingDashboardPage'
 import HomePage from './pages/landing/HomePage'
@@ -125,9 +124,14 @@ function App() {
                 {/* 5. PANELES SOLARES */}
                 {/* <Route path="companies/:publicCode/solar" element={<SolarPanelDashboardPage />} />
                 <Route path="companies/:publicCode/solar/new" element={<SolarPanelDashboardPage />} /> */}
-                <Route path="companies/:companyCode/solar" element={<SolarInspectionReportView />} />
+                {/* <Route path="companies/:companyCode/solar" element={<SolarInspectionReportView />} /> */}
                 {/* <Route path="companies/:companyCode/solar" element={<SolarPanelsView />} /> */}
-                <Route path="companies/:companyCode/solar/new" element={<NewSolarInstallationView />} />
+                {/* <Route path="companies/:companyCode/solar/new" element={<NewSolarInstallationView />} /> */}
+
+                {/* 5. PANELES SOLARES */}
+                <Route path="companies/:companyCode/solar" element={<SolarInspectionReportView />} />
+                <Route path="companies/:companyCode/solar/:solarCode" element={<SolarInspectionReportView />} />
+                <Route path="companies/:companyCode/solar/new" element={<SolarInspectionReportView />} />
 
                 {/* 6. SUBESTACIÓN */}
                 <Route path="companies/:publicCode/substations" element={<PlaceholderPage title="Subestaciones" />} />

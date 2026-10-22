@@ -37,6 +37,7 @@ import { getCompanyPozosList } from "../../services/spat.service";
 import { useAuth } from "../../shared/hooks/useAuth";
 import type { DocumentResponseDTO, PublicCompanyBoardsItemDTO } from "../../shared/types/BoardProps";
 import type { CompanyResponseDTO } from "../../shared/types/CompanyProps";
+import { solarThermographyService } from "../../services/solarThermography.service";
 
 interface SidebarComponentProps {
   isOpen: boolean;
@@ -61,7 +62,7 @@ const STATIC_MODULES: {
 }[] = [
     { id: "billing", name: "Facturación", color: "text-amber-500", createTitle: "Subir Recibo de Luz", newPath: (c) => `/dashboard/companies/${c}/billing`, viewPath: (c) => `/dashboard/companies/${c}/billing`, viewText: "Recibo de Luz", icon: Receipt, activeColor: "text-amber-600 bg-amber-50" },
     { id: "medical-reports", name: "Reporte Médico", color: "text-rose-500", createTitle: "Nuevo Reporte Médico", newPath: (c) => `/dashboard/companies/${c}/medical-reports/new`, viewPath: (c) => `/dashboard/companies/${c}/medical-reports`, viewText: "Ver reportes médicos", icon: FileHeart, activeColor: "text-rose-600 bg-rose-50" },
-    { id: "solar-panels", name: "Paneles Solares", color: "text-amber-600", createTitle: "Nuevo Panel Solar", newPath: (c) => `/dashboard/companies/${c}/solar/new`, viewPath: (c) => `/dashboard/companies/${c}/solar`, viewText: "Instalaciones solares", icon: Sun, activeColor: "text-amber-600 bg-amber-50" },
+    // { id: "solar-panels", name: "Paneles Solares", color: "text-amber-600", createTitle: "Nuevo Panel Solar", newPath: (c) => `/dashboard/companies/${c}/solar/new`, viewPath: (c) => `/dashboard/companies/${c}/solar`, viewText: "Instalaciones solares", icon: Sun, activeColor: "text-amber-600 bg-amber-50" },
     { id: "substations", name: "Subestación", color: "text-indigo-500", createTitle: "Nueva Subestación", newPath: (c) => `/dashboard/companies/${c}/substations/new`, viewPath: (c) => `/dashboard/companies/${c}/substations`, viewText: "Subestaciones", icon: Cpu, activeColor: "text-indigo-600 bg-indigo-50" },
     { id: "cells", name: "Celdas", color: "text-cyan-600", createTitle: "Nueva Celda", newPath: (c) => `/dashboard/companies/${c}/cells/new`, viewPath: (c) => `/dashboard/companies/${c}/cells`, viewText: "Celdas de media tensión", icon: Box, activeColor: "text-cyan-600 bg-cyan-50" },
     { id: "capacitor-banks", name: "Banco de Condensadores", color: "text-violet-500", createTitle: "Nuevo Banco de Condensadores", newPath: (c) => `/dashboard/companies/${c}/capacitors/new`, viewPath: (c) => `/dashboard/companies/${c}/capacitors`, viewText: "Bancos registrados", icon: FileCheck2, activeColor: "text-violet-600 bg-violet-50" },
@@ -124,6 +125,8 @@ const SidebarComponent = ({
   const [loadingBoards, setLoadingBoards] = useState<Record<string, boolean>>({});
   const [companyGrounding, setCompanyGrounding] = useState<Record<string, { code: string; name: string }[]>>({});
   const [loadingGrounding, setLoadingGrounding] = useState<Record<string, boolean>>({});
+  const [companySolar, setCompanySolar] = useState<Record<string, { code: string; name: string }[]>>({});
+  const [loadingSolar, setLoadingSolar] = useState<Record<string, boolean>>({});
   const [companyDocuments, setCompanyDocuments] = useState<Record<string, DocumentResponseDTO[]>>({});
   const [loadingDocuments, setLoadingDocuments] = useState<Record<string, boolean>>({});
 
@@ -155,6 +158,21 @@ const SidebarComponent = ({
         })
         .catch((err) => console.error("Error cargando SPAT:", err))
         .finally(() => setLoadingGrounding((prev) => ({ ...prev, [publicCode]: false })));
+    }
+
+    if (force || !companySolar[publicCode]) {
+      setLoadingSolar((prev) => ({ ...prev, [publicCode]: true }));
+      solarThermographyService.getCompanySolarList(publicCode)
+        .then((res: any) => {
+          // res puede venir como { data: [...] } o [...] según tu servicio
+          const rawList = Array.isArray(res) ? res : res?.data || [];
+          const list = rawList.map((s: any) => ({
+            code: s.solarCode || s.code || s._id,
+          }));
+          setCompanySolar((prev) => ({ ...prev, [publicCode]: list }));
+        })
+        .catch((err) => console.error("Error cargando Paneles Solares:", err))
+        .finally(() => setLoadingSolar((prev) => ({ ...prev, [publicCode]: false })));
     }
 
     if (force || !companyDocuments[publicCode]) {
@@ -274,6 +292,7 @@ const SidebarComponent = ({
     const code = company.publicCode;
     const boards = companyBoards[code] || [];
     const pozos = companyGrounding[code] || [];
+    const solarInstallations = companySolar[code] || [];
     const documents = companyDocuments[code] || [];
 
     const moduleFolders = [
@@ -363,6 +382,40 @@ const SidebarComponent = ({
                 >
                   <Activity size={12} className="shrink-0 text-emerald-500" />
                   <span className="truncate">{p.code}</span>
+                </NavLink>
+              ))
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "solar",
+        name: "Paneles Solares",
+        color: "text-amber-500",
+        count: solarInstallations.length,
+        loading: loadingSolar[code],
+        createTitle: "Nueva Inspección Solar",
+        onCreate: () => navigate(`/dashboard/companies/${code}/solar/new`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            {loadingSolar[code] ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando instalaciones...</p>
+            ) : solarInstallations.length === 0 ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin auditorías registradas</p>
+            ) : (
+              solarInstallations.map((item) => (
+                <NavLink
+                  key={item.code}
+                  to={`/dashboard/companies/${code}/solar/${item.code}`}
+                  onClick={onClose}
+                  end
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive ? "text-amber-600 font-bold bg-amber-50" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    }`
+                  }
+                >
+                  <Sun size={12} className="shrink-0 text-amber-500" />
+                  <span className="truncate">{item.code}</span>
                 </NavLink>
               ))
             )}

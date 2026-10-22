@@ -1,166 +1,201 @@
 import {
   AlertOctagon,
   AlertTriangle,
-  Calendar,
+  ArrowLeft,
   Camera,
   Download,
-  MapPin,
+  Loader2,
   ShieldAlert,
-  Thermometer
+  Sun,
+  Thermometer,
+  UploadCloud
 } from "lucide-react";
-import { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { solarThermographyService, type Hotspot, type SolarInspectionData, type SolarListItem } from "../../../services/solarThermography.service";
+import { useAuth } from "../../../shared/hooks/useAuth";
 
-// Metadatos de la auditoría técnica
-const INSPECTION_METADATA = {
-  facility: "Sistema Fotovoltaico en Azotea — Edificio MAPFRE, Miraflores",
-  date: "06 de octubre de 2026",
-  engineer: "Ing. César Augusto Inga Zapata (CIP 99496)",
-  operatingPower: "10.0 kW (66% de capacidad instalada)",
-  ambientTemp: 19.0,
-  replacementModel: "Trina Solar 455 Wp (Imp: 11.06 A / Vmp: 41.2 V ±2%)",
-};
+import { ImportSolarModal } from "../../../components/dashboard/modals/ImportSolarModal";
 
-// Celdas calientes mapeadas sobre el encuadre cenital (DJI_0149_R / DJI_0150)
-// Regla IEC 62446-3: Las celdas individuales no se reemplazan en campo; 
-// si la celda supera el umbral térmico irreversible, se ordena el cambio integral del panel.
-const HOTSPOTS_DATA = [
-  {
-    id: "HS-01",
-    panelId: "A2-06",
-    cellLocation: "Fila 2, Celda 4 (Sub-cadena media)",
-    x: 48.2, // % horizontal
-    y: 28.5, // % vertical
-    tSpot: 49.0,
-    tNormal: 30.3,
-    deltaT: 18.7,
-    status: "CRITICAL",
-    visualCause: "Mancha densa de excremento de paloma / Celda polarizada en inversa disipando energía",
-    action: "CAMBIO INTEGRAL DEL PANEL A2-06",
-    actionDescription: "Degradación térmica irreversible en celda. Sustitución obligatoria del módulo completo para evitar daño en la serie.",
-  },
-  {
-    id: "HS-02",
-    panelId: "A1-03",
-    cellLocation: "Fila 1, Celda 2 (Extremo superior)",
-    x: 69.4,
-    y: 19.8,
-    tSpot: 49.1,
-    tNormal: 32.2,
-    deltaT: 16.9,
-    status: "CRITICAL",
-    visualCause: "Sobrecalentamiento focal severo por depósito opaco calcificado",
-    action: "CAMBIO INTEGRAL DEL PANEL A1-03",
-    actionDescription: "Sobrepasa los 15 °C de gradiente térmico. Módulo no apto para operación continua.",
-  },
-  {
-    id: "HS-03",
-    panelId: "A1-02",
-    cellLocation: "Fila 1, Celda 6 (Junto al marco inferior)",
-    x: 71.8,
-    y: 35.2,
-    tSpot: 46.0,
-    tNormal: 30.4,
-    deltaT: 15.6,
-    status: "CRITICAL",
-    visualCause: "Punto caliente en interconexión de celda con riesgo de delaminación",
-    action: "CAMBIO INTEGRAL DEL PANEL A1-02",
-    actionDescription: "Daño permanente en celdas de la subcadena. Requiere reemplazo del módulo completo.",
-  },
-  {
-    id: "HS-04",
-    panelId: "A1-04",
-    cellLocation: "Fila 3, Celda 1 (Borde interno)",
-    x: 68.1,
-    y: 47.6,
-    tSpot: 45.0,
-    tNormal: 30.4,
-    deltaT: 14.6,
-    status: "WARNING",
-    visualCause: "Depósito de polución concentrada sobre cuadrante de celda",
-    action: "LIMPIEZA Y REVALUACIÓN (PRE-CAMBIO)",
-    actionDescription: "Limpieza química inmediata. Si post-lavado ΔT ≥ 15 °C, ejecutar cambio integral del módulo.",
-  },
-  {
-    id: "HS-05",
-    panelId: "A1-07",
-    cellLocation: "Fila 4, Celda 3 (Centro de panel)",
-    x: 73.5,
-    y: 63.4,
-    tSpot: 45.3,
-    tNormal: 30.5,
-    deltaT: 14.8,
-    status: "WARNING",
-    visualCause: "Calentamiento anómalo en borde de celda",
-    action: "LIMPIEZA Y REVALUACIÓN (PRE-CAMBIO)",
-    actionDescription: "Monitoreo termográfico post-lavado para descartar sustitución del módulo completo.",
-  },
-  {
-    id: "HS-06",
-    panelId: "A2-10",
-    cellLocation: "Fila 5, Celda 2 (Línea pasillo interior)",
-    x: 37.0,
-    y: 74.2,
-    tSpot: 45.5,
-    tNormal: 31.2,
-    deltaT: 14.3,
-    status: "WARNING",
-    visualCause: "Sombreado térmico recurrente por ducto de ventilación",
-    action: "LIMPIEZA Y REVALUACIÓN (PRE-CAMBIO)",
-    actionDescription: "Verificar si la degradación de la celda es reversible o requiere retiro del módulo.",
-  },
-  {
-    id: "HS-07",
-    panelId: "A2-04",
-    cellLocation: "Fila 2, Celda 5",
-    x: 44.5,
-    y: 42.1,
-    tSpot: 44.5,
-    tNormal: 30.2,
-    deltaT: 14.3,
-    status: "WARNING",
-    visualCause: "Sedimento acumulado en canal de drenaje del marco",
-    action: "LIMPIEZA Y REVALUACIÓN (PRE-CAMBIO)",
-    actionDescription: "Limpieza especializada y termografía con dron en próxima pasada.",
-  },
-  {
-    id: "HS-08",
-    panelId: "A1-08",
-    cellLocation: "Fila 4, Celda 6",
-    x: 75.1,
-    y: 78.5,
-    tSpot: 44.6,
-    tNormal: 30.6,
-    deltaT: 14.0,
-    status: "WARNING",
-    visualCause: "Ensuciamiento focal moderado",
-    action: "LIMPIEZA Y REVALUACIÓN (PRE-CAMBIO)",
-    actionDescription: "Observación técnica. En caso de persistir, sustituir el panel entero.",
-  },
-];
+export const SolarInspectionReportView: React.FC = () => {
+  const navigate = useNavigate();
+  const { auth } = useAuth();
+  const params = useParams<{ publicCode?: string; companyCode?: string; solarCode?: string }>();
 
-export const SolarInspectionReportView = () => {
-  const [selectedHotspot, setSelectedHotspot] = useState<typeof HOTSPOTS_DATA[0]>(HOTSPOTS_DATA[0]);
-  const [hoveredHotspot, setHoveredHotspot] = useState<typeof HOTSPOTS_DATA[0] | null>(null);
+  const effectivePublicCode =
+    auth?.role === "ADMIN"
+      ? typeof auth.companyPublicCode === "string"
+        ? auth.companyPublicCode
+        : auth.companyPublicCode?.publicCode
+      : params.publicCode || params.companyCode;
 
-  // Paneles que obligatoriamente deben comprarse/cambiarse enteros
+  const activeSolarCode = params.solarCode;
+
+  // Referencia para cálculo exacto de escala
+  const thermalContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Estados de lista y datos
+  const [solarList, setSolarList] = useState<SolarListItem[]>([]);
+  const [selectedSolarCode, setSelectedSolarCode] = useState<string>(activeSolarCode || "");
+  const [data, setData] = useState<SolarInspectionData | null>(null);
+  const [thermalMatrix, setThermalMatrix] = useState<Float32Array | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  // Modal
+  const [showModal, setShowModal] = useState<boolean>(false);
+
+  // Estados de inspección
+  const [selectedHotspot, setSelectedHotspot] = useState<Hotspot | null>(null);
+  const [hoveredHotspot, setHoveredHotspot] = useState<Hotspot | null>(null);
+
+  // Estado con coordenadas y porcentajes para clamping inteligente
+  const [hoverData, setHoverData] = useState<{
+    canvasX: number;
+    canvasY: number;
+    col: number;
+    row: number;
+    temp: number;
+    percentX: number;
+    percentY: number;
+  } | null>(null);
+
+  // 1. Cargar lista de subarreglos solares
+  const loadSolarList = async () => {
+    if (!effectivePublicCode) return;
+    try {
+      const list = await solarThermographyService.getCompanySolarList(effectivePublicCode);
+      setSolarList(list);
+
+      if (list.length > 0) {
+        const target = activeSolarCode && list.some((s) => s.solarCode === activeSolarCode)
+          ? activeSolarCode
+          : list[0].solarCode;
+        setSelectedSolarCode(target);
+      } else {
+        setSelectedSolarCode("");
+        setData(null);
+      }
+    } catch (err) {
+      console.error("Error cargando lista solar:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadSolarList();
+  }, [effectivePublicCode]);
+
+  useEffect(() => {
+    if (activeSolarCode) {
+      setSelectedSolarCode(activeSolarCode);
+    }
+  }, [activeSolarCode]);
+
+  // 2. Cargar detalle de la auditoría seleccionada
+  useEffect(() => {
+    if (!effectivePublicCode || !selectedSolarCode) {
+      setData(null);
+      return;
+    }
+
+    const fetchDetails = async () => {
+      setLoading(true);
+      try {
+        const [inspection, matrix] = await Promise.all([
+          solarThermographyService.getSolarDetails(effectivePublicCode, selectedSolarCode),
+          solarThermographyService.getThermalMatrix(effectivePublicCode, selectedSolarCode).catch(() => null),
+        ]);
+
+        setData(inspection);
+        if (inspection?.hotspots && inspection.hotspots.length > 0) {
+          setSelectedHotspot(inspection.hotspots[0]);
+        }
+        setThermalMatrix(matrix);
+      } catch (err) {
+        console.error("Error cargando detalle solar:", err);
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDetails();
+  }, [effectivePublicCode, selectedSolarCode]);
+
+  // Manejo de lectura térmica continua con cálculo porcentual idéntico a tableros
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!thermalMatrix || !data) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = e.clientX - rect.left;
+    const clientY = e.clientY - rect.top;
+
+    if (clientX < 0 || clientY < 0 || clientX > rect.width || clientY > rect.height) {
+      setHoverData(null);
+      return;
+    }
+
+    const scaleX = data.cols / rect.width;
+    const scaleY = data.rows / rect.height;
+    const col = Math.floor(clientX * scaleX);
+    const row = Math.floor(clientY * scaleY);
+
+    if (row >= 0 && row < data.rows && col >= 0 && col < data.cols) {
+      const temp = thermalMatrix[row * data.cols + col];
+      if (!isNaN(temp)) {
+        setHoverData({
+          canvasX: clientX,
+          canvasY: clientY,
+          col,
+          row,
+          temp,
+          percentX: (clientX / rect.width) * 100,
+          percentY: (clientY / rect.height) * 100,
+        });
+      }
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHoverData(null);
+  };
+
   const panelsToReplace = Array.from(
-    new Set(HOTSPOTS_DATA.filter((h) => h.status === "CRITICAL").map((h) => h.panelId))
+    new Set(data?.hotspots.filter((h) => h.status === "CRITICAL").map((h) => h.panelId) || [])
   );
 
+  // Renderizado de pines de celda con control perimetral inteligente
   const renderCellPins = (showTooltip: boolean = true) => {
-    return HOTSPOTS_DATA.map((spot) => {
+    if (!data) return null;
+
+    return data.hotspots.map((spot) => {
       const isSelected = selectedHotspot?.id === spot.id;
       const isHovered = hoveredHotspot?.id === spot.id;
       const isCritical = spot.status === "CRITICAL";
+
+      // Posición dinámica antidesborde del tooltip del pin
+      const pinNearTop = spot.y < 25;
+      const pinNearLeft = spot.x < 25;
+      const pinNearRight = spot.x > 75;
+
+      const pinTranslateX = pinNearLeft ? "0%" : pinNearRight ? "-100%" : "-50%";
+      const pinTranslateY = pinNearTop ? "18px" : "-100%";
 
       return (
         <div
           key={spot.id}
           style={{ left: `${spot.x}%`, top: `${spot.y}%` }}
-          onClick={() => setSelectedHotspot(spot)}
-          onMouseEnter={() => setHoveredHotspot(spot)}
-          onMouseLeave={() => setHoveredHotspot(null)}
-          className="absolute -translate-x-1/2 -translate-y-1/2 z-20 cursor-pointer group"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedHotspot(spot);
+          }}
+          onMouseEnter={(e) => {
+            e.stopPropagation();
+            setHoveredHotspot(spot);
+          }}
+          onMouseLeave={() => {
+            setHoveredHotspot(null);
+          }}
+          className="absolute -translate-x-1/2 -translate-y-1/2 z-30 cursor-pointer group"
         >
           <div className="relative flex items-center justify-center">
             {isCritical && (
@@ -168,33 +203,41 @@ export const SolarInspectionReportView = () => {
             )}
 
             <div
-              className={`size-5 rounded-full border-2 flex items-center justify-center text-[9px] font-black transition-transform ${
-                isSelected
-                  ? "scale-125 ring-2 ring-white shadow-lg"
-                  : isHovered
-                  ? "scale-115"
-                  : ""
-              } ${
-                isCritical
-                  ? "bg-rose-600 border-white text-white"
-                  : "bg-amber-400 border-white text-amber-950"
-              }`}
+              className={`size-5 rounded-full border-2 flex items-center justify-center text-[9px] font-black transition-transform ${isSelected ? "scale-125 ring-2 ring-white shadow-lg" : isHovered ? "scale-115" : ""
+                } ${isCritical ? "bg-rose-600 border-white text-white" : "bg-amber-400 border-white text-amber-950"}`}
             >
               !
             </div>
 
+            {/* Tooltip de la Celda: Z-index superior (z-40) y solo se muestra si NO choca con otros */}
             {showTooltip && (
-              <div className="hidden group-hover:block absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-950/95 text-white p-2.5 rounded-lg text-[10px] whitespace-nowrap shadow-xl border border-slate-700 z-30 pointer-events-none">
-                <div className="flex items-center gap-1.5 font-bold font-mono text-amber-300">
-                  <span>Panel {spot.panelId}</span>
-                  <span className="text-slate-400">({spot.cellLocation})</span>
+              <div
+                className="hidden group-hover:block pointer-events-none absolute z-40 transition-all duration-75"
+                style={{
+                  left: "50%",
+                  top: pinNearTop ? "100%" : "0%",
+                  transform: `translate(${pinTranslateX}, ${pinTranslateY})`,
+                  marginBottom: pinNearTop ? "0px" : "10px",
+                  marginTop: pinNearTop ? "10px" : "0px",
+                }}
+              >
+                <div className="rounded-xl border border-slate-700/90 bg-slate-950/95 p-3 text-white shadow-2xl backdrop-blur-md whitespace-nowrap min-w-48 space-y-1">
+                  <div className="flex items-center justify-between gap-3 border-b border-slate-800 pb-1.5">
+                    <span className="font-bold font-mono text-amber-300 text-xs">Panel {spot.panelId}</span>
+                    <span className="text-slate-400 font-sans text-[10px]">({spot.cellLocation})</span>
+                  </div>
+                  <div className="flex items-baseline justify-between text-xs text-slate-300 pt-0.5">
+                    <span>T. Medida:</span>
+                    <span className="font-bold text-amber-400 font-mono text-sm">{spot.tSpot.toFixed(1)} °C</span>
+                  </div>
+                  <div className="flex items-baseline justify-between text-[11px] text-slate-400 font-mono">
+                    <span>Diferencial (ΔT):</span>
+                    <span className="text-rose-400 font-bold">+{spot.deltaT.toFixed(1)} °C</span>
+                  </div>
+                  <p className="text-[10px] font-bold text-rose-400 pt-1 border-t border-slate-800/80">
+                    {isCritical ? "Acción: Reemplazo obligatorio de panel" : "Acción: Monitoreo post-lavado"}
+                  </p>
                 </div>
-                <p className="text-slate-200 mt-0.5">
-                  T. Medida: <span className="font-bold text-white">{spot.tSpot} °C</span> (ΔT +{spot.deltaT} °C)
-                </p>
-                <p className="text-rose-400 font-bold mt-0.5">
-                  {isCritical ? "Acción: Cambiar panel completo" : "Acción: Monitoreo pre-cambio"}
-                </p>
               </div>
             )}
           </div>
@@ -204,268 +247,412 @@ export const SolarInspectionReportView = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 bg-slate-50 min-h-screen text-slate-800">
-      {/* ── Encabezado Principal ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="bg-rose-100 text-rose-800 text-[10px] font-black uppercase px-2 py-0.5 rounded">
-              IEC 62446-3 / Protocolo de Reemplazo
-            </span>
-            <span className="text-slate-400 font-mono text-xs">
-              Mapeo Radiométrico Dron Dual Sensor
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Diagnóstico de Puntos Calientes y Plan de Cambio de Paneles
-          </h1>
-          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
-            <MapPin size={13} className="text-slate-400" />
-            <span>{INSPECTION_METADATA.facility}</span>
-            <span className="text-slate-300">•</span>
-            <Calendar size={13} className="text-slate-400" />
-            <span>{INSPECTION_METADATA.date}</span>
-          </p>
-        </div>
-
-        <button
-          onClick={() => window.print()}
-          className="self-start md:self-center inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 transition cursor-pointer"
-        >
-          <Download size={14} />
-          <span>Exportar Informe de Compra (PDF)</span>
-        </button>
-      </div>
-
-      {/* ── Resumen de Sustitución Obligatoria ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-5 flex flex-col justify-between shadow-2xs">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-wider text-rose-700">
-                Paneles para Cambio Obligatorio
-              </span>
-              <AlertOctagon size={18} className="text-rose-600" />
-            </div>
-            <p className="text-3xl font-black text-rose-950 mt-2">{panelsToReplace.length} Módulos</p>
-            <p className="text-xs text-rose-800 mt-1 leading-relaxed">
-              Las celdas con calentamiento severo no tienen reparación posible. Para evitar incendios, delaminación y caída de corriente en la serie, se debe cambiar el módulo completo.
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-rose-200/80 flex items-center justify-between text-xs font-bold text-rose-900">
-            <span>Códigos: {panelsToReplace.join(", ")}</span>
-            <span className="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded uppercase">Urgente</span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 flex flex-col justify-between shadow-2xs">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-wider text-amber-800">
-                Paneles en Observación (Pre-Cambio)
-              </span>
-              <AlertTriangle size={18} className="text-amber-600" />
-            </div>
-            <p className="text-3xl font-black text-amber-950 mt-2">5 Módulos</p>
-            <p className="text-xs text-amber-800 mt-1 leading-relaxed">
-              Celdas con calentamiento moderado (10 °C ≤ ΔT &lt; 15 °C). Requieren lavado químico inmediato; si la celda no normaliza su temperatura en la termografía de control, se cambiarán de inmediato.
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-amber-200/80 text-xs font-bold text-amber-900">
-            <span>Protocolo: Lavado + Vuelo térmico de comprobación</span>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col justify-between shadow-2xs">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
-                Módulo Fotovoltaico de Reemplazo
-              </span>
-              <ShieldAlert size={18} className="text-blue-600" />
-            </div>
-            <p className="text-base font-black text-slate-900 mt-2">{INSPECTION_METADATA.replacementModel}</p>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              Por ser un circuito serie, los módulos nuevos deben coincidir estrictamente con la corriente de trabajo (Imp = 11.06 A) para no restringir la generación del string.
-            </p>
-          </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>Tope presupuestal</span>
-            <strong className="text-slate-800">Hasta 8 unidades de reemplazo</strong>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Visor Sincronizado Lado a Lado (Térmica Izquierda | Óptica Derecha) ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* LADO IZQUIERDO: Infrarrojo */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Thermometer size={16} className="text-rose-500" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                Térmica Radiométrica (Izquierda)
-              </h2>
-            </div>
-            <span className="text-[10px] font-mono text-slate-400">DJI_0149_R.JPG</span>
-          </div>
-
-          <div className="relative w-full aspect-16/11 rounded-xl overflow-hidden bg-slate-950 border border-slate-200 select-none">
-            <img
-              src="/DJI_0149_R.JPG"
-              alt="Termografía Infrarroja de Celdas"
-              className="w-full h-full object-cover"
-            />
-            {renderCellPins(true)}
-          </div>
-          <p className="text-[11px] text-slate-500 italic">
-            Los puntos amarillos/blancos indican celdas individuales en sobrecalentamiento.
-          </p>
-        </div>
-
-        {/* LADO DERECHO: Luz Visible */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Camera size={16} className="text-blue-500" />
-              <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
-                Óptica Normal (Derecha)
-              </h2>
-            </div>
-            <span className="text-[10px] font-mono text-slate-400">DJI_0150.jpg</span>
-          </div>
-
-          <div className="relative w-full aspect-16/11 rounded-xl overflow-hidden bg-slate-950 border border-slate-200 select-none">
-            <img
-              src="/DJI_0150.jpg"
-              alt="Fotografía Visual de Celdas"
-              className="w-full h-full object-cover"
-            />
-            {renderCellPins(false)}
-          </div>
-          <p className="text-[11px] text-slate-500 italic">
-            Comprobación directa de la causa física (excremento, polución opaca o quemadura).
-          </p>
-        </div>
-      </div>
-
-      {/* ── Ficha Técnica de Decisión (Enfocada al Cambio Integral) ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
-          <div className="flex items-center gap-3">
-            <span className="font-mono font-black text-slate-900 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg text-sm">
-              Panel {selectedHotspot.panelId}
-            </span>
-            <span className="text-xs font-semibold text-slate-700">
-              Celda detectada: {selectedHotspot.cellLocation}
-            </span>
-          </div>
-
-          <span
-            className={`self-start sm:self-center text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${
-              selectedHotspot.status === "CRITICAL"
-                ? "bg-rose-50 text-rose-700 border border-rose-200"
-                : "bg-amber-50 text-amber-800 border border-amber-200"
-            }`}
+    <section className="space-y-6 font-sans pb-16 overflow-x-hidden">
+      {/* Cabecera Principal */}
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            className="mb-3 inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 transition cursor-pointer"
           >
-            {selectedHotspot.status === "CRITICAL" ? "🔴 Sustitución de Módulo Obligatoria" : "🟡 Observación Pre-Reemplazo"}
-          </span>
+            <ArrowLeft size={15} /> Volver
+          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-950 tracking-tight break-words">
+              Inspección Termográfica de Paneles Solares
+            </h1>
+          </div>
+          <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            Diagnóstico de puntos calientes celda por celda y plan de reemplazo según norma IEC 62446-3.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-rose-50/60 p-3 rounded-xl border border-rose-100">
-            <span className="text-[10px] font-bold text-rose-700 uppercase block">Temperatura Máxima en Celda</span>
-            <span className="text-2xl font-black font-mono text-rose-950 mt-1 block">
-              {selectedHotspot.tSpot} °C
-            </span>
-            <span className="text-[10px] text-rose-800 mt-0.5 block">
-              Gradiente térmico: +{selectedHotspot.deltaT} °C
-            </span>
+        {/* Botones de Acción */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            className="inline-flex justify-center items-center gap-2 rounded-2xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-amber-700 shadow-sm transition active:scale-95 cursor-pointer"
+          >
+            <UploadCloud size={16} /> Importar Inspección Solar
+          </button>
+
+          <button
+            type="button"
+            disabled={!data}
+            onClick={() => window.print()}
+            className="inline-flex justify-center items-center gap-2 rounded-2xl bg-[#0797d5] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#0684ba] shadow-sm transition active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <Download size={16} /> Exportar Informe PDF
+          </button>
+        </div>
+      </div>
+
+      {/* Selector de Subarreglo Solar Activo */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 rounded-3xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+            <Sun size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Subarreglo Activo</p>
+            <p className="text-sm sm:text-base font-black text-slate-950 truncate">
+              {selectedSolarCode ? `${selectedSolarCode} - ${data?.title || "Auditoría Fotovoltaica"}` : "Sin auditorías solares"}
+            </p>
+          </div>
+        </div>
+
+        {solarList.length > 0 && (
+          <select
+            value={selectedSolarCode}
+            onChange={(e) => {
+              const code = e.target.value;
+              setSelectedSolarCode(code);
+              navigate(`/dashboard/companies/${effectivePublicCode}/solar/${code}`);
+            }}
+            className="w-full sm:w-auto rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-bold text-slate-700 outline-none cursor-pointer truncate"
+          >
+            {solarList.map((s) => (
+              <option key={s.solarCode} value={s.solarCode}>
+                {s.solarCode} - {s.title}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+
+      {/* Estado de carga o sin datos */}
+      {loading ? (
+        <div className="py-20 text-center text-xs font-bold text-slate-400">
+          <Loader2 className="animate-spin inline-block mr-2" size={18} /> Cargando datos radiométricos y análisis de celdas...
+        </div>
+      ) : !data ? (
+        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-slate-50/70 p-8 sm:p-12 text-center">
+          <div className="flex size-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 mb-3">
+            <Sun size={28} />
+          </div>
+          <h3 className="text-base font-bold text-slate-800">
+            Sin inspecciones solares registradas para esta empresa
+          </h3>
+          <p className="mt-1 max-w-md text-xs text-slate-500">
+            Utiliza el botón <strong>"Importar Inspección Solar"</strong> para procesar el CSV del dron y las capturas radiométricas.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {/* Tarjetas de Decisión */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-5 flex flex-col justify-between shadow-2xs">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-rose-700">
+                    Cambio Obligatorio de Panel
+                  </span>
+                  <AlertOctagon size={18} className="text-rose-600" />
+                </div>
+                <p className="text-3xl font-black text-rose-950 mt-2">{panelsToReplace.length} Módulos</p>
+                <p className="text-xs text-rose-800 mt-1 leading-relaxed">
+                  Celdas con gradiente ΔT ≥ 15 °C. No tienen reparación posible; requieren reemplazo integral del panel.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-rose-200/80 flex items-center justify-between text-xs font-bold text-rose-900">
+                <span>Paneles: {panelsToReplace.join(", ") || "Ninguno"}</span>
+                <span className="text-[10px] bg-rose-600 text-white px-2 py-0.5 rounded uppercase">Urgente</span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 flex flex-col justify-between shadow-2xs">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-800">
+                    Celdas en Observación
+                  </span>
+                  <AlertTriangle size={18} className="text-amber-600" />
+                </div>
+                <p className="text-3xl font-black text-amber-950 mt-2">{data.stats.warningHotspotsCount} Celdas</p>
+                <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                  Calentamiento moderado (10 °C ≤ ΔT &lt; 15 °C). Requiere lavado especializado y vuelo térmico de control.
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-amber-200/80 text-xs font-bold text-amber-900">
+                <span>Protocolo: Lavado + Termografía</span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col justify-between shadow-2xs">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                    Termometría Global
+                  </span>
+                  <ShieldAlert size={18} className="text-blue-600" />
+                </div>
+                <div className="grid grid-cols-2 gap-2 mt-2 font-mono">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase">Punto Máx</span>
+                    <span className="text-lg font-black text-rose-600">{data.stats.max} °C</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase">Promedio</span>
+                    <span className="text-lg font-black text-slate-700">{data.stats.avg} °C</span>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  Diferencial térmico máximo: <strong>+{data.stats.deltaTMax} °C</strong>
+                </p>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-medium">
+                <span>Cursor en vivo:</span>
+                <strong className="text-indigo-600 font-mono text-sm">{hoverData ? `${hoverData.temp.toFixed(1)} °C` : "--"}</strong>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-            <span className="text-[10px] font-bold text-slate-500 uppercase block">Causa Física en la Celda</span>
-            <span className="text-xs font-medium text-slate-700 mt-1 block leading-relaxed">
-              {selectedHotspot.visualCause}
-            </span>
-          </div>
+          {/* Visor Dual Lado a Lado (Térmica Izquierda | Óptica Derecha) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Lado Izquierdo: Térmica */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Thermometer size={16} className="text-rose-500" />
+                  <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                    Térmica Radiométrica
+                  </h2>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400">{data.cols}x{data.rows} px</span>
+              </div>
 
-          <div className="md:col-span-2 bg-slate-900 text-white p-3 rounded-xl border border-slate-800 flex flex-col justify-between">
-            <div>
-              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
-                Dictamen Técnico Final
-              </span>
-              <p className="text-sm font-black text-white mt-1">
-                {selectedHotspot.action}
+              <div
+                ref={thermalContainerRef}
+                onMouseMove={handleMouseMove}
+                onMouseLeave={handleMouseLeave}
+                className="relative w-full aspect-16/11 rounded-xl overflow-hidden bg-slate-950 border border-slate-200 select-none cursor-crosshair"
+              >
+                <img
+                  src={data.thermalImageUrl || ""}
+                  alt="Termografía Infrarroja"
+                  className="w-full h-full object-cover pointer-events-none"
+                />
+
+                {/* Pines de celdas */}
+                {renderCellPins(true)}
+
+                {/* Sonda flotante del Cursor: Se oculta automáticamente si el mouse está sobre un Pin */}
+                {hoverData && !hoveredHotspot && (() => {
+                  const isNearTop = hoverData.percentY < 18;
+                  const isNearLeft = hoverData.percentX < 20;
+                  const isNearRight = hoverData.percentX > 80;
+
+                  const translateX = isNearLeft ? "0%" : isNearRight ? "-100%" : "-50%";
+                  const translateY = isNearTop ? "0%" : "-100%";
+
+                  return (
+                    <>
+                      {/* Etiqueta de temperatura */}
+                      <div
+                        className="pointer-events-none absolute z-20 transition-transform duration-75"
+                        style={{
+                          left: `${hoverData.canvasX}px`,
+                          top: isNearTop ? `${hoverData.canvasY + 16}px` : `${hoverData.canvasY - 14}px`,
+                          transform: `translate(${translateX}, ${translateY})`,
+                        }}
+                      >
+                        <div className="rounded-xl border border-slate-700/80 bg-slate-950/95 px-2.5 py-1 text-center shadow-2xl backdrop-blur-md whitespace-nowrap">
+                          <div className="flex items-center justify-center gap-1 text-xs font-black text-amber-400">
+                            <Thermometer size={12} />
+                            {hoverData.temp.toFixed(1)} °C
+                          </div>
+                          <div className="text-[9px] text-slate-400 font-mono">
+                            [{hoverData.col}, {hoverData.row}]
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Mira Láser Cruzada centrada en el píxel */}
+                      <div
+                        className="pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 border border-white rounded-full z-10"
+                        style={{ left: `${hoverData.canvasX}px`, top: `${hoverData.canvasY}px` }}
+                      >
+                        <div className="absolute top-1/2 left-0 w-full h-px bg-white/70 -translate-y-1/2" />
+                        <div className="absolute left-1/2 top-0 h-full w-px bg-white/70 -translate-x-1/2" />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+              <p className="text-[11px] text-slate-500 italic">
+                Pasa el cursor sobre la imagen para leer la temperatura exacta de cada celda.
               </p>
-              <p className="text-xs text-slate-300 mt-1 leading-relaxed">
-                {selectedHotspot.actionDescription}
+            </div>
+
+            {/* LADO DERECHO: Luz Visible RGB */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera size={16} className="text-blue-500" />
+                  <h2 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                    Óptica Normal
+                  </h2>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400">Canal RGB de Referencia</span>
+              </div>
+
+              <div
+                className="relative w-full aspect-16/11 rounded-xl overflow-hidden bg-slate-950 border border-slate-200 select-none flex items-center justify-center"
+              >
+                <img
+                  src={data.visualImageUrl || ""}
+                  alt="Fotografía Visual"
+                  className="w-full h-full object-cover select-none pointer-events-none"
+                />
+
+                {/* En lugar de pines desalineados, mostramos una insignia activa si hay una celda seleccionada */}
+                {selectedHotspot && (
+                  <div className="absolute top-3 right-3 bg-slate-900/90 text-white border border-slate-700/80 rounded-xl px-3 py-1.5 shadow-xl backdrop-blur-md text-[11px] font-mono flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
+                    <span>Panel seleccionado: <strong>{selectedHotspot.panelId}</strong></span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-[11px] text-slate-500 italic">
+                Vista óptica general para verificar manchas de suciedad o excremento en el módulo seleccionado.
               </p>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* ── Tabla de Decisiones y Registro de Celdas ── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
-            Inventario de Puntos Térmicos y Módulos a Sustituir
-          </h3>
-          <span className="text-xs text-slate-400 font-mono">
-            Norma IEC 62446-3: Umbral crítico ΔT ≥ 15 °C
-          </span>
-        </div>
+          {/* Ficha Técnica de la Celda Seleccionada */}
+          {selectedHotspot && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono font-black text-slate-900 bg-slate-100 border border-slate-200 px-3 py-1 rounded-lg text-sm">
+                    Panel {selectedHotspot.panelId}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-700">
+                    Ubicación: {selectedHotspot.cellLocation}
+                  </span>
+                </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px]">
-                <th className="pb-3 px-3">Cód.</th>
-                <th className="pb-3 px-3">Panel Asignado</th>
-                <th className="pb-3 px-3">Celda Crítica</th>
-                <th className="pb-3 px-3">T. Celda</th>
-                <th className="pb-3 px-3">Gradiente (ΔT)</th>
-                <th className="pb-3 px-3">Estado</th>
-                <th className="pb-3 px-3">Causa Visible (RGB)</th>
-                <th className="pb-3 px-3 text-right">Acción Requerida</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
-              {HOTSPOTS_DATA.map((spot) => (
-                <tr
-                  key={spot.id}
-                  onClick={() => setSelectedHotspot(spot)}
-                  className={`hover:bg-slate-50 transition cursor-pointer ${
-                    selectedHotspot.id === spot.id ? "bg-slate-50/90 font-bold" : ""
-                  }`}
+                <span
+                  className={`self-start sm:self-center text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${selectedHotspot.status === "CRITICAL"
+                    ? "bg-rose-50 text-rose-700 border border-rose-200"
+                    : "bg-amber-50 text-amber-800 border border-amber-200"
+                    }`}
                 >
-                  <td className="py-3 px-3 font-mono text-slate-400">{spot.id}</td>
-                  <td className="py-3 px-3 font-mono font-bold text-slate-900">{spot.panelId}</td>
-                  <td className="py-3 px-3 text-slate-600">{spot.cellLocation}</td>
-                  <td className="py-3 px-3 font-mono text-rose-600 font-bold">{spot.tSpot} °C</td>
-                  <td className="py-3 px-3 font-mono font-bold text-rose-700">+{spot.deltaT} °C</td>
-                  <td className="py-3 px-3">
-                    {spot.status === "CRITICAL" ? (
-                      <span className="bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-200">
-                        CAMBIO OBLIGATORIO
-                      </span>
-                    ) : (
-                      <span className="bg-amber-50 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">
-                        PRE-CAMBIO
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 px-3 text-slate-600 max-w-xs truncate" title={spot.visualCause}>
-                    {spot.visualCause}
-                  </td>
-                  <td className="py-3 px-3 text-right font-bold text-slate-900">{spot.action}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  {selectedHotspot.status === "CRITICAL"
+                    ? "🔴 Sustitución de Módulo Obligatoria"
+                    : "🟡 Observación Pre-Reemplazo"}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-rose-50/60 p-3 rounded-xl border border-rose-100">
+                  <span className="text-[10px] font-bold text-rose-700 uppercase block">T. de Celda</span>
+                  <span className="text-2xl font-black font-mono text-rose-950 mt-1 block">
+                    {selectedHotspot.tSpot} °C
+                  </span>
+                  <span className="text-[10px] text-rose-800 mt-0.5 block">
+                    ΔT: +{selectedHotspot.deltaT} °C
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Causa Visual (RGB)</span>
+                  <span className="text-xs font-medium text-slate-700 mt-1 block leading-relaxed">
+                    {selectedHotspot.visualCause}
+                  </span>
+                </div>
+
+                <div className="md:col-span-2 bg-slate-900 text-white p-3 rounded-xl border border-slate-800 flex flex-col justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">
+                      Dictamen Técnico
+                    </span>
+                    <p className="text-sm font-black text-white mt-1">
+                      {selectedHotspot.action}
+                    </p>
+                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                      {selectedHotspot.status === "CRITICAL"
+                        ? "La celda supera el umbral crítico de disipación de calor. Al no ser reparable en campo, se debe reemplazar el módulo completo."
+                        : "Someter a lavado químico especializado y reevaluar gradiente térmico en la siguiente auditoría."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tabla de Hotspots */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">
+              Listado de Puntos Térmicos Detectados ({data.hotspots.length})
+            </h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase text-[10px]">
+                    <th className="pb-3 px-3">Cód.</th>
+                    <th className="pb-3 px-3">Panel</th>
+                    <th className="pb-3 px-3">Celda</th>
+                    <th className="pb-3 px-3">T. Celda</th>
+                    <th className="pb-3 px-3">ΔT</th>
+                    <th className="pb-3 px-3">Severidad</th>
+                    <th className="pb-3 px-3">Causa Detectada</th>
+                    <th className="pb-3 px-3 text-right">Acción Técnica</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                  {data.hotspots.map((spot) => (
+                    <tr
+                      key={spot.id}
+                      onClick={() => setSelectedHotspot(spot)}
+                      className={`hover:bg-slate-50 transition cursor-pointer ${selectedHotspot?.id === spot.id ? "bg-slate-50/90 font-bold" : ""
+                        }`}
+                    >
+                      <td className="py-3 px-3 font-mono text-slate-400">{spot.id}</td>
+                      <td className="py-3 px-3 font-mono font-bold text-slate-900">{spot.panelId}</td>
+                      <td className="py-3 px-3 text-slate-600">{spot.cellLocation}</td>
+                      <td className="py-3 px-3 font-mono text-rose-600 font-bold">{spot.tSpot} °C</td>
+                      <td className="py-3 px-3 font-mono font-bold text-rose-700">+{spot.deltaT} °C</td>
+                      <td className="py-3 px-3">
+                        {spot.status === "CRITICAL" ? (
+                          <span className="bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-200">
+                            CAMBIO OBLIGATORIO
+                          </span>
+                        ) : (
+                          <span className="bg-amber-50 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">
+                            PRE-CAMBIO
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-slate-600 max-w-xs truncate" title={spot.visualCause}>
+                        {spot.visualCause}
+                      </td>
+                      <td className="py-3 px-3 text-right font-bold text-slate-900">{spot.action}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      {/* Modal de importación */}
+      <ImportSolarModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        defaultCompanyCode={effectivePublicCode}
+        onSuccess={(newSolarCode) => {
+          loadSolarList();
+          if (newSolarCode) {
+            setSelectedSolarCode(newSolarCode);
+            navigate(`/dashboard/companies/${effectivePublicCode}/solar/${newSolarCode}`);
+          }
+        }}
+      />
+    </section>
   );
 };

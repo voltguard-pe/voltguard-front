@@ -7,44 +7,45 @@ import ChangePasswordPage from './pages/auth/ChangePasswordPage'
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
+// 1. IMPORTA LA NUEVA PÁGINA DE VERIFICACIÓN AQUÍ:
 import VerifyEmailPage from './pages/auth/VerifyEmailPage'
-import { GlobalNoCreditsWatcher } from "./components/dashboard/modals/ImportBoardsAndNfpaModal";
+
+import { SidebarProvider } from './contexts/SidebarContext'
+import ContactSalesLayout from './layouts/ContactSalesLayout'
+import ContactSalesPage from './pages/contact-sales/ContactSalesPage'
 import AdminCreatePage from './pages/dashboard/admin/AdminCreatePage'
 import AdminDashboardPage from './pages/dashboard/admin/AdminDashboardPage'
 import AdminDetailPage from './pages/dashboard/admin/AdminDetailPage'
+import BillingDashboardPage from './pages/dashboard/billing/BillingDashboardPage'
 import BoardsCreatePage from './pages/dashboard/board/BoardCreatePage'
 import BoardDashboardPage from './pages/dashboard/board/BoardDashboardPage'
+import BoardDetailPage from './pages/dashboard/board/BoardDetailPage'
 import BoardsEditPage from './pages/dashboard/board/BoardEditPage'
-import CompanyCreatePage from './pages/dashboard/company/CompanyAdminCreatePage'
-import CompanyDashboardPage from './pages/dashboard/company/CompanyDashboardPage'
-import CompanyEditPage from './pages/dashboard/company/CompanyEditPage'
-import ConfigurationDashboardPage from './pages/dashboard/ConfigurationDashboardPage'
-import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
-import ProfileDashboardPage from './pages/dashboard/profile/ProfileDashboardPage'
-import HomePage from './pages/landing/HomePage'
-import NotFoundPage from './pages/NotFoundPage'
 import CompaniesCreatePage from './pages/dashboard/companies/CompaniesCreatePage'
 import CompaniesDashboardPages from './pages/dashboard/companies/CompaniesDashboardPages'
 import CompaniesEditPage from './pages/dashboard/companies/CompaniesEditPage'
+import CompanyCreatePage from './pages/dashboard/company/CompanyAdminCreatePage'
+import CompanyDashboardPage from './pages/dashboard/company/CompanyDashboardPage'
+import CompanyEditPage from './pages/dashboard/company/CompanyEditPage'
+import { CompanySubscriptionView } from './pages/dashboard/CompanySubscriptionView'
+import ConfigurationDashboardPage from './pages/dashboard/ConfigurationDashboardPage'
+import DocumentDashboardPage from './pages/dashboard/document/DocumentDashboardPage'
+import DocumentViewerPage from './pages/dashboard/document/DocumentViewerPage'
+import { AdminLicensesView } from './pages/dashboard/licenses/AdminLicensesView'
+import { PermissionsView } from './pages/dashboard/permissions/PermissionsView'
+import EditProfilePage from './pages/dashboard/profile/EditProfilePage'
+import ProfileDashboardPage from './pages/dashboard/profile/ProfileDashboardPage'
+import { SolarInspectionReportView } from './pages/dashboard/solar-panel/SolarPanelsView'
+import GroundingDashboardPage from './pages/dashboard/spat/GroundingDashboardPage'
+import HomePage from './pages/landing/HomePage'
+import OnboardingPage from './pages/landing/OnboardingPage'
+import PlansPage from './pages/landing/PlansPage'
+import SuccessStoriesPage from './pages/landing/SuccessStoriesPage'
+import NotFoundPage from './pages/NotFoundPage'
 import DashboardRouter from './routes/DashboardRouter'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRouter'
-import BoardDetailPage from './pages/dashboard/board/BoardDetailPage'
-import DocumentDashboardPage from './pages/dashboard/document/DocumentDashboardPage'
-import SuccessStoriesPage from './pages/landing/SuccessStoriesPage'
-import PlansPage from './pages/landing/PlansPage'
 import ScrollToTop from './shared/components/ScrollToTop'
-import OnboardingPage from './pages/landing/OnboardingPage'
-import ContactSalesPage from './pages/contact-sales/ContactSalesPage'
-import ContactSalesLayout from './layouts/ContactSalesLayout'
-import GroundingDashboardPage from './pages/dashboard/spat/GroundingDashboardPage'
-import { SidebarProvider } from './contexts/SidebarContext'
-import DocumentViewerPage from './pages/dashboard/document/DocumentViewerPage'
-import { SolarPanelDashboardPage } from './pages/dashboard/solar-panel/SolarPanelDashboardPage'
-import BillingDashboardPage from './pages/dashboard/billing/BillingDashboardPage'
-import { PermissionsView } from './pages/dashboard/perissions/PermissionsView'
-import { AdminLicensesView } from './pages/dashboard/licenses/AdminLicensesView'
-import { CompanySubscriptionView } from './pages/dashboard/CompanySubscriptionView'
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div className="p-6">
@@ -59,8 +60,6 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
-      {/* VIGILANTE GLOBAL DE CRÉDITOS DE IA (Actúa en toda la plataforma) */}
-      <GlobalNoCreditsWatcher />
       <AuthProvider>
         <SidebarProvider>
           <Routes>
@@ -81,7 +80,10 @@ function App() {
               <Route path='/auth' element={<AuthLayout />}>
                 <Route index element={<LoginPage />} />
                 <Route path='register' element={<RegisterPage />} />
+
+                {/* 2. AÑADE ESTA RUTA DINÁMICA CON EL PARÁMETRO :token */}
                 <Route path='verify-email/:token' element={<VerifyEmailPage />} />
+
                 <Route path='forgot-password' element={<ForgotPasswordPage />} />
                 <Route path='reset-password' element={<ChangePasswordPage />} />
               </Route>
@@ -120,8 +122,16 @@ function App() {
                 <Route path="companies/:publicCode/medical-reports/new" element={<PlaceholderPage title="Nuevo Reporte Médico" />} />
 
                 {/* 5. PANELES SOLARES */}
-                <Route path="companies/:publicCode/solar" element={<SolarPanelDashboardPage />} />
-                <Route path="companies/:publicCode/solar/new" element={<SolarPanelDashboardPage />} />
+                {/* <Route path="companies/:publicCode/solar" element={<SolarPanelDashboardPage />} />
+                <Route path="companies/:publicCode/solar/new" element={<SolarPanelDashboardPage />} /> */}
+                {/* <Route path="companies/:companyCode/solar" element={<SolarInspectionReportView />} /> */}
+                {/* <Route path="companies/:companyCode/solar" element={<SolarPanelsView />} /> */}
+                {/* <Route path="companies/:companyCode/solar/new" element={<NewSolarInstallationView />} /> */}
+
+                {/* 5. PANELES SOLARES */}
+                <Route path="companies/:companyCode/solar" element={<SolarInspectionReportView />} />
+                <Route path="companies/:companyCode/solar/:solarCode" element={<SolarInspectionReportView />} />
+                <Route path="companies/:companyCode/solar/new" element={<SolarInspectionReportView />} />
 
                 {/* 6. SUBESTACIÓN */}
                 <Route path="companies/:publicCode/substations" element={<PlaceholderPage title="Subestaciones" />} />
@@ -164,7 +174,7 @@ function App() {
                   <Route path="boards/create" element={<BoardsCreatePage />} />
                   <Route path="boards/:publicCode/:code/edit" element={<BoardsEditPage />} />
                 </Route>
-                
+
                 <Route element={<ProtectedRoute allowedRoles={["ADMIN", "USER"]} />}>
                   <Route path="subscription" element={<CompanySubscriptionView />} />
                 </Route>

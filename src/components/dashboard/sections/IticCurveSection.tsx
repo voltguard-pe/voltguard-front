@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { UploadCloud, Zap } from "lucide-react";
+import React, { useState } from "react";
+import { UploadCloud, X, Zap } from "lucide-react";
 import {
   CartesianGrid,
   Label,
@@ -43,45 +43,6 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
   onIticFileUpload
 }) => {
   const [selectedIticPoint, setSelectedIticPoint] = useState<any | null>(null);
-  const [anchor, setAnchor] = useState<{ cx: number; cy: number } | null>(null);
-
-  // Refs y key para cerrar el detalle y el tooltip "pegado" en celular
-  const chartWrapRef = useRef<HTMLDivElement | null>(null);
-  const detalleRef = useRef<HTMLDivElement | null>(null);
-
-  // En pantallas táctiles no existe hover: el tooltip solo vive mientras haya un punto seleccionado
-  const esTactil =
-    typeof window !== "undefined" && !!window.matchMedia?.("(hover: none)").matches;
-
-  // Selecciona un punto y guarda su posición para pegar la tarjeta a él
-  const seleccionar = (node: any) => {
-    setSelectedIticPoint(node?.payload ?? node);
-    if (node?.cx != null && node?.cy != null) {
-      setAnchor({ cx: Number(node.cx), cy: Number(node.cy) });
-    }
-  };
-
-  const cerrarDetalle = () => {
-    setSelectedIticPoint(null);
-    setAnchor(null);
-  };
-
-  // Tocar fuera del gráfico y del recuadro de detalle cierra todo
-  useEffect(() => {
-    if (!selectedIticPoint) return;
-
-    const onOutside = (e: PointerEvent) => {
-      const target = e.target as Node;
-      const dentroGrafico = chartWrapRef.current?.contains(target);
-      const dentroDetalle = detalleRef.current?.contains(target);
-      if (!dentroGrafico && !dentroDetalle) {
-        cerrarDetalle();
-      }
-    };
-
-    document.addEventListener("pointerdown", onOutside);
-    return () => document.removeEventListener("pointerdown", onOutside);
-  }, [selectedIticPoint]);
 
   if (!iticEvents || iticEvents.length === 0) {
     return (
@@ -174,76 +135,73 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
     { x: 100000, y: 110 }
   ];
 
-  // Tarjeta "Caída de Tensión": se usa en el tooltip (escritorio) y como panel propio (celular)
-  const TarjetaEvento = (itemActivo: any) => {
-    if (!itemActivo || itemActivo.tipoEvento === undefined) return null;
-
-    const todosLosEventos = [...dataFase1, ...dataFase2, ...dataFase3];
-    const eventosCoincidentes = todosLosEventos.filter(
-      (ev) =>
-        ev.horaInicio === itemActivo.horaInicio ||
-        (Math.abs(ev.x - itemActivo.x) < 0.0001 && Math.abs(ev.y - itemActivo.y) < 0.5)
-    );
-
-    const eventosAMostrar = eventosCoincidentes.length > 0 ? eventosCoincidentes : [itemActivo];
-
-    return (
-      <div className="rounded-xl border border-slate-300 bg-white/95 p-3 shadow-2xl font-sans text-xs leading-snug min-w-[200px] max-w-[240px] text-slate-800 backdrop-blur-sm">
-        <div className="border-b border-slate-200 pb-1.5 mb-2 flex items-center justify-between">
-          <span className="font-bold text-slate-900 text-sm">
-            {itemActivo.tipoEvento} de Tensión
-          </span>
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
-            {itemActivo.duracionTexto}
-          </span>
-        </div>
-
-        <div className="space-y-1 text-slate-600 text-[11px] mb-2">
-          <p>
-            Iniciado en: <strong className="text-slate-800">{itemActivo.horaInicio}</strong>
-          </p>
-          <p>
-            Finalizado en: <strong className="text-slate-800">{itemActivo.horaFinalizacion}</strong>
-          </p>
-        </div>
-
-        <div className="border-t border-slate-100 pt-2 space-y-1.5">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Fases Afectadas:
-          </p>
-          {eventosAMostrar.map((ev, idx) => {
-            const colorFase =
-              ev.faseExacta === "L12"
-                ? "#dc2626"
-                : ev.faseExacta === "L23"
-                ? "#16a34a"
-                : "#2563eb";
-
-            return (
-              <div
-                key={idx}
-                className="flex items-center justify-between bg-slate-50 px-2 py-1 rounded border border-slate-100"
-              >
-                <span className="flex items-center gap-1.5 font-bold" style={{ color: colorFase }}>
-                  <span className="size-2 rounded-full inline-block" style={{ backgroundColor: colorFase }} />
-                  {ev.faseExacta || ev.fase}
-                </span>
-                <span className="text-slate-900 font-extrabold tabular-nums">
-                  {ev.voltiosReales.toFixed(2)} V{" "}
-                  <span className="font-semibold text-slate-500">({ev.y.toFixed(1)}%)</span>
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  // Tooltip de Recharts: solo en escritorio (hover). En celular se usa el panel propio.
   const MetrelTooltip = ({ active, payload }: any) => {
-    if (esTactil || !active || !payload?.length) return null;
-    return TarjetaEvento(payload[0]?.payload);
+    if (active && payload && payload.length) {
+      const itemActivo = payload[0]?.payload;
+      if (!itemActivo || itemActivo.tipoEvento === undefined) return null;
+
+      const todosLosEventos = [...dataFase1, ...dataFase2, ...dataFase3];
+      const eventosCoincidentes = todosLosEventos.filter(
+        (ev) =>
+          ev.horaInicio === itemActivo.horaInicio ||
+          (Math.abs(ev.x - itemActivo.x) < 0.0001 && Math.abs(ev.y - itemActivo.y) < 0.5)
+      );
+
+      const eventosAMostrar = eventosCoincidentes.length > 0 ? eventosCoincidentes : [itemActivo];
+
+      return (
+        <div className="rounded-xl border border-slate-300 bg-white/95 p-3 shadow-2xl font-sans text-xs leading-snug min-w-[230px] z-50 text-slate-800 backdrop-blur-sm">
+          <div className="border-b border-slate-200 pb-1.5 mb-2 flex items-center justify-between">
+            <span className="font-bold text-slate-900 text-sm">
+              {itemActivo.tipoEvento} de Tensión
+            </span>
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">
+              {itemActivo.duracionTexto}
+            </span>
+          </div>
+
+          <div className="space-y-1 text-slate-600 text-[11px] mb-2">
+            <p>
+              Iniciado en: <strong className="text-slate-800">{itemActivo.horaInicio}</strong>
+            </p>
+            <p>
+              Finalizado en: <strong className="text-slate-800">{itemActivo.horaFinalizacion}</strong>
+            </p>
+          </div>
+
+          <div className="border-t border-slate-100 pt-2 space-y-1.5">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Fases Afectadas:
+            </p>
+            {eventosAMostrar.map((ev, idx) => {
+              const colorFase =
+                ev.faseExacta === "L12"
+                  ? "#dc2626"
+                  : ev.faseExacta === "L23"
+                  ? "#16a34a"
+                  : "#2563eb";
+
+              return (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between bg-slate-50 px-2 py-1 rounded border border-slate-100"
+                >
+                  <span className="flex items-center gap-1.5 font-bold" style={{ color: colorFase }}>
+                    <span className="size-2 rounded-full inline-block" style={{ backgroundColor: colorFase }} />
+                    {ev.faseExacta || ev.fase}
+                  </span>
+                  <span className="text-slate-900 font-extrabold tabular-nums">
+                    {ev.voltiosReales.toFixed(2)} V{" "}
+                    <span className="font-semibold text-slate-500">({ev.y.toFixed(1)}%)</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -292,7 +250,7 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
         </div>
       </div>
 
-      {/* {selectedIticPoint && (() => {
+      {selectedIticPoint && (() => {
         const todosLosEventos = [...dataFase1, ...dataFase2, ...dataFase3];
         const eventosRelacionados = todosLosEventos.filter(
           (ev) => ev.horaInicio === selectedIticPoint.horaInicio
@@ -300,10 +258,7 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
         const lista = eventosRelacionados.length > 0 ? eventosRelacionados : [selectedIticPoint];
 
         return (
-          <div
-            ref={detalleRef}
-            className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/80 p-3.5 shadow-sm text-xs animate-in fade-in slide-in-from-top-2"
-          >
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-300 bg-amber-50/80 p-3.5 shadow-sm text-xs animate-in fade-in slide-in-from-top-2">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 w-full">
               <div>
                 <p className="text-[10px] font-bold text-amber-700 uppercase">Evento</p>
@@ -333,31 +288,19 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
             </div>
             <button
               type="button"
-              onClick={cerrarDetalle}
+              onClick={() => setSelectedIticPoint(null)}
               className="rounded-lg p-1.5 text-slate-400 hover:bg-amber-100 hover:text-slate-700 shrink-0"
             >
               <X size={16} />
             </button>
           </div>
         );
-      })()} */}
+      })()}
 
-      <div className="relative">
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-2">
-        <div
-          ref={chartWrapRef}
-          onPointerDown={(e) => {
-            // Si el toque no cae sobre un punto, cerrar detalle y tooltip
-            if (selectedIticPoint && !(e.target as Element).closest("[data-itic-point]")) {
-              cerrarDetalle();
-            }
-          }}
-          className="relative h-[480px] w-[950px] sm:w-full text-xs select-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none"
-        >
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-            <ScatterChart
-              margin={{ top: 20, right: 30, left: 10, bottom: 35 }}
-            >
+        <div className="h-[480px] w-[950px] sm:w-full text-xs select-none">
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 20, right: 30, left: 10, bottom: 35 }}>
               <defs>
                 {/* Degradado para la zona superior (Sobretensión) */}
                 <linearGradient id="gradOvervoltage" x1="0" y1="0" x2="0" y2="1">
@@ -418,7 +361,7 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
                   value="Duración del evento (segundos)"
                   position="insideBottom"
                   offset={-20}
-                  style={{ textAnchor: "middle", fill: "#0f172a", fontWeight: "800", fontSize: "14px" }}
+                  style={{ textAnchor: "middle", fill: "#0f172a", fontWeight: "800", fontSize: "11px" }}
                 />
               </XAxis>
 
@@ -444,15 +387,11 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
                   angle={-90}
                   position="insideLeft"
                   offset={-5}
-                  style={{ textAnchor: "middle", fill: "#0f172a", fontWeight: "800", fontSize: "14px" }}
+                  style={{ textAnchor: "middle", fill: "#0f172a", fontWeight: "800", fontSize: "11px" }}
                 />
               </YAxis>
 
-              <Tooltip
-                content={<MetrelTooltip />}
-                cursor={esTactil ? false : { strokeDasharray: "3 3", stroke: "#94a3b8" }}
-                wrapperStyle={{ zIndex: 50, maxWidth: 240 }}
-              />
+              <Tooltip content={<MetrelTooltip />} cursor={{ strokeDasharray: "3 3", stroke: "#94a3b8" }} />
 
               <ReferenceLine y={100} stroke="#475569" strokeDasharray="3 3" strokeWidth={1} />
 
@@ -478,13 +417,9 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
                 name="Línea 12"
                 data={dataFase1}
                 fill="#dc2626"
-                onClick={seleccionar}
+                onClick={(node: any) => setSelectedIticPoint(node?.payload)}
                 shape={(props: any) => (
-                  <g
-                    data-itic-point
-                    style={{ cursor: "pointer" }}
-                    onClick={() => seleccionar(props)}
-                  >
+                  <g style={{ cursor: "pointer" }}>
                     <circle cx={props.cx} cy={props.cy} r={12} fill="transparent" />
                     <line
                       x1={props.cx - 3.5}
@@ -505,13 +440,9 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
                 name="Línea 23"
                 data={dataFase2}
                 fill="#16a34a"
-                onClick={seleccionar}
+                onClick={(node: any) => setSelectedIticPoint(node?.payload)}
                 shape={(props: any) => (
-                  <g
-                    data-itic-point
-                    style={{ cursor: "pointer" }}
-                    onClick={() => seleccionar(props)}
-                  >
+                  <g style={{ cursor: "pointer" }}>
                     <circle cx={props.cx} cy={props.cy} r={12} fill="transparent" />
                     <line
                       x1={props.cx - 3.5}
@@ -532,13 +463,9 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
                 name="Línea 31"
                 data={dataFase3}
                 fill="#2563eb"
-                onClick={seleccionar}
+                onClick={(node: any) => setSelectedIticPoint(node?.payload)}
                 shape={(props: any) => (
-                  <g
-                    data-itic-point
-                    style={{ cursor: "pointer" }}
-                    onClick={() => seleccionar(props)}
-                  >
+                  <g style={{ cursor: "pointer" }}>
                     <circle cx={props.cx} cy={props.cy} r={12} fill="transparent" />
                     <circle
                       cx={props.cx}
@@ -554,42 +481,7 @@ export const IticCurveSection: React.FC<IticCurveSectionProps> = ({
               />
             </ScatterChart>
           </ResponsiveContainer>
-
-          {/* Celular: tarjeta pegada al punto tocado */}
-          {esTactil && selectedIticPoint && (() => {
-            const CARD_W = 230;
-            const GAP = 12;
-            const scroller = chartWrapRef.current?.parentElement;
-            const sl = scroller?.scrollLeft ?? 0;
-            const vw = scroller?.clientWidth ?? 350;
-
-            const pos = anchor ?? { cx: sl + vw / 2, cy: 120 };
-
-            // a la derecha del punto; si no cabe en lo visible, a la izquierda
-            let left = pos.cx + GAP;
-            if (left - sl + CARD_W > vw - 4) left = pos.cx - GAP - CARD_W;
-            left = Math.max(sl + 4, Math.min(left, sl + vw - CARD_W - 4));
-
-            // debajo del punto; si está en la parte baja, encima
-            const arriba = pos.cy > 240;
-
-            return (
-              <div
-                className="pointer-events-none absolute z-50"
-                style={{
-                  left,
-                  top: arriba ? pos.cy - GAP : pos.cy + GAP,
-                  width: CARD_W,
-                  transform: arriba ? "translateY(-100%)" : undefined
-                }}
-              >
-                {TarjetaEvento(selectedIticPoint)}
-              </div>
-            );
-          })()}
         </div>
-      </div>
-
       </div>
     </section>
   );

@@ -229,8 +229,8 @@ export const ReactivePowerSection: React.FC<ReactivePowerSectionProps> = ({
       </div>
 
       <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0">
-        <div className="h-72 sm:h-80 md:h-[380px] w-[850px] sm:w-full text-xs select-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+        <div className="h-72 sm:h-80 md:h-[380px] w-[850px] sm:w-full text-xs select-none">
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={rawChartData}
               margin={{ top: 15, right: 15, left: 10, bottom: 25 }}
@@ -252,7 +252,7 @@ export const ReactivePowerSection: React.FC<ReactivePowerSectionProps> = ({
                     textAnchor: "middle",
                     fill: "#475569",
                     fontWeight: "800",
-                    fontSize: "14px",
+                    fontSize: "9px",
                     letterSpacing: "0.05em"
                   }}
                 />
@@ -277,7 +277,7 @@ export const ReactivePowerSection: React.FC<ReactivePowerSectionProps> = ({
                     textAnchor: "middle",
                     fill: "#475569",
                     fontWeight: "800",
-                    fontSize: "14px"
+                    fontSize: "9px"
                   }}
                 />
               </YAxis>

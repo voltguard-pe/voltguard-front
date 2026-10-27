@@ -241,8 +241,8 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
           </div>
 
           <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-            <div className="h-72 sm:h-80 md:h-[420px] w-[850px] sm:w-full text-xs font-medium text-slate-500 select-none">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-72 sm:h-80 md:h-[420px] w-[850px] sm:w-full text-xs font-medium text-slate-500 select-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart
                   data={rawChartData}
                   margin={{ top: 25, right: 15, left: 10, bottom: 25 }}
@@ -302,7 +302,7 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                     tick={{ angle: -45, textAnchor: 'end', fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
                     height={60}
                   >
-                    <Label value="Hora del Día" position="insideBottom" offset={-15} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                    <Label value="Hora del Día" position="insideBottom" offset={-10} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '14px', letterSpacing: '0.05em' }} />
                   </XAxis>
 
                   <YAxis
@@ -316,8 +316,18 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                     tick={{ fontSize: '10px' }}
                     tickFormatter={(val) => `${Number(val).toFixed(stepIncrement < 1 ? 1 : 0)}`}
                   >
-                    <Label value="Demanda de Potencia Activa (kW)" angle={-90} position="insideLeft" style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '9px', letterSpacing: '0.05em' }} />
+                    <Label value="Demanda de Potencia Activa (kW)" angle={-90}
+                  position="insideLeft"
+                  offset={-5}
+                  style={{
+                    textAnchor: "middle",
+                    fill: "#334155",
+                    fontWeight: "900",
+                    fontSize: "14px"
+                  }}
+                />
                   </YAxis>
+
 
                   <Tooltip content={<CustomTooltip />} shared={true} />
 

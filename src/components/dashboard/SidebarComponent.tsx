@@ -88,7 +88,7 @@ const URL_MODULE_KEYS: [string, string][] = [
 ];
 
 const navItemClass = (isActive: boolean) =>
-  `flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all cursor-pointer focus:outline-none ${isActive ? "bg-slate-900 text-white font-semibold shadow-xs" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+  `flex items-center gap-2.5 rounded-xl px-3 py-2 transition-all cursor-pointer ${isActive ? "bg-slate-900 text-white font-semibold shadow-xs" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
   }`;
 
 const SidebarComponent = ({
@@ -312,7 +312,7 @@ const SidebarComponent = ({
                 onClick={onClose}
                 end
                 className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? "bg-[#0797d5]/10 text-[#0797d5] font-bold" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive ? "bg-[#0797d5]/10 text-[#0797d5] font-bold" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"
                   }`
                 }
               >
@@ -331,7 +331,7 @@ const SidebarComponent = ({
                     to={`/dashboard/boards/${code}/${b.code}`}
                     onClick={onClose}
                     className={({ isActive }) =>
-                      `flex flex-1 items-center gap-2 px-2 py-1 text-[11px] min-w-0 transition-colors cursor-pointer focus:outline-none ${isActive ? "text-[#0797d5] font-bold" : "hover:text-slate-900"
+                      `flex flex-1 items-center gap-2 px-2 py-1 text-[11px] min-w-0 transition-colors cursor-pointer ${isActive ? "text-[#0797d5] font-bold" : "hover:text-slate-900"
                       }`
                     }
                   >
@@ -344,7 +344,7 @@ const SidebarComponent = ({
                       e.stopPropagation();
                       navigate(`/dashboard/boards/${code}/${b.code}/edit`);
                     }}
-                    className="opacity-0 group/item:opacity-100 p-0.5 mr-1 text-slate-400 hover:text-slate-700 cursor-pointer focus:outline-none"
+                    className="opacity-0 group/item:opacity-100 p-0.5 mr-1 text-slate-400 hover:text-slate-700 cursor-pointer"
                   >
                     <MoreVertical size={12} />
                   </button>
@@ -376,7 +376,7 @@ const SidebarComponent = ({
                   onClick={onClose}
                   end
                   className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? "text-emerald-600 font-bold bg-emerald-50" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive ? "text-emerald-600 font-bold bg-emerald-50" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`
                   }
                 >
@@ -437,7 +437,7 @@ const SidebarComponent = ({
                 to={`/dashboard/documents?company=${code}`}
                 onClick={onClose}
                 end
-                className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer focus:outline-none"
+                className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer"
               >
                 <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
                 <span className="truncate italic">Ver todos ({documents.length})</span>
@@ -454,7 +454,7 @@ const SidebarComponent = ({
                   to={`/dashboard/documents/view/${d._id}`}
                   onClick={onClose}
                   className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? "text-amber-600 font-bold bg-amber-50" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive ? "text-amber-600 font-bold bg-amber-50" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                     }`
                   }
                 >
@@ -482,7 +482,7 @@ const SidebarComponent = ({
                 to={m.viewPath(code)}
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? `${m.activeColor} font-bold` : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive ? `${m.activeColor} font-bold` : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                   }`
                 }
               >
@@ -494,7 +494,7 @@ const SidebarComponent = ({
                   to={m.newPath(code)}
                   onClick={onClose}
                   className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? "bg-teal-50 text-teal-700 font-bold" : "text-slate-500 hover:bg-slate-100 italic"
+                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer ${isActive ? "bg-teal-50 text-teal-700 font-bold" : "text-slate-500 hover:bg-slate-100 italic"
                     }`
                   }
                 >
@@ -519,7 +519,7 @@ const SidebarComponent = ({
               <div className="group flex items-center justify-between rounded-lg px-2 py-1 text-slate-600 hover:bg-slate-100">
                 <button
                   onClick={() => toggleFolder(folderKey)}
-                  className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left focus:outline-none"
+                  className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left"
                 >
                   {isOpen ? <ChevronDown size={13} className="shrink-0 text-slate-400" /> : <ChevronRight size={13} className="shrink-0 text-slate-400" />}
                   {isOpen ? <FolderOpen size={15} className={`shrink-0 ${folder.color}`} /> : <Folder size={15} className={`shrink-0 ${folder.color}`} />}
@@ -535,7 +535,7 @@ const SidebarComponent = ({
                     e.stopPropagation();
                     folder.onCreate();
                   }}
-                  className={`opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:${folder.color} hover:bg-white rounded transition-all cursor-pointer focus:outline-none`}
+                  className={`opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:${folder.color} hover:bg-white rounded transition-all cursor-pointer`}
                 >
                   <Plus size={14} />
                 </button>
@@ -557,15 +557,14 @@ const SidebarComponent = ({
       />
 
       <aside
-        style={{ minWidth: 0 }}
         className={`fixed left-0 top-0 z-50 h-dvh w-72 shrink-0 border-r border-slate-200 bg-white transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) lg:sticky lg:top-0 lg:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full"
-          } [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none focus:outline-none`}
+          }`}
       >
-        <div className="flex h-full flex-col justify-between" style={{ minWidth: 0 }}>
+        <div className="flex h-full flex-col justify-between">
           <div className="flex flex-col min-h-0 flex-1">
             {/* Header */}
-            <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-5 [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
-              <Link to="/" className="group flex min-w-0 items-center gap-3 focus:outline-none" style={{ minWidth: 0 }}>
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 px-5">
+              <Link to="/" className="group flex min-w-0 items-center gap-3">
                 <img
                   src="/voltguard.png"
                   alt="Voltguard"
@@ -577,15 +576,15 @@ const SidebarComponent = ({
               </Link>
               <button
                 onClick={onClose}
-                className="cursor-pointer rounded-xl p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-800 lg:hidden focus:outline-none"
+                className="cursor-pointer rounded-xl p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-800 lg:hidden"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Navegación File Tree */}
-            <nav className="min-h-0 flex-1 overflow-y-auto p-3 custom-scrollbar text-xs font-medium [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none" style={{ minWidth: 0 }}>
-              <div className="space-y-1" style={{ minWidth: 0 }}>
+            <nav className="min-h-0 flex-1 overflow-y-auto p-3 custom-scrollbar text-xs font-medium">
+              <div className="space-y-1">
                 <NavLink to="/dashboard" end onClick={onClose} className={({ isActive }) => navItemClass(isActive)}>
                   <LayoutDashboard size={16} />
                   <span>Inicio</span>
@@ -659,7 +658,7 @@ const SidebarComponent = ({
                         <div className="group flex items-center justify-between rounded-xl px-2 py-1.5 hover:bg-slate-100">
                           <button
                             onClick={() => handleToggleCompany(company.publicCode)}
-                            className="flex flex-1 items-center gap-2 text-slate-800 cursor-pointer text-left min-w-0 focus:outline-none"
+                            className="flex flex-1 items-center gap-2 text-slate-800 cursor-pointer text-left min-w-0"
                           >
                             {isCompanyOpen ? <ChevronDown size={14} className="shrink-0 text-slate-400" /> : <ChevronRight size={14} className="shrink-0 text-slate-400" />}
                             <Building2 size={15} className="shrink-0 text-slate-700" />
@@ -720,7 +719,7 @@ const SidebarComponent = ({
           <div className="relative border-t border-slate-200 bg-slate-50/50 p-3" ref={dropdownRef}>
             <button
               onClick={() => setIsMenuOpen((prev) => !prev)}
-              className={`flex w-full items-center gap-3 rounded-2xl border bg-white px-3 py-2 shadow-xs transition-all duration-300 cursor-pointer text-left focus:outline-none ${isMenuOpen ? "border-[#0797d5]/30 ring-4 ring-[#0797d5]/10" : "border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-xs"
+              className={`flex w-full items-center gap-3 rounded-2xl border bg-white px-3 py-2 shadow-xs transition-all duration-300 cursor-pointer text-left ${isMenuOpen ? "border-[#0797d5]/30 ring-4 ring-[#0797d5]/10" : "border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-xs"
                 }`}
             >
               <div className="relative flex size-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0797d5] to-[#8ccf2f] text-xs font-bold text-white shrink-0">
@@ -741,7 +740,7 @@ const SidebarComponent = ({
                       setIsMenuOpen(false);
                       navigate("/dashboard/profile");
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 cursor-pointer focus:outline-none"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 cursor-pointer"
                   >
                     <User2 size={15} />
                     <span>Mi Perfil</span>
@@ -751,7 +750,7 @@ const SidebarComponent = ({
                       setIsMenuOpen(false);
                       handleLogout();
                     }}
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 cursor-pointer focus:outline-none"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 cursor-pointer"
                   >
                     <LogOut size={15} />
                     <span>Cerrar sesión</span>

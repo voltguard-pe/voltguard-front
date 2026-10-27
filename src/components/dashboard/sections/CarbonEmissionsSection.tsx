@@ -1,5 +1,5 @@
 import React from "react";
-import { Zap, Trees, Award } from "lucide-react";
+import { Zap } from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -19,31 +19,32 @@ interface CarbonEmissionsSectionProps {
   onToggleCarbonDay: (key: string) => void;
 }
 
+// Factor de emisión del SEIN (g CO₂ por kWh). Verifica el valor vigente (MINAM / COES).
 const FACTOR_EMISION_G_KWH = 210;
 
-const formatGramos = (g: number) => Math.round(g).toLocaleString("es-PE");
+// Formatea gramos con separador de miles
+const formatGramos = (g: number) =>
+  Math.round(g).toLocaleString("es-PE");
 
-// Tooltip limpio y enriquecido
+// Tooltip con gramos y kg
 const CustomCarbonTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const gCO2 = Number(data.gCO2) || 0;
 
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-xl font-sans text-xs min-w-[210px] backdrop-blur-sm">
-        <div className="border-b border-slate-100 pb-2 mb-2">
-          <span className="font-bold text-slate-900 text-sm">{label}</span>
+      <div className="rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-xl font-sans text-xs min-w-[210px] backdrop-blur-sm">
+        <div className="border-b border-slate-100 pb-2 mb-2 flex items-center justify-between">
+          <span className="font-bold text-slate-800 text-xs">{label}</span>
+          <span className="font-black text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 text-[11px]">
+            {formatGramos(gCO2)} g CO₂
+          </span>
         </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500 font-semibold">Emisión Diaria:</span>
-            <span className="font-black text-slate-900 tabular-nums">{formatGramos(gCO2)} g CO₂</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-slate-500 font-semibold">Equivalente en Masa:</span>
-            <span className="font-extrabold text-slate-700 tabular-nums">{(gCO2 / 1000).toFixed(2)} kg CO₂</span>
-          </div>
+        <div className="flex items-center justify-between">
+          <span className="text-slate-500 font-semibold">Equivalente:</span>
+          <span className="font-extrabold text-slate-900 tabular-nums">
+            {(gCO2 / 1000).toFixed(2)} kg CO₂
+          </span>
         </div>
       </div>
     );
@@ -57,6 +58,7 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
   seriesKeys,
   onToggleCarbonDay
 }) => {
+  // 1. Emisiones por día (en gramos) de los días visibles
   const emisionesData = energiaPorDiaData
     .filter((d) => visibleCarbonSeries[d.name] !== false)
     .map((item) => ({
@@ -64,6 +66,7 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
       gCO2: Math.round((item.kWh || 0) * FACTOR_EMISION_G_KWH)
     }));
 
+  // ── ESTADOS DE SELECCIÓN ──
   const isAllSelected =
     seriesKeys.length > 0 &&
     seriesKeys.every((key) => visibleCarbonSeries[key] !== false);
@@ -72,163 +75,186 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
     (key) => visibleCarbonSeries[key] !== false
   ).length;
 
+  // Impide desmarcar el último día activo (evita un gráfico en blanco)
   const handleSafeToggleDay = (key: string) => {
     const isCurrentlySelected = visibleCarbonSeries[key] !== false;
-    if (isCurrentlySelected && activeDaysCount <= 1) return;
+    if (isCurrentlySelected && activeDaysCount <= 1) {
+      return;
+    }
     onToggleCarbonDay(key);
   };
 
   const handleSelectAll = () => {
     seriesKeys.forEach((key) => {
-      if (visibleCarbonSeries[key] === false) onToggleCarbonDay(key);
+      if (visibleCarbonSeries[key] === false) {
+        onToggleCarbonDay(key);
+      }
     });
   };
 
-  const totalG = emisionesData.reduce((acc, curr) => acc + curr.gCO2, 0);
-  const promedioGDiario = emisionesData.length > 0 ? totalG / emisionesData.length : 0;
-
-  // --- CÁLCULO DINÁMICO DE RANGO Y MIN/MAX PARA RESALTAR DIFERENCIAS ---
+  // 2. LÓGICA DINÁMICA DE RANGO Y ALINEACIÓN DEL EJE Y (en gramos)
   const rawValues = emisionesData.map((d) => d.gCO2);
   const minVal = rawValues.length > 0 ? Math.min(...rawValues) : 0;
   const maxVal = rawValues.length > 0 ? Math.max(...rawValues) : 0;
+
   const rawDelta = maxVal - minVal;
+  const step = rawDelta > 0 ? rawDelta : (minVal > 0 ? minVal * 0.02 : 1);
 
-  // Si hay diferencia, dejamos un pequeño colchón arriba y abajo (30% del delta)
-  const padding = rawDelta > 0 ? rawDelta * 0.35 : minVal * 0.02;
+  const yMin = Math.max(0, Math.round(minVal - step));
+  const yMax = Math.round(maxVal + step * 0.3);
+  const yTicks = Array.from(new Set([yMin, minVal, maxVal])).sort((a, b) => a - b);
 
-  // Calculamos el mínimo sin que caiga por debajo de cero
-  const yMin = Math.max(0, Math.floor((minVal - padding) / 10) * 10);
-  const yMax = Math.ceil((maxVal + padding) / 10) * 10;
-  const yMid = Math.round((yMin + yMax) / 2);
-
-  const yTicks = [yMin, yMid, yMax];
+  // 3. Promedio y proyecciones (en gramos)
+  const totalG = emisionesData.reduce((acc, curr) => acc + curr.gCO2, 0);
+  const promedioGDiario = emisionesData.length > 0 ? totalG / emisionesData.length : 0;
+  const proyeccionGMes = promedioGDiario * 30;
+  const proyeccionGAno = promedioGDiario * 365;
 
   return (
-    <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6">
-      
-      {/* CABECERA CON SUBTÍTULO RESALTADO EN TONO SLATE */}
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
+    <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans mt-6">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
         <div className="flex items-center gap-3">
-          <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 text-white shadow-sm">
-            <Zap size={20} />
+          <div className="flex size-10 sm:size-11 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 text-white shadow-sm">
+            <Zap size={20} className="sm:size-[22px]" />
           </div>
           <div>
-            <h2 className="font-extrabold text-slate-950 text-base sm:text-lg tracking-tight">
-              Emisiones de CO₂ por Día de la Semana
+            <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">
+              Emisiones de CO₂ Estimadas (Huella de Carbono)
             </h2>
-            <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-800 border border-slate-200 shadow-2xs">
-              <span className="inline-block size-2 rounded-full bg-slate-700 animate-pulse"></span>
-              <span>
-                Valores basados strictly en el período de medición del archivo CSV · Factor SEIN: <b>{FACTOR_EMISION_G_KWH} g CO₂/kWh</b>
-              </span>
-            </div>
+            <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+              Promedio por día de la semana según el período medido · Factor SEIN Perú: {FACTOR_EMISION_G_KWH} g CO₂/kWh
+            </p>
           </div>
         </div>
       </div>
 
-      {/* TARJETAS DE RESUMEN CON TONO SLATE GRADUADO */}
-      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-5 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wider text-slate-600">
-              EMISIÓN DIARIA PROMEDIO
-            </p>
-            <p className="mt-1.5 text-3xl font-black text-slate-950 tracking-tight">
-              {formatGramos(promedioGDiario)}
-              <span className="text-sm font-black text-slate-700 ml-1.5">g CO₂/día</span>
-            </p>
-            <p className="mt-1.5 text-xs font-medium text-slate-500">
-              Promedio de los días seleccionados
-            </p>
-          </div>
-          <div className="size-11 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs">
-            <Award size={22} />
-          </div>
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-4 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">
+            Emisión Diaria Promedio
+          </p>
+          <p className="mt-1 text-2xl font-black text-slate-950">
+            {formatGramos(promedioGDiario)}
+            <span className="text-xs font-bold text-slate-600 ml-1">g CO₂/día</span>
+          </p>
+          <p className="mt-1 text-[10px] text-slate-500">
+            Promedio de los días de la semana seleccionados
+          </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-5 shadow-2xs flex items-center justify-between">
-          <div>
-            <p className="text-xs font-black uppercase tracking-wider text-slate-600">
-              TOTAL EMISIONES DEL PERÍODO
-            </p>
-            <p className="mt-1.5 text-3xl font-black text-slate-950 tracking-tight">
-              {formatGramos(totalG)}{" "}
-              <span className="text-sm font-black text-slate-700 ml-1">g CO₂</span>
-            </p>
-            <p className="mt-1.5 text-xs font-medium text-slate-500">
-              ≈ <span className="font-bold text-slate-700">{(totalG / 1000).toFixed(2)} kg CO₂</span> acumulados en la muestra
-            </p>
-          </div>
-          <div className="size-11 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 shadow-2xs">
-            <Trees size={22} />
-          </div>
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-4 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">
+            Proyección Mensual (30 días)
+          </p>
+          <p className="mt-1 text-2xl font-black text-slate-950">
+            {formatGramos(proyeccionGMes)}{" "}
+            <span className="text-xs font-bold text-slate-600">g CO₂/mes</span>
+          </p>
+          <p className="mt-1 text-[10px] text-slate-500">
+            Promedio diario × 30 días
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-50/80 to-white p-4 shadow-sm">
+          <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">
+            Proyección Anual Estimada
+          </p>
+          <p className="mt-1 text-2xl font-black text-slate-950">
+            {formatGramos(proyeccionGAno)}{" "}
+            <span className="text-xs font-bold text-slate-600">g CO₂/año</span>
+          </p>
+          <p className="mt-1 text-[10px] text-slate-500">
+            ≈ {(proyeccionGAno / 1_000_000).toFixed(2)} tCO₂ · Promedio diario × 365 (extrapolado del período medido)
+          </p>
         </div>
       </div>
 
-      {/* FILTROS DE DÍAS */}
-      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-200">
+      {/* ── SECCIÓN DE FILTROS ── */}
+      <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 shadow-2xs font-sans">
+
+        {/* IZQUIERDA */}
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs font-black uppercase text-slate-400 tracking-wider">Filtros Días:</span>
+          <span className="text-xs font-black uppercase text-slate-400 mr-1 tracking-wider">Filtros:</span>
         </div>
-        <div className="flex gap-2 overflow-x-auto py-1 justify-start flex-1">
+
+        {/* CENTRO: Días de la semana (protegidos para no vaciar el gráfico) */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 justify-start flex-1">
           {seriesKeys.map((key) => {
             const isSelected = visibleCarbonSeries[key] !== false;
             const isLastActive = isSelected && activeDaysCount === 1;
+
             return (
               <button
                 key={key}
                 type="button"
                 onClick={() => handleSafeToggleDay(key)}
-                className={`flex flex-col items-center justify-center min-w-[78px] px-3.5 py-2 rounded-xl transition-all border ${
+                title={isLastActive ? "Debe mantener al menos un día visible" : undefined}
+                className={`flex flex-col items-center justify-center min-w-[78px] px-3.5 py-2 rounded-xl transition-all border cursor-pointer shrink-0 active:scale-95 ${
                   isSelected
                     ? "border-transparent text-white shadow-md shadow-slate-600/10"
-                    : "bg-white border-slate-200 text-slate-400 hover:text-slate-600"
-                } ${isLastActive ? "cursor-not-allowed opacity-90" : ""}`}
-                style={isSelected ? { background: "linear-gradient(to bottom, #475569, #1e293b)" } : undefined}
+                    : "bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300"
+                } ${isLastActive ? "cursor-not-allowed opacity-90 ring-2 ring-white/50" : ""}`}
+                style={
+                  isSelected
+                    ? { background: "linear-gradient(to bottom, #475569, #1e293b)" }
+                    : undefined
+                }
               >
                 <span className="text-xs font-extrabold">{key}</span>
               </button>
             );
           })}
         </div>
+
+        {/* DERECHA: Botón Todos */}
         <div className="flex items-center gap-2 shrink-0 justify-end">
           <button
             type="button"
             onClick={handleSelectAll}
-            className={`px-4 py-2.5 text-xs font-black rounded-xl border ${
+            className={`px-4 py-2.5 text-xs font-black rounded-xl transition-all cursor-pointer border active:scale-95 flex items-center gap-1.5 ${
               isAllSelected
-                ? "text-white border-slate-600/30 shadow-lg ring-2 ring-slate-400/40"
-                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100"
+                ? "text-white border-slate-600/30 shadow-lg shadow-slate-600/25 ring-2 ring-slate-400/40"
+                : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100 hover:border-slate-400 shadow-xs"
             }`}
-            style={isAllSelected ? { background: "linear-gradient(to right, #475569, #1e293b)" } : undefined}
+            style={
+              isAllSelected
+                ? { background: "linear-gradient(to right, #475569, #1e293b)" }
+                : undefined
+            }
           >
+            {isAllSelected && <span className="size-1.5 rounded-full bg-white animate-pulse" />}
             <span>Todos</span>
           </button>
         </div>
+
       </div>
 
-      {/* GRÁFICO RECHARTS */}
-      <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none">
-        <div className="h-80 sm:h-96 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none [&_*]:focus:outline-none">
+      <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
+        <div className="h-80 sm:h-96 md:h-[400px] w-[600px] sm:w-full text-xs font-medium text-slate-500 select-none">
           {emisionesData.length === 0 ? (
             <div className="flex h-full w-full items-center justify-center text-slate-400 font-semibold text-sm">
               Selecciona al menos un día para visualizar los datos del gráfico.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={emisionesData}
                 margin={{ top: 35, right: 15, left: 10, bottom: 30 }}
+                style={{ outline: "none", border: "none" }}
               >
                 <defs>
+                  {/* Degradado elegante pizarra/carbón para las barras */}
                   <linearGradient id="gradCarbon" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#64748b" />
                     <stop offset="100%" stopColor="#1e293b" />
                   </linearGradient>
                 </defs>
 
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#f1f5f9"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="name"
                   tickLine={false}
@@ -240,7 +266,13 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                     value="Días de la Semana"
                     position="insideBottom"
                     offset={-20}
-                    style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "14px" }}
+                    style={{
+                      textAnchor: "middle",
+                      fill: "#475569",
+                      fontWeight: "800",
+                      fontSize: "9px",
+                      letterSpacing: "0.05em"
+                    }}
                   />
                 </XAxis>
                 <YAxis
@@ -255,19 +287,23 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                   tickFormatter={(val) => formatGramos(Number(val))}
                 >
                   <Label
-                    value="Emisiones (g CO₂ / día)"
+                    value="Emisiones (g CO₂)"
                     angle={-90}
                     position="insideLeft"
                     offset={-5}
-                    style={{ textAnchor: "middle", fill: "#475569", fontWeight: "800", fontSize: "14px" }}
+                    style={{
+                      textAnchor: "middle",
+                      fill: "#475569",
+                      fontWeight: "800",
+                      fontSize: "9px",
+                      letterSpacing: "0.05em"
+                    }}
                   />
                 </YAxis>
-
                 <Tooltip
                   cursor={{ fill: "#f1f5f9", opacity: 0.6 }}
                   content={<CustomCarbonTooltip />}
                 />
-
                 <Bar
                   dataKey="gCO2"
                   fill="url(#gradCarbon)"
@@ -278,7 +314,11 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                     dataKey="gCO2"
                     position="top"
                     formatter={(val: any) => formatGramos(Number(val))}
-                    style={{ fontSize: "11px", fontWeight: "800", fill: "#1e293b" }}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "800",
+                      fill: "#1e293b"
+                    }}
                   />
                 </Bar>
               </BarChart>

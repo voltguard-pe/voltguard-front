@@ -7,19 +7,17 @@ import {
   X,
   CircuitBoard,
   ShieldCheck,
-  ZapOff,
-  Sparkles,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
-import axios from "axios";
 
 import type { CompanyResponseDTO } from "../../../shared/types/CompanyProps";
-import {
-  importBoardsWithNfpa,
-  type ImportBoardsResponse,
-} from "../../../services/importUnifilarNfpa-ai.service";
+import { importBoardsWithNfpa, type ImportBoardsResponse } from "../../../services/importUnifilarNfpa-ai.service";
 import { useSidebar } from "../../../contexts/SidebarContext";
+// import {
+//   importBoardsWithNfpa,
+//   type ImportBoardsResponse,
+// } from "../../../services/board-ai.service";
 
 type Props = {
   isOpen: boolean;
@@ -30,186 +28,6 @@ type Props = {
 
 type Status = "idle" | "processing" | "success" | "error";
 
-// ============================================================================
-// 1. DETECTOR DE FALTA DE CRÉDITOS DE OPENAI
-// ============================================================================
-export const isNoCreditsError = (raw: unknown): boolean => {
-  const errObj = raw as any;
-  const text =
-    typeof raw === "string"
-      ? raw
-      : errObj?.response?.data?.error ||
-        errObj?.response?.data?.message ||
-        errObj?.error ||
-        errObj?.message ||
-        "";
-
-  const lower = String(text).toLowerCase();
-  return (
-    errObj?.response?.status === 402 ||
-    errObj?.response?.status === 429 ||
-    errObj?.status === 402 ||
-    errObj?.status === 429 ||
-    errObj?.response?.data?.code === "NO_CREDITS" ||
-    errObj?.code === "NO_CREDITS" ||
-    lower.includes("429") ||
-    lower.includes("credit") ||
-    lower.includes("crédito") ||
-    lower.includes("credito") ||
-    lower.includes("quota") ||
-    lower.includes("billing") ||
-    lower.includes("insufficient_quota") ||
-    lower.includes("platform.openai.com")
-  );
-};
-
-// Función para disparar la ventana desde cualquier parte
-export const triggerGlobalNoCreditsModal = () => {
-  window.dispatchEvent(new CustomEvent("openai-no-credits"));
-};
-
-// ============================================================================
-// 2. VIGILANTE GLOBAL AUTOMÁTico (Escucha Axios y Fetch en toda la web)
-// ============================================================================
-export const GlobalNoCreditsWatcher = () => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  useEffect(() => {
-    const handleOpen = () => {
-      // Cierra cualquier toast rojo feo que haya intentado salir al mismo tiempo
-      toast.dismiss();
-      setIsOpen(true);
-    };
-
-    window.addEventListener("openai-no-credits", handleOpen);
-
-    // 1. Vigila cualquier llamada hecha con fetch() en cualquier servicio
-    const originalFetch = window.fetch;
-    window.fetch = async (...args) => {
-      const response = await originalFetch(...args);
-      if (!response.ok) {
-        try {
-          const clone = response.clone();
-          const data = await clone.json();
-          if (isNoCreditsError({ status: response.status, ...data })) {
-            triggerGlobalNoCreditsModal();
-          }
-        } catch {
-          // Si no es JSON, ignoramos
-        }
-      }
-      return response;
-    };
-
-    // 2. Vigila cualquier llamada hecha con axios global
-    const interceptorId = axios.interceptors.response.use(
-      (res) => res,
-      (error) => {
-        if (isNoCreditsError(error)) {
-          triggerGlobalNoCreditsModal();
-        }
-        return Promise.reject(error);
-      }
-    );
-
-    return () => {
-      window.removeEventListener("openai-no-credits", handleOpen);
-      window.fetch = originalFetch;
-      axios.interceptors.response.eject(interceptorId);
-    };
-  }, []);
-
-  return (
-    <NoCreditsModal
-      isOpen={isOpen}
-      onClose={() => setIsOpen(false)}
-      hintText="Ningún registro ni archivo existente fue afectado. En cuanto recargues créditos de IA podrás volver a subir y procesar tu documento."
-    />
-  );
-};
-
-// ============================================================================
-// 3. DISEÑO DEL MODAL DE FALTA DE CRÉDITOS
-// ============================================================================
-type NoCreditsModalProps = {
-  isOpen: boolean;
-  onClose: () => void;
-  hintText?: string;
-};
-
-export const NoCreditsModal = ({
-  isOpen,
-  onClose,
-  hintText = "Ningún registro existente fue afectado. En cuanto recargues créditos podrás volver a subir tu archivo.",
-}: NoCreditsModalProps) => {
-  if (!isOpen) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-2xl transition-all"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="h-2.5 w-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500" />
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-5 rounded-full p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors cursor-pointer"
-        >
-          <X size={18} />
-        </button>
-
-        <div className="p-6 sm:p-8 text-center">
-          <div className="mx-auto mb-5 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-50 to-orange-100 border border-amber-200/70 shadow-inner">
-            <ZapOff className="size-8 text-amber-600" strokeWidth={2.2} />
-          </div>
-
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200/80 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-amber-700">
-            <Sparkles size={12} />
-            <span>Motor de lectura inteligente en pausa</span>
-          </div>
-
-          <h3 className="mt-1 text-xl font-black tracking-tight text-slate-900">
-            ¡Nos quedamos sin energía de IA!
-          </h3>
-
-          <div className="mt-5 rounded-2xl bg-slate-50 border border-slate-200/70 p-3.5 text-xs text-slate-500 font-semibold">
-            💡 {hintText}
-          </div>
-
-          <div className="mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0797d5] to-[#8ccf2f] px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-[#0797d5]/25 hover:brightness-95 transition-all cursor-pointer"
-            >
-              Entendido
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export const formatBoardError = (rawError?: string) => {
-  if (!rawError) return "Error desconocido al procesar este tablero.";
-  if (isNoCreditsError(rawError)) {
-    return "Sin créditos de IA disponibles para analizar este tablero.";
-  }
-  return rawError
-    .replace(/https?:\/\/\S+/g, "")
-    .replace(/429/g, "")
-    .trim();
-};
-
-// ============================================================================
-// 4. MODAL DE IMPORTACIÓN DE TABLEROS
-// ============================================================================
 const ImportBoardsAndNfpaModal = ({
   isOpen,
   onClose,
@@ -222,7 +40,6 @@ const ImportBoardsAndNfpaModal = ({
   const [status, setStatus] = useState<Status>("idle");
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<ImportBoardsResponse | null>(null);
-  const [showNoCreditsModal, setShowNoCreditsModal] = useState(false);
 
   const token = localStorage.getItem("token") || "";
 
@@ -232,7 +49,6 @@ const ImportBoardsAndNfpaModal = ({
     setStatus("idle");
     setProgress(0);
     setResult(null);
-    setShowNoCreditsModal(false);
   };
 
   const handleClose = () => {
@@ -289,6 +105,7 @@ const ImportBoardsAndNfpaModal = ({
         token,
         selectedCompany,
         (uploadPercent) => {
+          // El primer 15% refleja la subida física del archivo
           setProgress(Math.floor(uploadPercent * 0.15));
         }
       );
@@ -297,25 +114,15 @@ const ImportBoardsAndNfpaModal = ({
       setProgress(100);
       setResult(response);
 
-      const failedBoards =
-        response.results?.filter((r) => r.status === "failed") || [];
+      const failedBoards = response.results?.filter((r) => r.status === "failed") || [];
 
       if (failedBoards.length > 0) {
         setStatus("error");
         triggerRefresh(selectedCompany);
-        onSuccess();
-
-        const huboFaltaDeCreditos = failedBoards.some((b) =>
-          isNoCreditsError(b.error)
-        );
-
-        if (huboFaltaDeCreditos) {
-          setShowNoCreditsModal(true);
-        } else {
-          toast.error("Proceso completado con algunas omisiones o errores.", {
-            autoClose: 6000,
-          });
-        }
+        onSuccess(); // Actualiza los tableros creados exitosamente en segundo plano
+        toast.error("Proceso completado con algunas omisiones o errores.", {
+          autoClose: 6000,
+        });
         return;
       }
 
@@ -332,11 +139,6 @@ const ImportBoardsAndNfpaModal = ({
       clearInterval(interval);
       setStatus("error");
       console.error("Error en la importación:", error);
-
-      if (isNoCreditsError(error)) {
-        setShowNoCreditsModal(true);
-        return;
-      }
 
       let mensajeError = "Error al procesar el lote consolidado";
       if (error?.response?.data?.error) {
@@ -411,6 +213,7 @@ const ImportBoardsAndNfpaModal = ({
 
         {/* Body */}
         <div className="max-h-[75vh] space-y-5 overflow-y-auto p-6">
+          {/* Selector de empresa */}
           <div>
             <label className="text-sm font-semibold text-slate-700">
               Empresa destino
@@ -430,6 +233,7 @@ const ImportBoardsAndNfpaModal = ({
             </select>
           </div>
 
+          {/* Zona Drag & Drop */}
           <label
             htmlFor="fullZipInput"
             onDrop={handleDrop}
@@ -468,12 +272,11 @@ const ImportBoardsAndNfpaModal = ({
               className="hidden"
               id="fullZipInput"
               disabled={status === "processing"}
-              onChange={(e) =>
-                e.target.files?.[0] && handleFile(e.target.files[0])
-              }
+              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
             />
           </label>
 
+          {/* Estado actual */}
           <div
             className={`flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold ${statusContent.className}`}
           >
@@ -481,6 +284,7 @@ const ImportBoardsAndNfpaModal = ({
             {statusContent.text}
           </div>
 
+          {/* Barra de progreso */}
           {status === "processing" && (
             <div>
               <div className="mb-2 flex justify-between text-xs font-semibold text-slate-500">
@@ -496,8 +300,10 @@ const ImportBoardsAndNfpaModal = ({
             </div>
           )}
 
+          {/* Resumen de resultados (Tableros creados con éxito y omitidos) */}
           {result && (
             <div className="space-y-3">
+              {/* Tableros creados con resumen de NFPA */}
               {result.results.filter((r) => r.status === "created").length > 0 && (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -520,9 +326,7 @@ const ImportBoardsAndNfpaModal = ({
                             }`}
                           >
                             <ShieldCheck size={13} />
-                            {board.hasNfpa
-                              ? "NFPA Calculado"
-                              : "Sin ITM (Solo Tablero)"}
+                            {board.hasNfpa ? "NFPA Calculado" : "Sin ITM (Solo Tablero)"}
                           </span>
                         </div>
                       ))}
@@ -530,10 +334,11 @@ const ImportBoardsAndNfpaModal = ({
                 </div>
               )}
 
+              {/* Errores u omisiones */}
               {result.results.some((r) => r.status === "failed") && (
                 <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-red-800">
-                    Tableros con observaciones ({result.failed})
+                    Tableros con error ({result.failed})
                   </h4>
                   <div className="mt-2 max-h-32 space-y-1.5 overflow-y-auto">
                     {result.results
@@ -543,8 +348,7 @@ const ImportBoardsAndNfpaModal = ({
                           key={idx}
                           className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-red-700 shadow-sm"
                         >
-                          ❌ <strong>{failed.boardCode}:</strong>{" "}
-                          {formatBoardError(failed.error)}
+                          ❌ <strong>{failed.boardCode}:</strong> {failed.error}
                         </div>
                       ))}
                   </div>
@@ -576,12 +380,6 @@ const ImportBoardsAndNfpaModal = ({
           </button>
         </div>
       </div>
-
-      <NoCreditsModal
-        isOpen={showNoCreditsModal}
-        onClose={() => setShowNoCreditsModal(false)}
-        hintText="Ningún tablero existente fue afectado. En cuanto recargues créditos podrás volver a importar tu archivo ZIP."
-      />
     </div>
   );
 };

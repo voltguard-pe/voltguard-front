@@ -67,7 +67,7 @@ export const solarThermographyService = {
     return new Float32Array(response.data);
   },
 
-  // Subida del modal
+  // Subida del modal (archivos separados)
   async uploadPackage(
     companyCode: string,
     csvFile: File,
@@ -86,6 +86,27 @@ export const solarThermographyService = {
 
     const { data } = await clientAxios.post(
       `/solar-thermography/upload`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return data.data;
+  },
+
+  // Subida masiva mediante archivo ZIP (Estilo SPAT)
+  async uploadPackageZip(
+    companyCode: string,
+    zipFile: File,
+    title?: string,
+    solarCode?: string
+  ) {
+    const formData = new FormData();
+    formData.append("companyCode", companyCode);
+    formData.append("zipFile", zipFile); // El archivo .zip
+    if (title) formData.append("title", title);
+    if (solarCode) formData.append("solarCode", solarCode);
+
+    const { data } = await clientAxios.post(
+      `/solar-thermography/upload`, // 👈 Apuntamos a la ruta que SÍ existe en tu backend
       formData,
       { headers: { "Content-Type": "multipart/form-data" } }
     );

@@ -670,7 +670,7 @@ const BoardDetailPage = () => {
 
   // const companyName = typeof board.company === "object" ? board.company.name : "Sin empresa";
 
-  // TODO:  Harcodeado para DEMO
+// TODO:  Harcodeado para DEMO
   const isDemoAccount = true; // REEMPLAZAR POR TU LÓGICA REAL DE DETECCIÓN DE CUENTA DEMO
 
   const currentCode = board?.boardCode || code;
@@ -678,16 +678,19 @@ const BoardDetailPage = () => {
   // 1. Detección de tableros específicos
   const isElcorsaBoard = currentCode === "ELC-MIR-TE-001";
   const isBbvaDemoBoard = isDemoAccount && currentCode === "BBVA-SB-TE-001"; // Lógica solicitada
+  const isVelaxBoard = currentCode === "VEL-SI-TE-001"; // Nuevo: Detección para VELAX
 
   // 2. Lógica para el Nombre de la Empresa
-  // Orden de prioridad: BBVA Demo > Elcorsa > Datos de DB > Por defecto
+  // Orden de prioridad: BBVA Demo > Elcorsa > VELAX > Datos de DB > Por defecto
   const companyName = isBbvaDemoBoard
     ? "BBVA" // Valor forzado para DEMO BBVA
     : isElcorsaBoard
       ? "ELCORSA"
-      : typeof board.company === "object" && board.company.name
-        ? board.company.name
-        : "Sin empresa";
+      : isVelaxBoard
+        ? "VL" // Valor forzado para VELAX
+        : typeof board.company === "object" && board.company.name
+          ? board.company.name
+          : "Sin empresa";
 
   // 3. Lógica para la Ubicación (Nueva)
   // Orden de prioridad: BBVA Demo > Datos de DB > Por defecto

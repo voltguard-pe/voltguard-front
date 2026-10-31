@@ -20,8 +20,8 @@ export interface DemandChartDataResponse {
  * Obtiene los registros de demanda (kW) y reactivas (kvar) agrupados por fecha/día
  */
 export const getDemandChartData = async (
-  boardId: string, 
-  fechaInicio?: string, 
+  boardId: string,
+  fechaInicio?: string,
   fechaFin?: string
 ): Promise<DemandChartDataResponse> => {
   const response = await clientAxios.get<DemandChartDataResponse>(
@@ -41,7 +41,7 @@ export const uploadMetrelCsv = async (boardId: string, file: File): Promise<{ su
   formData.append("file", file);
 
   const response = await clientAxios.post<{ success: boolean; count: number }>(
-    `/mediciones/import-metrel/${boardId}`,
+    `/mediciones/import-universal-measurement/${boardId}`,
     formData,
     {
       headers: {

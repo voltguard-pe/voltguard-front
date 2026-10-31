@@ -46,9 +46,6 @@ const WEEKDAYS_ES = [
 // por eso no se aplica ninguna corrección adicional.
 const FACTOR_CORRECCION_BACKEND = 1;
 
-// Cada punto de la curva representa 5 minutos
-const HORAS_POR_PUNTO = 5 / 60;
-
 // Un día con menos de este % de puntos con dato se considera incompleto
 // (típico del primer y último día de la medición) y no entra al promedio
 const MIN_COBERTURA_DIA = 0.9;
@@ -80,6 +77,7 @@ const BoardDetailPage = () => {
 
   const isSuperAdmin = effectiveRole === "SUPERADMIN" || rawRole === "SUPERADMIN";
   const isEmpresarial = isSuperAdmin || rawPlan === "empresarial";
+  const isAdmin = auth?.role === "ADMIN"
 
   const navigate = useNavigate();
   const { publicCode, code } = useParams();
@@ -135,12 +133,32 @@ const BoardDetailPage = () => {
       }
 
       const rawKeys = Object.keys(agrupado);
-      const labelsX = Array.from({ length: 288 }, (_, i) => {
-        const h = String(Math.floor((i * 5) / 60)).padStart(2, '0');
-        const m = String((i * 5) % 60).padStart(2, '0');
-        return `${h}:${m}`;
+      // const labelsX = Array.from({ length: 288 }, (_, i) => {
+      //   const h = String(Math.floor((i * 5) / 60)).padStart(2, '0');
+      //   const m = String((i * 5) % 60).padStart(2, '0');
+      //   return `${h}:${m}`;
+      // });
+
+      // En BoardDetailPage.tsx, dentro de fetchChartData:
+
+      // 1. Obtener solo las horas/minutos reales que existen en la medición
+      const horasSet = new Set<string>();
+      rawKeys.forEach((diaKey) => {
+        if (agrupado[diaKey]) {
+          Object.keys(agrupado[diaKey]).forEach((h) => horasSet.add(h));
+        }
       });
 
+      // Ordenar cronológicamente (si no hay datos, fallback a las 24 hrs estándar)
+      const labelsX = horasSet.size > 0
+        ? Array.from(horasSet).sort()
+        : Array.from({ length: 288 }, (_, i) => {
+          const h = String(Math.floor((i * 5) / 60)).padStart(2, '0');
+          const m = String((i * 5) % 60).padStart(2, '0');
+          return `${h}:${m}`;
+        });
+
+      // 2. Mapear formattedData (ahora cada punto del array tendrá datos reales)
       const formattedData = labelsX.map((hora) => {
         const row: any = { horaMinuto: hora };
         let sumaP = 0;
@@ -157,30 +175,30 @@ const BoardDetailPage = () => {
 
           const punto = agrupado[diaKey]?.[hora];
 
-          const valP = (typeof punto === 'number' ? punto : (punto?.p ?? 0)) / FACTOR_CORRECCION_BACKEND;
-          const valInd = (typeof punto === 'object' ? (punto?.ind ?? 0) : 0) / FACTOR_CORRECCION_BACKEND;
-          const valCap = (typeof punto === 'object' ? (punto?.cap ?? 0) : 0) / FACTOR_CORRECCION_BACKEND;
+          const rawP = typeof punto === 'number' ? punto : punto?.p;
+          const valP = rawP !== undefined && rawP !== null ? rawP / FACTOR_CORRECCION_BACKEND : null;
 
-          const valThdV = typeof punto === 'object' ? (punto?.thd_v ?? 0) : 0;
-          const valThdI = typeof punto === 'object' ? (punto?.thd_i ?? 0) : 0;
-          const valU12 = typeof punto === 'object' ? (punto?.thd_u12 ?? 0) : 0;
-          const valU23 = typeof punto === 'object' ? (punto?.thd_u23 ?? 0) : 0;
-          const valU31 = typeof punto === 'object' ? (punto?.thd_u31 ?? 0) : 0;
+          const rawInd = typeof punto === 'object' ? punto?.ind : undefined;
+          const valInd = rawInd !== undefined && rawInd !== null ? rawInd / FACTOR_CORRECCION_BACKEND : null;
+
+          const rawCap = typeof punto === 'object' ? punto?.cap : undefined;
+          const valCap = rawCap !== undefined && rawCap !== null ? rawCap / FACTOR_CORRECCION_BACKEND : null;
 
           row[labelCorto] = valP;
           row[`inductiva_${labelCorto}`] = valInd;
           row[`capacitiva_${labelCorto}`] = valCap;
-          row[`thd_v_${labelCorto}`] = valThdV;
-          row[`thd_i_${labelCorto}`] = valThdI;
+          row[`thd_v_${labelCorto}`] = typeof punto === 'object' ? (punto?.thd_v ?? null) : null;
+          row[`thd_i_${labelCorto}`] = typeof punto === 'object' ? (punto?.thd_i ?? null) : null;
+          row[`thd_u12_${labelCorto}`] = typeof punto === 'object' ? (punto?.thd_u12 ?? null) : null;
+          row[`thd_u23_${labelCorto}`] = typeof punto === 'object' ? (punto?.thd_u23 ?? null) : null;
+          row[`thd_u31_${labelCorto}`] = typeof punto === 'object' ? (punto?.thd_u31 ?? null) : null;
 
-          row[`thd_u12_${labelCorto}`] = valU12;
-          row[`thd_u23_${labelCorto}`] = valU23;
-          row[`thd_u31_${labelCorto}`] = valU31;
-
-          sumaP += valP;
-          sumaInd += valInd;
-          sumaCap += valCap;
-          count++;
+          if (valP !== null) {
+            sumaP += valP;
+            sumaInd += (valInd ?? 0);
+            sumaCap += (valCap ?? 0);
+            count++;
+          }
         });
 
         row["Promedio_General"] = count > 0 ? Math.round((sumaP / count) * 100) / 100 : null;
@@ -322,20 +340,22 @@ const BoardDetailPage = () => {
     const file = event.target.files?.[0];
     if (!file || !board?._id) return;
 
-    if (!file.name.includes('.Mediciones.csv')) {
-      alert("Por favor, sube exclusivamente el archivo original de Metrel que termina en '.Mediciones.csv'");
+    // Solo verificar que sea archivo CSV, sin importar la marca o el nombre
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      alert("Por favor, sube un archivo con extensión .csv válido");
       return;
     }
 
     setImporting(true);
     try {
       await uploadMetrelCsv(board._id, file);
-      alert("¡Archivo cargado y procesado por completo en VoltGuard!");
+      alert("¡Archivo cargado y procesado por completo!");
       await fetchChartData(board._id);
     } catch (err: any) {
       alert("Error procesando archivo: " + (err.response?.data?.error || err.message));
     } finally {
       setImporting(false);
+      event.target.value = "";
     }
   };
 
@@ -470,14 +490,24 @@ const BoardDetailPage = () => {
       .filter((m) => m.kWh > 0);
   }, [billHistory, rates]);
 
-  // kWh por día de la semana calculados SOLO con las mediciones del CSV (sin recibo de luz)
+  // En BoardDetailPage.tsx, dentro de useMemo de energiaDiariaMedida:
   const energiaDiariaMedida = useMemo(() => {
     if (rawChartData.length === 0 || seriesKeys.length === 0) return [];
+
+    // 1. Detectar el intervalo real en horas entre muestras (soporta 5, 10, 15, 30 o 60 min)
+    let horasPorPunto = 5 / 60; // fallback por defecto
+    if (rawChartData.length >= 2) {
+      const [h0, m0] = (rawChartData[0].horaMinuto || "00:00").split(':').map(Number);
+      const [h1, m1] = (rawChartData[1].horaMinuto || "00:05").split(':').map(Number);
+      const diffMinutos = Math.abs((h1 * 60 + m1) - (h0 * 60 + m0));
+      if (diffMinutos > 0) {
+        horasPorPunto = diffMinutos / 60;
+      }
+    }
 
     const candidatos: { nombre: string; kWh: number; cobertura: number }[] = [];
 
     seriesKeys.forEach((key) => {
-      // key tiene el formato "dd/mm (Lun)"
       const match = key.match(/\(([^)]+)\)/);
       const nombre = match ? DIA_ABREV_A_NOMBRE[normalizarDia(match[1])] : undefined;
       if (!nombre) return;
@@ -494,16 +524,14 @@ const BoardDetailPage = () => {
 
       candidatos.push({
         nombre,
-        kWh: sumaKw * HORAS_POR_PUNTO,
+        kWh: sumaKw * horasPorPunto, // Multiplicado por el intervalo real del analizador
         cobertura: puntosConDato / rawChartData.length,
       });
     });
 
-    // Descarta días incompletos (si todos lo fueran, usa todos)
     const completos = candidatos.filter((c) => c.cobertura >= MIN_COBERTURA_DIA);
     const usados = completos.length > 0 ? completos : candidatos;
 
-    // Promedia por día de la semana
     return WEEKDAYS_ES.map((day) => {
       const delDia = usados.filter((u) => u.nombre === day);
       if (delDia.length === 0) return null;
@@ -660,9 +688,29 @@ const BoardDetailPage = () => {
     );
   }
 
+  // ── REGLAS DE VISIBILIDAD POR DATOS CARGADOS ──
+  // El SUPERADMIN siempre ve todas las secciones (incluso vacías para poder subir datos)
+  const tieneMediciones = rawChartData.length > 0;
+  const mostrarMediciones = isSuperAdmin || tieneMediciones;
+
+  const tieneEventosItic = iticEvents.length > 0;
+  const mostrarItic = isSuperAdmin || tieneEventosItic;
+
+  const tieneReciboLuz = energiaMensualRecibo.length > 0 || billHistory.length > 0;
+  const mostrarReciboLuz = isSuperAdmin || tieneReciboLuz;
+
+  // Termografía: verifica si existe imagen térmica, óptica o registros de termografía
+  const tieneTermografia = Boolean(
+    board?.images?.termografia?.length ||
+    (board as any)?.thermography ||
+    (board as any)?.images?.termografica ||
+    (board as any)?.images?.optica
+  );
+  const mostrarTermografia = isSuperAdmin || tieneTermografia;
+
   // const companyName = typeof board.company === "object" ? board.company.name : "Sin empresa";
 
-// TODO:  Harcodeado para DEMO
+  // TODO:  Harcodeado para DEMO
   const isDemoAccount = true; // REEMPLAZAR POR TU LÓGICA REAL DE DETECCIÓN DE CUENTA DEMO
 
   const currentCode = board?.boardCode || code;
@@ -758,106 +806,120 @@ const BoardDetailPage = () => {
 
         {isEmpresarial && (
           <>
-            <DemandSection
-              rawChartData={rawChartData}
-              seriesKeys={seriesKeys}
-              visibleDemandSeries={visibleDemandSeries}
-              onToggleDemandDay={toggleDemandDay}
-              importing={importing}
-              onFileChange={handleFileChange}
-              horaPicoMaximo={horaPicoMaximo}
-              analisisPotencia={analisisPotencia}
-            />
-
-            <ReactivePowerSection
-              rawChartData={rawChartData}
-              seriesKeys={seriesKeys}
-              selectedReactiveDay={selectedReactiveDay}
-              onSelectReactiveDay={setSelectedReactiveDay}
-              visibleReactiveSeries={visibleReactiveSeries}
-              onToggleReactiveDay={toggleReactiveDay}
-            />
-
-            <ThdVoltageSection
-              rawChartData={rawChartData}
-              seriesKeys={seriesKeys}
-              selectedThdUDay={selectedThdUDay}
-              onSelectThdUDay={setSelectedThdUDay}
-              visibleThdFases={visibleThdFases}
-              onToggleThdFase={toggleThdFase}
-            />
-
-            <IticCurveSection
-              iticEvents={iticEvents}
-              tensionNominal={board?.tensionNominal}
-              uploadingItic={uploadingItic}
-              onIticFileUpload={handleIticFileUpload}
-            />
-
-            <div className="flex flex-col gap-3 rounded-3xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-base font-bold text-slate-950">Meta de ahorro de la empresa</h2>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Se guarda con el tablero y se envía junto con el recibo de luz.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.5}
-                  value={ahorroMeta}
-                  disabled={ahorroBloqueado}
-                  onChange={(e) =>
-                    setAhorroMeta(Math.min(100, Math.max(0, Number(e.target.value) || 0)))
-                  }
-                  className="w-24 rounded-xl border border-emerald-300 bg-white px-3 py-2 text-right text-sm font-black text-slate-800 disabled:bg-emerald-100/50 disabled:text-slate-500"
+            {mostrarMediciones && (
+              <>
+                <DemandSection
+                  rawChartData={rawChartData}
+                  seriesKeys={seriesKeys}
+                  visibleDemandSeries={visibleDemandSeries}
+                  onToggleDemandDay={toggleDemandDay}
+                  importing={importing}
+                  onFileChange={handleFileChange}
+                  horaPicoMaximo={horaPicoMaximo}
+                  analisisPotencia={analisisPotencia}
                 />
-                <span className="text-sm font-black text-emerald-700">%</span>
 
-                {ahorroBloqueado ? (
-                  isSuperAdmin ? (
-                    <button
-                      type="button"
-                      onClick={() => setEditandoAhorro(true)}
-                      className="cursor-pointer rounded-xl border border-emerald-600 px-4 py-2 text-xs font-black text-emerald-700 transition-all hover:bg-emerald-100 active:scale-95"
-                    >
-                      Editar
-                    </button>
-                  ) : (
-                    <span className="text-xs font-bold text-slate-400">🔒 Meta fijada</span>
-                  )
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSaveAhorro}
-                    disabled={savingAhorro}
-                    className="cursor-pointer rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
-                  >
-                    {savingAhorro ? "Guardando..." : "Guardar"}
-                  </button>
+                <ReactivePowerSection
+                  rawChartData={rawChartData}
+                  seriesKeys={seriesKeys}
+                  selectedReactiveDay={selectedReactiveDay}
+                  onSelectReactiveDay={setSelectedReactiveDay}
+                  visibleReactiveSeries={visibleReactiveSeries}
+                  onToggleReactiveDay={toggleReactiveDay}
+                />
+
+                <ThdVoltageSection
+                  rawChartData={rawChartData}
+                  seriesKeys={seriesKeys}
+                  selectedThdUDay={selectedThdUDay}
+                  onSelectThdUDay={setSelectedThdUDay}
+                  visibleThdFases={visibleThdFases}
+                  onToggleThdFase={toggleThdFase}
+                />
+              </>
+            )}
+
+            {mostrarItic && (
+              <IticCurveSection
+                iticEvents={iticEvents}
+                tensionNominal={board?.tensionNominal}
+                uploadingItic={uploadingItic}
+                onIticFileUpload={handleIticFileUpload}
+              />
+            )}
+
+            {mostrarReciboLuz && (
+              <>
+                {!isAdmin && (
+                  <div className="flex flex-col gap-3 rounded-3xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="text-base font-bold text-slate-950">Meta de ahorro de la empresa</h2>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        Se guarda con el tablero y se envía junto con el recibo de luz.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.5}
+                        value={ahorroMeta}
+                        disabled={ahorroBloqueado}
+                        onChange={(e) =>
+                          setAhorroMeta(Math.min(100, Math.max(0, Number(e.target.value) || 0)))
+                        }
+                        className="w-24 rounded-xl border border-emerald-300 bg-white px-3 py-2 text-right text-sm font-black text-slate-800 disabled:bg-emerald-100/50 disabled:text-slate-500"
+                      />
+                      <span className="text-sm font-black text-emerald-700">%</span>
+
+                      {ahorroBloqueado ? (
+                        isSuperAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() => setEditandoAhorro(true)}
+                            className="cursor-pointer rounded-xl border border-emerald-600 px-4 py-2 text-xs font-black text-emerald-700 transition-all hover:bg-emerald-100 active:scale-95"
+                          >
+                            Editar
+                          </button>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-400">🔒 Meta fijada</span>
+                        )
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleSaveAhorro}
+                          disabled={savingAhorro}
+                          className="cursor-pointer rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white transition-all hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
+                        >
+                          {savingAhorro ? "Guardando..." : "Guardar"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 )}
-              </div>
-            </div>
 
-            {/* Gráfico de Consumo de Energía con el Botón para Subir Recibo */}
-            <EnergyBarSection
-              energiaPorMesData={energiaMensualRecibo}
-              ahorroMeta={ahorroMeta}
-              visibleEnergySeries={visibleEnergySeries}
-              onToggleEnergyDay={toggleEnergyDay}
-              isUploadingBill={isUploadingBill}
-              onBillUpload={handleBillUpload}
-            />
+                {/* Gráfico de Consumo de Energía con el Botón para Subir Recibo */}
+                <EnergyBarSection
+                  energiaPorMesData={energiaMensualRecibo}
+                  ahorroMeta={ahorroMeta}
+                  visibleEnergySeries={visibleEnergySeries}
+                  onToggleEnergyDay={toggleEnergyDay}
+                  isUploadingBill={isUploadingBill}
+                  onBillUpload={handleBillUpload}
+                />
+              </>
+            )}
 
             {/* Huella de carbono: calculada solo con las mediciones del CSV */}
-            <CarbonEmissionsSection
-              energiaPorDiaData={energiaDiariaMedida}
-              visibleCarbonSeries={visibleCarbonSeries}
-              seriesKeys={diasSemanaKeys}
-              onToggleCarbonDay={toggleCarbonDay}
-            />
+            {mostrarMediciones && (
+              <CarbonEmissionsSection
+                energiaPorDiaData={energiaDiariaMedida}
+                visibleCarbonSeries={visibleCarbonSeries}
+                seriesKeys={diasSemanaKeys}
+                onToggleCarbonDay={toggleCarbonDay}
+              />
+            )}
           </>
         )}
 
@@ -930,7 +992,7 @@ const BoardDetailPage = () => {
           renderInsulationMeasurements()
         )}
 
-        {isEmpresarial && board?._id && (
+        {isEmpresarial && board?._id && mostrarTermografia && (
           <ThermographySection
             boardId={board._id}
             originalImageUrl={board.images?.termografia?.[0]}

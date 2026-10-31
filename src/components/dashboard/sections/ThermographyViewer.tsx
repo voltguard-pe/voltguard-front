@@ -9,6 +9,7 @@ import {
   Sparkles
 } from "lucide-react";
 import { getThermographyInfo, fetchThermalMatrix } from "../../../services/thermography.service";
+import { useAuth } from "../../../shared/hooks/useAuth";
 
 interface ThermographyViewerProps {
   boardId?: string;
@@ -24,6 +25,9 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
   onOpenImportModal,
   reloadKey = 0,
 }) => {
+  const { auth } = useAuth()
+  const isAdmin = auth?.role === "ADMIN"
+
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const [matrix, setMatrix] = useState<Float32Array | null>(null);
@@ -114,14 +118,16 @@ export const ThermographyViewer: React.FC<ThermographyViewerProps> = ({
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onOpenImportModal}
-          className="inline-flex items-center gap-2 rounded-xl bg-orange-600 hover:bg-orange-700 px-4 py-2.5 text-xs font-black text-white cursor-pointer shadow-md active:scale-95 transition-all"
-        >
-          <UploadCloud size={16} />
-          {matrix ? "Actualizar Termografía" : "Importar Termografía"}
-        </button>
+        {!isAdmin && (
+          <button
+            type="button"
+            onClick={onOpenImportModal}
+            className="inline-flex items-center gap-2 rounded-xl bg-orange-600 hover:bg-orange-700 px-4 py-2.5 text-xs font-black text-white cursor-pointer shadow-md active:scale-95 transition-all"
+          >
+            <UploadCloud size={16} />
+            {matrix ? "Actualizar Termografía" : "Importar Termografía"}
+          </button>
+        )}
       </div>
 
       {!matrix ? (

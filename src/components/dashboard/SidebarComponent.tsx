@@ -25,7 +25,8 @@ import {
   Zap,
   KeyRound,
   Sparkles,
-  type LucideIcon
+  type LucideIcon,
+  BadgeDollarSign
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -109,6 +110,7 @@ const SidebarComponent = ({
   const lastname = auth?.lastname || "";
   const role = auth?.role || "USER";
   const isSuperAdmin = role === "SUPERADMIN";
+  const isSalesOrAdmin = role === "SUPERADMIN" || role === "SALES";
   const initials = `${firstname.trim().charAt(0)}${lastname.trim().charAt(0)}`.toUpperCase() || "U";
 
   const [companies, setCompanies] = useState<CompanyResponseDTO[]>([]);
@@ -628,6 +630,16 @@ const SidebarComponent = ({
                       <KeyRound size={16} />
                       <span>Emisión de Licencias</span>
                     </NavLink>
+                    {isSalesOrAdmin && (
+                      <NavLink
+                        to="/dashboard/sales"
+                        onClick={onClose}
+                        className={({ isActive }) => navItemClass(isActive)}
+                      >
+                        <BadgeDollarSign size={16} className="text-amber-500" />
+                        <span>Gestión de Ventas</span>
+                      </NavLink>
+                    )}
                     <NavLink to="/dashboard/companies" onClick={onClose} className={({ isActive }) => navItemClass(isActive)}>
                       <Building2 size={16} />
                       <span>Empresas</span>

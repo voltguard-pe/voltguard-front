@@ -1,5 +1,5 @@
 import React from "react";
-import { BarChart3, ChartNoAxesCombined, Clock, UploadCloud, Zap } from "lucide-react";
+import { BarChart3, ChartNoAxesCombined, Clock, Info, UploadCloud, Zap } from "lucide-react";
 import {
   CartesianGrid,
   Label,
@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { useAuth } from "../../../shared/hooks/useAuth";
 
 const MAIN_COLORS = [
   '#2f5597', '#4caf50', '#9c27b0', '#00bcd4', '#ff9800',
@@ -32,10 +33,9 @@ interface DemandSectionProps {
   importing: boolean;
   onFileChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   horaPicoMaximo: string | null;
-  analisisPotencia?: any; // Opcional: la envía BoardDetailPage
+  analisisPotencia?: any;
 }
 
-// Helpers fuera del componente (tipados explícitamente)
 const esHoraPunta = (hora: string): boolean => {
   const h = parseInt(hora.split(":")[0], 10);
   return h >= 18 && h < 23;
@@ -49,41 +49,44 @@ const mayorPico = (lista: PicoMaximoInfo[]): PicoMaximoInfo | null =>
 
 const CustomTooltip = ({ active, label, payload }: any) => {
   if (active && payload && payload.length) {
+    const validItems = payload.filter((item: any) => item.value !== null && item.value !== undefined);
+    if (validItems.length === 0) return null;
+
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-3 sm:p-4 shadow-xl max-w-[280px] sm:max-w-xs font-sans text-xs">
-        <div className="mb-2 border-b border-slate-100 pb-1.5 flex justify-between items-center gap-2">
-          <span className="font-semibold text-slate-400 uppercase tracking-wider text-[9px] sm:text-[10px]">
-            Intervalo Diario
+      <div className="pointer-events-none z-50 rounded-2xl border border-slate-200/80 bg-white/95 p-3.5 shadow-2xl backdrop-blur-md max-w-[280px] font-sans text-xs transition-all">
+        <div className="mb-2 border-b border-slate-100 pb-2 flex justify-between items-center gap-2">
+          <span className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">
+            Hora Muestreada
           </span>
-          <span className="flex items-center gap-x-1 font-black text-slate-900 bg-slate-100 px-1.5 sm:px-2 py-0.5 rounded-md border border-slate-200/60 text-[10px] sm:text-[11px] shrink-0">
-            <Clock size={12} /> {label} hrs
+          <span className="flex items-center gap-x-1 font-black text-orange-950 bg-orange-50 px-2 py-0.5 rounded-lg border border-orange-200/60 text-[11px] shrink-0">
+            <Clock size={12} className="text-orange-600" /> {label} hrs
           </span>
         </div>
 
-        <div className="space-y-2 max-h-40 sm:max-h-52 overflow-y-auto pr-1">
-          {[...payload]
-            .sort((a, b) => (b.value || 0) - (a.value || 0))
+        <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+          {validItems
+            .sort((a: any, b: any) => (b.value || 0) - (a.value || 0))
             .map((item: any, index: number) => (
-              <div key={index} className="flex items-center justify-between gap-4 sm:gap-6 font-semibold">
-                <div className="flex items-center gap-1.5 min-w-0">
+              <div key={index} className="flex items-center justify-between gap-4 font-semibold py-0.5">
+                <div className="flex items-center gap-2 min-w-0">
                   <span
-                    className="size-1.5 sm:size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: item.stroke }}
+                    className="size-2 shrink-0 rounded-full ring-2 ring-white"
+                    style={{ backgroundColor: item.stroke || item.color }}
                   />
-                  <span className="truncate text-slate-600 text-[10px] sm:text-[11px]">
+                  <span className="truncate text-slate-700 text-[11px]">
                     {item.name}
                   </span>
                 </div>
-                <span className="text-slate-900 font-black text-right tabular-nums whitespace-nowrap text-[10px] sm:text-[11px]">
-                  {item.value !== null && item.value !== undefined ? `${Number(item.value).toFixed(2)} kW` : '-'}
+                <span className="text-slate-950 font-black text-right tabular-nums whitespace-nowrap text-[11px]">
+                  {Number(item.value).toFixed(2)} kW
                 </span>
               </div>
             ))}
         </div>
 
-        <div className="mt-2.5 border-t border-slate-100 pt-2 text-[9px] sm:text-[10px] text-slate-400 font-medium flex justify-between">
-          <span>Analizador: Metrel</span>
-          <span className="font-bold text-[#0797d5]">VoltGuard</span>
+        <div className="mt-2.5 border-t border-slate-100 pt-1.5 text-[9px] text-slate-400 font-semibold flex justify-between items-center">
+          <span>Curva de Demanda</span>
+          <span className="font-black text-orange-600 tracking-wider">VoltGuard</span>
         </div>
       </div>
     );
@@ -100,7 +103,9 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
   onFileChange,
   horaPicoMaximo
 }) => {
-  // 1. Recolección de valores reales visibles para cálculo dinámico del gráfico
+  const { auth } = useAuth();
+  const isAdmin = auth?.role === "ADMIN";
+
   const allVisibleValues: number[] = [];
 
   rawChartData.forEach((row) => {
@@ -114,7 +119,6 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
     });
   });
 
-  // 2. Lógica de escala uniforme en el eje Y
   const minVal = allVisibleValues.length > 0 ? Math.min(...allVisibleValues) : 0;
   const maxVal = allVisibleValues.length > 0 ? Math.max(...allVisibleValues) : 10;
   const diff = maxVal - minVal;
@@ -136,7 +140,6 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
     yTicks.push(Number(val.toFixed(2)));
   }
 
-  // 3. Cálculo de los picos máximos semanales (sin variables mutables en callbacks)
   const todosLosPicos: PicoMaximoInfo[] = [];
 
   for (const row of rawChartData) {
@@ -159,6 +162,9 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
     visibleDemandSeries["Promedio_General"] ||
     seriesKeys.some((key) => visibleDemandSeries[key]);
 
+  // Si hay pocos puntos (ej: 48 de intervalos de 30 min), mostramos pequeños dots estáticos
+  const mostrarDots = rawChartData.length <= 96;
+
   return (
     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm transition-all duration-300 hover:border-slate-300 font-sans">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-5">
@@ -167,28 +173,35 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
             <BarChart3 size={20} className="sm:size-[22px]" />
           </div>
           <div>
-            <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">Cuadro de Demanda</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-bold text-slate-950 text-sm sm:text-base tracking-tight">Cuadro de Demanda</h2>
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-500">
+                <Info size={11} /> Pasa el cursor para inspeccionar
+              </span>
+            </div>
             <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Demanda instantánea calculada y expresada en KiloVatios (kW)</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <label
-            htmlFor="csv-metrel"
-            className="flex sm:inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl px-5 py-2.5 text-xs font-black text-white transition-all duration-300 cursor-pointer shadow-md shadow-orange-500/25 border border-orange-500/30 active:scale-95 h-[38px]"
-            style={{ background: "linear-gradient(to right, #f97316, #c2410c)" }}
-          >
-            <UploadCloud size={16} />
-            {importing ? "Importando..." : "Importar .Mediciones.csv"}
-          </label>
-          <input
-            id="csv-metrel"
-            type="file"
-            accept=".csv"
-            onChange={onFileChange}
-            className="hidden"
-            disabled={importing}
-          />
-        </div>
+        {!isAdmin && (
+          <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <label
+              htmlFor="csv-measurements"
+              className="flex sm:inline-flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl px-5 py-2.5 text-xs font-black text-white transition-all duration-300 cursor-pointer shadow-md shadow-orange-500/25 border border-orange-500/30 active:scale-95 h-[38px]"
+              style={{ background: "linear-gradient(to right, #f97316, #c2410c)" }}
+            >
+              <UploadCloud size={16} />
+              {importing ? "Importando..." : "Importar Mediciones (.csv)"}
+            </label>
+            <input
+              id="csv-measurements"
+              type="file"
+              accept=".csv"
+              onChange={onFileChange}
+              className="hidden"
+              disabled={importing}
+            />
+          </div>
+        )}
       </div>
 
       {rawChartData.length === 0 ? (
@@ -207,11 +220,10 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
             <button
               type="button"
               onClick={() => onToggleDemandDay("Promedio_General")}
-              className={`flex shrink-0 items-center gap-x-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer ${
-                visibleDemandSeries["Promedio_General"]
-                  ? 'text-white shadow-sm shadow-orange-500/25 border-orange-500/30 scale-[1.02]'
-                  : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
+              className={`flex shrink-0 items-center gap-x-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer ${visibleDemandSeries["Promedio_General"]
+                ? 'text-white shadow-sm shadow-orange-500/25 border-orange-500/30 scale-[1.02]'
+                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
               style={
                 visibleDemandSeries["Promedio_General"]
                   ? { background: "linear-gradient(to right, #f97316, #c2410c)" }
@@ -228,11 +240,10 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                   key={key}
                   type="button"
                   onClick={() => onToggleDemandDay(key)}
-                  className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${
-                    isSelected
-                      ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all border cursor-pointer shrink-0 ${isSelected
+                    ? 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
                 >
                   {key}
                 </button>
@@ -241,7 +252,7 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
           </div>
 
           <div className="w-full overflow-x-auto rounded-2xl border border-slate-100 p-2 sm:p-0 sm:border-none scrollbar-thin">
-            <div className="h-72 sm:h-80 md:h-[420px] w-[850px] sm:w-full text-xs font-medium text-slate-500 select-none [&_*]:focus:outline-none [&_path]:focus:outline-none [&_rect]:focus:outline-none">
+            <div className="h-72 sm:h-80 md:h-[440px] w-[850px] sm:w-full text-xs font-medium text-slate-500 select-none [&_*]:focus:outline-none">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart
                   data={rawChartData}
@@ -254,7 +265,7 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                     </linearGradient>
                   </defs>
 
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
 
                   {(() => {
                     const horasVisibles: string[] = rawChartData.map((d) => d.horaMinuto);
@@ -298,11 +309,12 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                     stroke="#94a3b8"
                     allowDuplicatedCategory={false}
                     dy={10}
-                    interval={11}
+                    interval="preserveStartEnd"
+                    minTickGap={35}
                     tick={{ angle: -45, textAnchor: 'end', fontSize: '9px', fontWeight: '600', fill: '#64748b' }}
                     height={60}
                   >
-                    <Label value="Hora del Día" position="insideBottom" offset={-10} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '14px', letterSpacing: '0.05em' }} />
+                    <Label value="Hora del Día" position="insideBottom" offset={-10} style={{ textAnchor: 'middle', fill: '#475569', fontWeight: '800', fontSize: '13px' }} />
                   </XAxis>
 
                   <YAxis
@@ -316,28 +328,70 @@ export const DemandSection: React.FC<DemandSectionProps> = ({
                     tick={{ fontSize: '10px' }}
                     tickFormatter={(val) => `${Number(val).toFixed(stepIncrement < 1 ? 1 : 0)}`}
                   >
-                    <Label value="Demanda de Potencia Activa (kW)" angle={-90}
-                  position="insideLeft"
-                  offset={-5}
-                  style={{
-                    textAnchor: "middle",
-                    fill: "#334155",
-                    fontWeight: "900",
-                    fontSize: "14px"
-                  }}
-                />
+                    <Label
+                      value="Demanda de Potencia Activa (kW)"
+                      angle={-90}
+                      position="insideLeft"
+                      offset={-5}
+                      style={{
+                        textAnchor: "middle",
+                        fill: "#334155",
+                        fontWeight: "900",
+                        fontSize: "13px"
+                      }}
+                    />
                   </YAxis>
 
-
-                  <Tooltip content={<CustomTooltip />} shared={true} />
+                  {/* Cursor interactivo que rastrea y activa el tooltip con claridad */}
+                  <Tooltip
+                    content={<CustomTooltip />}
+                    cursor={{
+                      stroke: "#f97316",
+                      strokeWidth: 1.5,
+                      strokeDasharray: "4 4",
+                      strokeOpacity: 0.8
+                    }}
+                    isAnimationActive={true}
+                  />
 
                   {visibleDemandSeries["Promedio_General"] && (
-                    <Line type="monotone" name="Promedio General" dataKey="Promedio_General" stroke="url(#lineGradPromedio)" strokeWidth={3} dot={false} connectNulls animationDuration={150} />
+                    <Line
+                      type="linear"
+                      name="Promedio General"
+                      dataKey="Promedio_General"
+                      stroke="url(#lineGradPromedio)"
+                      strokeWidth={3}
+                      dot={mostrarDots ? { r: 2.5, fill: "#ea580c", strokeWidth: 0 } : false}
+                      activeDot={{
+                        r: 6,
+                        fill: "#ea580c",
+                        stroke: "#ffffff",
+                        strokeWidth: 2
+                      }}
+                      connectNulls
+                      animationDuration={200}
+                    />
                   )}
 
                   {seriesKeys.map((key, idx) =>
                     visibleDemandSeries[key] ? (
-                      <Line key={key} type="monotone" name={key} dataKey={key} stroke={MAIN_COLORS[idx % MAIN_COLORS.length]} strokeWidth={1.5} dot={false} connectNulls animationDuration={150} />
+                      <Line
+                        key={key}
+                        type="linear"
+                        name={key}
+                        dataKey={key}
+                        stroke={MAIN_COLORS[idx % MAIN_COLORS.length]}
+                        strokeWidth={1.5}
+                        dot={mostrarDots ? { r: 2, fill: MAIN_COLORS[idx % MAIN_COLORS.length], strokeWidth: 0 } : false}
+                        activeDot={{
+                          r: 5.5,
+                          fill: MAIN_COLORS[idx % MAIN_COLORS.length],
+                          stroke: "#ffffff",
+                          strokeWidth: 2
+                        }}
+                        connectNulls
+                        animationDuration={200}
+                      />
                     ) : null
                   )}
                 </LineChart>

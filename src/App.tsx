@@ -46,6 +46,8 @@ import DashboardRouter from './routes/DashboardRouter'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRouter'
 import ScrollToTop from './shared/components/ScrollToTop'
+import { SalesDashboardView } from './pages/dashboard/sales/SalesDashboardView'
+import { SubscriptionDetailPage } from './pages/dashboard/sales/SubscriptionDetailPage'
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div className="p-6">
@@ -162,6 +164,9 @@ function App() {
                   <Route path="/dashboard/permissions" element={<PermissionsView />} />
 
                   <Route path="licenses" element={<AdminLicensesView />} />
+
+                  <Route path="sales" element={<SalesDashboardView />} />
+                  <Route path="sales/:id/subscription" element={<SubscriptionDetailPage />} />
 
                   <Route path="companies" element={<CompaniesDashboardPages />} />
                   <Route path="companies/create" element={<CompaniesCreatePage />} />

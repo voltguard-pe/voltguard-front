@@ -1,7 +1,7 @@
-import { ArrowLeft, Building2, CheckCircle2, Info, MapPin, X } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import { ArrowLeft, Building2, CheckCircle2, FileText, Info, MapPin, RefreshCw, RotateCcw, X, ZoomIn, ZoomOut } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+import { isNoCreditsError, triggerGlobalNoCreditsModal } from "../../../components/dashboard/modals/ImportBoardsAndNfpaModal";
 import { CarbonEmissionsSection } from "../../../components/dashboard/sections/CarbonEmissionsSection";
 import { DemandSection } from "../../../components/dashboard/sections/DemandSection";
 import { EnergyBarSection } from "../../../components/dashboard/sections/EnergyBarSection";
@@ -11,18 +11,17 @@ import { ReactivePowerSection } from "../../../components/dashboard/sections/Rea
 import { ThdVoltageSection } from "../../../components/dashboard/sections/ThdVoltageSection";
 import { ThermographySection } from "../../../components/dashboard/sections/ThermographySection";
 import { updateAhorroMeta, uploadReceiptBill } from "../../../services/bill.service";
-import { getBoardByCode } from "../../../services/board.service";
+import { getBoardByCode, updateBoard } from "../../../services/board.service";
 import { getDemandChartData, uploadMetrelCsv } from "../../../services/measurement.service";
 import { getIticEvents, uploadIticCsv, type VoltageEventItem } from "../../../services/voltageEvent.service";
 import { useAuth } from "../../../shared/hooks/useAuth";
 import type { BoardResponseDTO } from "../../../shared/types/BoardProps";
-import { isNoCreditsError, triggerGlobalNoCreditsModal } from "../../../components/dashboard/modals/ImportBoardsAndNfpaModal";
 
 // ── FUNCIONES AUXILIARES DE FORMATEO ──
 const value = (data: unknown) =>
   data === null || data === undefined || data === "" ? "-" : String(data);
 
-const bool = (data?: boolean) => (data ? "Sí" : "No");
+// const bool = (data?: boolean) => (data ? "Sí" : "No");
 
 const formatMeasurementWithUnit = (
   data: number | null | undefined,
@@ -85,7 +84,6 @@ const BoardDetailPage = () => {
   const [board, setBoard] = useState<BoardResponseDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const [rawChartData, setRawChartData] = useState<any[]>([]);
   const [seriesKeys, setSeriesKeys] = useState<string[]>([]);
@@ -118,6 +116,167 @@ const BoardDetailPage = () => {
     maxHFP: { valor: number; hora: string; fecha: string } | null;
     ahorroEstimado: number;
   } | null>(null);
+
+  // Cambiar imagen diagrama unifilar
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [replacingImageIndex, setReplacingImageIndex] = useState<number | null>(null);
+  const [isUpdatingUnifilar, setIsUpdatingUnifilar] = useState(false);
+
+  // Manejador para reemplazar la imagen seleccionada
+  const handleReplaceUnifilarImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawFile = e.target.files?.[0];
+    const targetIndex = replacingImageIndex;
+
+    // Reseteamos el input de inmediato para permitir seleccionar el mismo archivo si es necesario
+    e.target.value = "";
+
+    if (!rawFile || targetIndex === null || !board || !publicCode || !code) {
+      setReplacingImageIndex(null);
+      return;
+    }
+
+    setIsUpdatingUnifilar(true);
+
+    try {
+      // 1. Optimización del peso para evitar lag y tiempos muertos
+      const file = await compressImage(rawFile, 2048, 0.82);
+
+      // 2. Conservamos las demás imágenes existentes excluyendo la que se reemplaza
+      const currentImages = board.images?.unifilar || [];
+      const updatedExisting = currentImages.filter((_, idx) => idx !== targetIndex);
+
+      // 3. Petición real al backend
+      await updateBoard(publicCode, code, {
+        existingUnifilar: updatedExisting,
+        unifilar: [file],
+      });
+
+      // 4. Consulta del estado real guardado en base de datos
+      const freshBoard = await getBoardByCode(publicCode, code);
+
+      // Romper caché del navegador para la nueva URL
+      const timestamp = Date.now();
+      const cacheBustedUnifilar = (freshBoard.images?.unifilar || []).map((url: string) =>
+        url.includes("?") ? `${url}&t=${timestamp}` : `${url}?t=${timestamp}`
+      );
+
+      // 5. Asignar el nuevo estado real
+      setBoard({
+        ...freshBoard,
+        images: {
+          ...freshBoard.images,
+          unifilar: cacheBustedUnifilar,
+        },
+      });
+    } catch (err: any) {
+      console.error("Error al actualizar unifilar:", err);
+      alert("Error al actualizar la imagen: " + (err.response?.data?.message || err.message));
+    } finally {
+      // Apagamos siempre el spinner y limpiamos el índice
+      setIsUpdatingUnifilar(false);
+      setReplacingImageIndex(null);
+    }
+  };
+  // Cambiar imagen diagrama unifilar
+
+  // Zoom
+  // Estados para el visor interactivo tipo Google Drive
+  const [activePreview, setActivePreview] = useState<{
+    url: string;
+    title: string;
+    reading?: string;
+  } | null>(null);
+
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [panPosition, setPanPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Referencias para interacción
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const touchDistanceRef = useRef<number | null>(null);
+
+  const resetZoom = () => {
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+    touchDistanceRef.current = null;
+  };
+
+  // Bloqueo de scroll global, tecla Escape y Zoom nativo no pasivo
+  useEffect(() => {
+    if (!activePreview) return;
+
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActivePreview(null);
+        resetZoom();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    const container = imageContainerRef.current;
+    const handleNativeWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const delta = e.deltaY < 0 ? 0.2 : -0.2;
+      setZoomScale((prev) => Math.min(Math.max(0.5, prev + delta), 4));
+    };
+
+    if (container) {
+      container.addEventListener("wheel", handleNativeWheel, { passive: false });
+    }
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+      if (container) {
+        container.removeEventListener("wheel", handleNativeWheel);
+      }
+    };
+  }, [activePreview]);
+
+  // Gestos táctiles en móvil (1 dedo = Pan, 2 dedos = Pinch to Zoom)
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchDistanceRef.current = dist;
+    } else if (e.touches.length === 1 && zoomScale > 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - panPosition.x,
+        y: e.touches[0].clientY - panPosition.y,
+      });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchDistanceRef.current !== null) {
+      const currentDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const ratio = currentDist / touchDistanceRef.current;
+      setZoomScale((prev) => Math.min(Math.max(0.5, prev * ratio), 4));
+      touchDistanceRef.current = currentDist;
+    } else if (e.touches.length === 1 && isDragging && zoomScale > 1) {
+      setPanPosition({
+        x: e.touches[0].clientX - dragStart.x,
+        y: e.touches[0].clientY - dragStart.y,
+      });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    touchDistanceRef.current = null;
+  };
+  // Zoom
 
   const fetchChartData = async (boardId: string, start?: string, end?: string) => {
     try {
@@ -601,12 +760,12 @@ const BoardDetailPage = () => {
     }
   };
 
-  const renderField = (label: string, data: unknown, index: number) => (
-    <div style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${index * 30}ms` }} className="rounded-2xl bg-slate-50 p-4 transition-all hover:bg-slate-100/80">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 break-words text-sm font-bold text-slate-800">{value(data)}</p>
-    </div>
-  );
+  // const renderField = (label: string, data: unknown, index: number) => (
+  //   <div style={{ animation: "fadeUp 0.4s ease both", animationDelay: `${index * 30}ms` }} className="rounded-2xl bg-slate-50 p-4 transition-all hover:bg-slate-100/80">
+  //     <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+  //     <p className="mt-1 break-words text-sm font-bold text-slate-800">{value(data)}</p>
+  //   </div>
+  // );
 
   const renderInsulationMeasurements = () => {
     const records = board?.insulationMeasurements ?? [];
@@ -687,6 +846,70 @@ const BoardDetailPage = () => {
       </section>
     );
   }
+
+  const compressImage = (file: File, maxWidth = 2048, quality = 0.8): Promise<File> => {
+    return new Promise((resolve) => {
+      // Si no es una imagen común (por ejemplo, SVG o PDF), devolver el original
+      if (!file.type.startsWith("image/")) {
+        resolve(file);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          // Redimensionar proporcionalmente si supera el ancho máximo (2048px es óptimo para planos)
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(file);
+            return;
+          }
+
+          // Suavizado de líneas para planos
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Exportar a WebP (o JPEG si no es soportado) comprimido al 80%
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                resolve(file);
+                return;
+              }
+              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".webp"), {
+                type: "image/webp",
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            "image/webp",
+            quality
+          );
+        };
+
+        img.onerror = () => resolve(file);
+      };
+
+      reader.onerror = () => resolve(file);
+    });
+  };
 
   // ── REGLAS DE VISIBILIDAD POR DATOS CARGADOS ──
   // El SUPERADMIN siempre ve todas las secciones (incluso vacías para poder subir datos)
@@ -923,35 +1146,86 @@ const BoardDetailPage = () => {
           </>
         )}
 
-        {/* ── PLAN BÁSICO / BÁSICO COMÚN ── */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 font-bold text-slate-950 text-base">Información general</h2>
-            <div className="space-y-2">
-              {renderField("Código real del tablero", board.boardCode, 1)}
-              {renderField("Nombre", board.name, 2)}
-              {renderField("Tipo", board.type, 3)}
-              {renderField("Sistema", board.sistema, 4)}
-              {renderField("Estado general", board.estadoGeneral, 5)}
-              {renderField("Ubicación", board.location, 6)}
-              {renderField("Descripción", board.description, 7)}
+{/* ── SECCIÓN DIAGRAMA UNIFILAR ── */}
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          {/* Input oculto para subir la imagen */}
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleReplaceUnifilarImage}
+            accept="image/*"
+            className="hidden"
+          />
+
+          {/* Cabecera con título, badge y botón Cambiar imagen */}
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <h2 className="text-base font-bold text-slate-950">Diagrama unifilar</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Plano eléctrico del tablero. Haz clic sobre el plano para abrir el visor interactivo de zoom.
+              </p>
             </div>
+
+              <button
+                type="button"
+                disabled={isUpdatingUnifilar}
+                onClick={() => {
+                  setReplacingImageIndex(0);
+                  fileInputRef.current?.click();
+                }}
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-xs hover:bg-slate-50 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+                title="Reemplazar plano unifilar"
+              >
+                <RefreshCw size={13} className={isUpdatingUnifilar ? "animate-spin text-[#0797d5]" : "text-slate-500"} />
+                <span>{isUpdatingUnifilar ? "Subiendo plano..." : "Cambiar imagen"}</span>
+              </button>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h2 className="mb-4 font-bold text-slate-950 text-base">Información eléctrica</h2>
-            <div className="space-y-2">
-              {renderField("Tensión nominal", board.tensionNominal ? `${board.tensionNominal} V` : "-", 1)}
-              {renderField("Número de fases", board.numeroFases, 2)}
-              <div
-                style={{ animation: "fadeUp 0.4s ease both", animationDelay: "90ms" }}
-                className="rounded-2xl bg-slate-50 p-4"
-              >
-                <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Incluye neutro</p>
-                <p className="mt-1 break-words text-sm font-bold text-slate-800">{bool(board.incluyeNeutro)}</p>
-              </div>
+          {/* Área del plano */}
+          {board.images?.unifilar && board.images.unifilar.length > 0 ? (
+            <div className="space-y-6">
+              {board.images.unifilar.map((imgUrl, idx) => (
+                <div
+                  key={idx}
+                  className="relative w-full h-[650px] rounded-2xl border border-slate-200 bg-slate-900/5 overflow-hidden flex items-center justify-center shadow-xs"
+                >
+                  {/* Imagen: Solo este elemento dispara el modal al hacer clic */}
+                  <img
+                    src={imgUrl}
+                    alt={`Diagrama unifilar ${idx + 1}`}
+                    onClick={() => {
+                      setActivePreview({
+                        url: imgUrl,
+                        title: `Diagrama Unifilar - ${board.boardCode}`,
+                        reading: `Plano ${idx + 1} de ${board.images.unifilar.length}`,
+                      });
+                      resetZoom();
+                    }}
+                    className="max-h-full max-w-full object-contain p-3 cursor-pointer transition-transform duration-200 hover:scale-[1.01]"
+                    loading="lazy"
+                  />
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-12 text-center">
+              <FileText className="text-slate-400 opacity-40 mb-2" size={32} />
+              <p className="text-xs font-bold text-slate-500 mb-3">
+                Sin diagramas unifilares registrados para este tablero
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setReplacingImageIndex(0);
+                  fileInputRef.current?.click();
+                }}
+                className="flex items-center gap-2 rounded-xl bg-[#0797d5] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-[#0684ba] active:scale-95 cursor-pointer"
+              >
+                <RefreshCw size={13} />
+                Subir plano unifilar
+              </button>
+            </div>
+          )}
         </div>
 
         {board.circuits && board.circuits.length > 0 && (
@@ -1001,26 +1275,135 @@ const BoardDetailPage = () => {
 
       </section>
 
-      {selectedImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 transition-all duration-300 animate-fade-in">
-          <button
-            type="button"
-            onClick={() => setSelectedImage(null)}
-            className="absolute right-5 top-5 flex size-11 items-center justify-center rounded-2xl bg-white text-slate-700 shadow shadow-black/20 hover:bg-slate-50 cursor-pointer transition-colors z-50"
+      {/* ========================================================================= */}
+      {/* VISOR ESTILO GOOGLE DRIVE (DESKTOP + MOBILE TOUCH & PINCH) */}
+      {/* ========================================================================= */}
+      {activePreview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex flex-col justify-between bg-black/95 backdrop-blur-md select-none touch-none animate-fade-in"
+          onClick={() => {
+            setActivePreview(null);
+            resetZoom();
+          }}
+        >
+          {/* Barra Superior */}
+          <div
+            className="w-full flex items-center justify-between text-white px-4 py-3 sm:px-6 sm:py-4 z-20 bg-gradient-to-b from-black/90 to-transparent gap-2"
+            onClick={(e) => e.stopPropagation()}
           >
-            <X size={20} />
-          </button>
+            <div className="min-w-0 pr-2">
+              <p className="text-xs sm:text-sm font-bold tracking-wide truncate">
+                {activePreview.title}
+              </p>
+              {activePreview.reading && (
+                <p className="text-[10px] sm:text-xs text-slate-300 font-mono mt-0.5 truncate">
+                  {activePreview.reading}
+                </p>
+              )}
+            </div>
 
-          <TransformWrapper>
-            <TransformComponent>
-              <img
-                src={selectedImage}
-                alt="Vista ampliada"
-                className="max-h-[85vh] max-w-[85vw] rounded-2xl object-contain shadow-2xl transition-all relative z-40"
-                onClick={(event) => event.stopPropagation()}
-              />
-            </TransformComponent>
-          </TransformWrapper>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Controles de Zoom */}
+              <div className="flex items-center gap-1 sm:gap-2 bg-slate-900/90 border border-slate-700/60 rounded-xl sm:rounded-2xl px-2 sm:px-3 py-1 sm:py-1.5 backdrop-blur-xs">
+                <button
+                  type="button"
+                  onClick={() => setZoomScale((s) => Math.max(0.5, s - 0.25))}
+                  className="flex size-7 items-center justify-center rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                  title="Alejar (-)"
+                >
+                  <ZoomOut size={15} />
+                </button>
+
+                <span className="text-[11px] sm:text-xs font-mono font-semibold px-0.5 text-slate-200 min-w-10 text-center">
+                  {Math.round(zoomScale * 100)}%
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setZoomScale((s) => Math.min(4, s + 0.25))}
+                  className="flex size-7 items-center justify-center rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                  title="Acercar (+)"
+                >
+                  <ZoomIn size={15} />
+                </button>
+
+                <div className="h-3.5 w-px bg-slate-700 mx-0.5" />
+
+                <button
+                  type="button"
+                  onClick={resetZoom}
+                  className="flex size-7 items-center justify-center rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                  title="Restablecer tamaño original"
+                >
+                  <RotateCcw size={13} />
+                </button>
+              </div>
+
+              {/* Botón Cerrar */}
+              <button
+                type="button"
+                onClick={() => {
+                  setActivePreview(null);
+                  resetZoom();
+                }}
+                className="flex size-9 sm:size-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer"
+                title="Cerrar (Esc)"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Área Central Interactiva (Mouse + Touch) */}
+          <div
+            ref={imageContainerRef}
+            className={`relative flex-1 w-full overflow-hidden flex items-center justify-center ${zoomScale > 1 ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "cursor-default"
+              }`}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => {
+              if (zoomScale <= 1) return;
+              setIsDragging(true);
+              setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+            }}
+            onMouseMove={(e) => {
+              if (!isDragging || zoomScale <= 1) return;
+              setPanPosition({
+                x: e.clientX - dragStart.x,
+                y: e.clientY - dragStart.y,
+              });
+            }}
+            onMouseUp={() => setIsDragging(false)}
+            onMouseLeave={() => setIsDragging(false)}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <img
+              src={activePreview.url}
+              alt={activePreview.title}
+              draggable={false}
+              style={{
+                transform: `translate3d(${panPosition.x}px, ${panPosition.y}px, 0) scale(${zoomScale})`, // translate3d activa aceleración GPU
+                transition: isDragging ? "none" : "transform 0.15s ease-out",
+              }}
+              className="max-h-[82vh] max-w-[92vw] object-contain select-none pointer-events-auto rounded-lg shadow-2xl will-change-transform"
+            />
+          </div>
+
+          {/* Barra Inferior Informativa */}
+          <div
+            className="w-full text-center py-2.5 px-4 text-[10px] sm:text-[11px] text-slate-400 bg-gradient-to-t from-black/90 to-transparent z-10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="hidden sm:inline">
+              Rueda del ratón para Zoom &nbsp;•&nbsp; Arrastra para mover &nbsp;•&nbsp; Presiona Esc para salir
+            </span>
+            <span className="sm:hidden">
+              Pellizca con 2 dedos para zoom &nbsp;•&nbsp; Arrastra con 1 dedo para mover
+            </span>
+          </div>
         </div>
       )}
     </>

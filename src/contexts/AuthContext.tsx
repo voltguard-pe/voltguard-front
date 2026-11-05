@@ -64,12 +64,12 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error("Error al cerrar sesión", error);
     } finally {
-      navigate("/", {
-        replace: true,
-      });
-
+      localStorage.removeItem("token");
       setAuth(null);
       setIsLoggingOut(false);
+      navigate("/auth", {
+        replace: true,
+      });
     }
   };
 

@@ -1,15 +1,13 @@
 import { useSyncExternalStore } from "react";
 
-// ── Store compartido en memoria ──
-// La página de Comparativo y el sidebar (Facturación > Recibo de Luz) leen la
-// misma lista con useBillingComparisons(), así el código que se escribe al
-// importar aparece en el menú sin pasar props entre componentes.
-// Está en memoria: al recargar el navegador vuelve al SEED. Cuando exista
-// backend, reemplaza add() y setBill() por llamadas a la API.
-
 export type Slot = "a" | "b";
 export type BillFile = { name: string; url: string };
-export type CostItem = { name: string; value: number; power?: boolean };
+export type CostItem = {
+  name: string;
+  value: number;
+  baseValue?: number; // Monto real del recibo base (año 1)
+  power?: boolean;
+};
 
 export type ComparisonMetrics = {
   contractedKw: number;
@@ -17,14 +15,17 @@ export type ComparisonMetrics = {
   kwhFp: number[];
   kwhHp: number[];
   maxKw: number[];
-  costItems: CostItem[]; // desglose del recibo actual (S/); power = cargo por potencia
+  costItems: CostItem[];
   totalBill: number;
+  baseTotalBill?: number;
+  /** Posición (en `months`) del mes del recibo base. Por defecto 0. */
+  baseIndex?: number;
 };
 
 export type Comparison = {
   id: string;
-  code: string; // código que se ve en el sidebar
-  title: string; // ubicación / título
+  code: string;
+  title: string;
   companyCode?: string;
   distributor: string;
   supplyNumber?: string;
@@ -32,92 +33,196 @@ export type Comparison = {
   currentLabel: string;
   bills: Record<Slot, BillFile | null>;
   metrics: ComparisonMetrics;
-  // "demo" = números de prueba hardcodeados (todavía no se leen del PDF)
-  source: "demo" | "pdf";
+  source?: "pdf";
+  status?: "processing" | "ready" | "error";
+  error?: string;
+  warnings?: string[];
 };
 
-// Tabla "Historial de Consumos y Demandas" del recibo (May-25 a Abr-26)
-export const DEMO_METRICS: ComparisonMetrics = {
-  contractedKw: 55,
-  months: ["May-25", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic", "Ene-26", "Feb", "Mar", "Abr"],
-  kwhFp: [7678, 5688, 5232, 5645, 5631, 6523, 7880, 8482, 11891, 13714, 13459, 12779],
-  kwhHp: [966, 942, 906, 840, 956, 977, 1049, 942, 1216, 1535, 1292, 1166],
-  maxKw: [50.88, 31.72, 30.36, 46.0, 36.24, 43.92, 45.44, 52.8, 55.92, 56.08, 58.17, 62.52],
-  costItems: [
-    { name: "Energía fuera de punta", value: 3423.55 },
-    { name: "Potencia distribución", value: 3054.82, power: true },
-    { name: "Potencia generación", value: 2674.61, power: true },
-    { name: "IGV", value: 1763.44 },
-    { name: "Energía hora punta", value: 362.27 },
-    { name: "Alumbrado público", value: 208.5 },
-    { name: "Electrificación rural", value: 153.39 },
-    { name: "Reactiva capacitiva", value: 61.84 },
-    { name: "Cargos fijos", value: 11.28 },
-  ],
-  totalBill: 11713.7,
+// Ya no se piden periodos: la IA lee el mes real de cada PDF en el servidor.
+export type NewComparisonInput = {
+  code: string;
+  title: string;
+  companyCode?: string;
+  fileA: File;
+  fileB: File;
 };
 
-const SEED: Comparison = {
-  id: "seed-luz-1405305",
-  code: "LUZ-1405305",
-  title: "Suministro principal",
-  distributor: "Luz del Sur S.A.A.",
-  supplyNumber: "1405305",
-  baseLabel: "May-25",
-  currentLabel: "Abr-26",
-  bills: { a: null, b: null },
-  metrics: DEMO_METRICS,
-  source: "demo",
+// ── API ──
+const BASE_API = (import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1").replace(/\/$/, "");
+const API_URL = BASE_API.endsWith("/api/v1")
+  ? `${BASE_API}/bill/comparisons`
+  : `${BASE_API}/api/v1/bill/comparisons`;
+
+// Métricas vacías: solo se usan mientras el servidor lee los PDF
+const EMPTY_METRICS: ComparisonMetrics = {
+  contractedKw: 0,
+  months: [],
+  kwhFp: [],
+  kwhHp: [],
+  maxKw: [],
+  costItems: [],
+  totalBill: 0,
 };
 
-let state: Comparison[] = [SEED];
+// Texto temporal mientras la IA detecta los meses reales
+const PENDING_LABEL = "...";
+
+// ── ESTADO ──
+let state: Comparison[] = [];
 const listeners = new Set<() => void>();
+
 const commit = (next: Comparison[]) => {
   state = next;
   listeners.forEach((l) => l());
 };
 
-export const fileToBill = (f: File): BillFile => ({ name: f.name, url: URL.createObjectURL(f) });
+/** Aplica un cambio a un solo comparativo. */
+const patch = (id: string, fn: (c: Comparison) => Comparison) =>
+  commit(state.map((c) => (c.id === id ? fn(c) : c)));
 
-export type NewComparisonInput = {
-  code: string;
-  title: string;
-  companyCode?: string;
-  baseLabel: string;
-  currentLabel: string;
-  fileA: File;
-  fileB: File;
+const revoke = (url?: string) => {
+  if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
+};
+
+export const fileToBill = (f: File): BillFile => ({
+  name: f.name,
+  url: URL.createObjectURL(f),
+});
+
+const readError = async (res: Response, fallback: string) => {
+  const text = await res.text().catch(() => "");
+  return text || fallback;
 };
 
 export const billingStore = {
+  /** Carga los comparativos del servidor. Conserva los que aún se están procesando o fallaron. */
+  async fetchAll(companyCode?: string) {
+    try {
+      const url = companyCode ? `${API_URL}?companyCode=${encodeURIComponent(companyCode)}` : API_URL;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const data: Comparison[] = await res.json();
+      if (!Array.isArray(data)) return;
+
+      const pending = state.filter((c) => c.status === "processing" || c.status === "error");
+      const fromServer = data
+        .filter((d) => !pending.some((p) => p.id === d.id))
+        .map((d) => ({ ...d, status: "ready" as const }));
+
+      commit([...pending, ...fromServer]);
+    } catch (err) {
+      console.error("Error cargando comparativos desde el servidor:", err);
+    }
+  },
+
   add(input: NewComparisonInput): Comparison {
-    const created: Comparison = {
-      id: `cmp-${Date.now()}`,
+    const clientId = `cmp-${Date.now()}`;
+    const localBills: Record<Slot, BillFile> = {
+      a: fileToBill(input.fileA),
+      b: fileToBill(input.fileB),
+    };
+
+    const optimistic: Comparison = {
+      id: clientId,
       code: input.code,
       title: input.title,
       companyCode: input.companyCode,
-      distributor: "Luz del Sur S.A.A.",
-      baseLabel: input.baseLabel,
-      currentLabel: input.currentLabel,
-      bills: { a: fileToBill(input.fileA), b: fileToBill(input.fileB) },
-      metrics: DEMO_METRICS, // pendiente: extraer los valores del PDF
-      source: "demo",
+      distributor: "Analizando recibos PDF con IA...",
+      baseLabel: PENDING_LABEL,
+      currentLabel: PENDING_LABEL,
+      bills: localBills,
+      metrics: EMPTY_METRICS,
+      source: "pdf",
+      status: "processing",
     };
-    commit([...state, created]);
-    return created;
+
+    commit([optimistic, ...state]);
+
+    const formData = new FormData();
+    formData.append("id", clientId);
+    formData.append("code", input.code);
+    formData.append("title", input.title);
+    if (input.companyCode) formData.append("companyCode", input.companyCode);
+    formData.append("fileA", input.fileA);
+    formData.append("fileB", input.fileB);
+
+    fetch(API_URL, { method: "POST", body: formData })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await readError(res, "Error en el servidor al analizar los PDF"));
+        return res.json() as Promise<Comparison>;
+      })
+      .then((saved) => {
+        patch(clientId, () => ({
+          ...saved, // trae baseLabel y currentLabel reales, calculados desde el PDF
+          id: clientId, // Conservamos el ID activo para no perder la vista ni los PDF
+          status: "ready",
+          bills: {
+            a: saved.bills?.a?.url ? saved.bills.a : localBills.a,
+            b: saved.bills?.b?.url ? saved.bills.b : localBills.b,
+          },
+        }));
+      })
+      .catch((err: Error) => {
+        console.error("Error procesando recibos:", err);
+        patch(clientId, (c) => ({
+          ...c,
+          status: "error",
+          error: err.message || "Error desconocido",
+        }));
+      });
+
+    return optimistic;
   },
 
+  /** Quita un comparativo de la lista local (por ejemplo, uno que falló). */
+  remove(id: string) {
+    const target = state.find((c) => c.id === id);
+    revoke(target?.bills.a?.url);
+    revoke(target?.bills.b?.url);
+    commit(state.filter((c) => c.id !== id));
+  },
+
+  /** Cambia el PDF de un recibo. Se ve al instante y se sincroniza con el servidor. */
   setBill(id: string, slot: Slot, file: File) {
-    commit(
-      state.map((c) => {
-        if (c.id !== id) return c;
-        if (c.bills[slot]) URL.revokeObjectURL(c.bills[slot]!.url);
-        return { ...c, bills: { ...c.bills, [slot]: fileToBill(file) } };
-      }),
-    );
+    const newLocalBill = fileToBill(file);
+
+    patch(id, (c) => {
+      revoke(c.bills[slot]?.url);
+      return { ...c, bills: { ...c.bills, [slot]: newLocalBill } };
+    });
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    fetch(`${API_URL}/${id}/bill/${slot}`, { method: "PUT", body: formData })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await readError(res, "No se pudo guardar el PDF"));
+        return res.json() as Promise<Comparison>;
+      })
+      .then((updated) => {
+        patch(id, (c) => ({
+          ...updated,
+          id,
+          status: "ready",
+          bills: {
+            ...c.bills,
+            [slot]: updated.bills?.[slot]?.url ? updated.bills[slot] : newLocalBill,
+          },
+        }));
+      })
+      .catch((err: Error) => {
+        console.error("Error actualizando PDF individual:", err);
+        const warning = `El PDF del recibo ${slot.toUpperCase()} no se guardó en el servidor y solo se ve en este navegador.`;
+        patch(id, (c) => ({
+          ...c,
+          warnings: [...(c.warnings ?? []).filter((w) => w !== warning), warning],
+        }));
+      });
   },
 };
 
+// La carga inicial la hace la página con su `companyCode` (billingStore.fetchAll).
 const subscribe = (l: () => void) => {
   listeners.add(l);
   return () => {
@@ -126,4 +231,8 @@ const subscribe = (l: () => void) => {
 };
 
 export const useBillingComparisons = () =>
-  useSyncExternalStore(subscribe, () => state, () => state);
+  useSyncExternalStore(
+    subscribe,
+    () => state,
+    () => state,
+  );

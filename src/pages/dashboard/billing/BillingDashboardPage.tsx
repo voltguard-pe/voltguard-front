@@ -11,7 +11,6 @@ import {
   Building2,
   Hash,
   MapPin,
-  CalendarDays,
   FileCheck2,
   Zap,
   Gauge,
@@ -27,7 +26,7 @@ import {
   useBillingComparisons,
   type Comparison,
   type Slot,
-} from "./billingComparisonsStore"; // ajusta la ruta según tu proyecto
+} from "./billingComparisonsStore";
 
 // ── FORMATO ──
 const fmt = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -53,6 +52,21 @@ const card = "rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-6"
 
 // ── UTILIDADES: MES vs MES ──
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const MESES_LARGO = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "septiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+const mesLargo = (corto: string) => MESES_LARGO[MESES.indexOf(corto)] ?? corto;
 const norm = (s: string) => s.toLowerCase().replace("set", "sep");
 
 // Semáforo: verde = bajó o igual, amarillo = sube hasta 10%, rojo = sube más de 10%
@@ -68,43 +82,31 @@ const semaforoLabel = (pct: number) =>
   pct <= 0 ? "Bajó o igual" : pct <= 10 ? "Sube hasta 10%" : "Sube más de 10%";
 const semaforoText = (pct: number) =>
   pct <= 0 ? "text-emerald-600" : pct <= 10 ? "text-amber-600" : "text-red-600";
+const semaforoBorder = (pct: number | null) =>
+  pct === null
+    ? "border-slate-200"
+    : pct > 10
+      ? "border-red-300"
+      : pct > 0
+        ? "border-amber-300"
+        : "border-emerald-300";
 
-type MonthData = { fp: number; hp: number; kw: number; demo?: boolean };
+type MonthData = { fp: number; hp: number; kw: number };
 
-// ── DATOS FICTICIOS (DEMO) ──
-// Se usan solo para los meses que no existen en la serie real.
-const rnd = (seed: number) => {
-  const v = Math.sin(seed * 12.9898) * 43758.5453;
-  return v - Math.floor(v);
+/**
+ * Mensaje explicativo cuando un mes no se puede comparar.
+ * Devuelve null si ambos años tienen datos.
+ * Dice con claridad qué año SÍ tiene datos y cuál NO.
+ */
+const buildCompareNotice = (mesCorto: string, y1: number, y2: number, has1: boolean, has2: boolean) => {
+  if (has1 && has2) return null;
+  const mes = mesLargo(mesCorto);
+  if (!has1 && !has2)
+    return `Los recibos cargados no incluyen datos de ${mes}. Elige un mes con punto verde para ver la comparación.`;
+  const conDato = has1 ? y1 : y2;
+  const sinDato = has1 ? y2 : y1;
+  return `Los recibos cargados tienen datos de ${mes} de ${conDato}, pero no de ${mes} de ${sinDato}. Elige un mes con punto verde para ver la comparación.`;
 };
-
-// Año base ficticio: ~6 mil kWh, ~15% en hora punta, ~30 kW
-const baseDemo = (mo: number): MonthData => {
-  const r = rnd(mo + 1);
-  const r2 = rnd(mo * 7 + 3);
-  const season = 1 + 0.08 * Math.cos((mo / 12) * 2 * Math.PI); // más consumo en verano
-  const total = 6200 * season * (0.94 + r * 0.12);
-  const hp = Math.round(total * (0.13 + r2 * 0.04));
-  return { fp: Math.round(total) - hp, hp, kw: round2(30 + (r - 0.5) * 8) };
-};
-
-// Cuánto cambia cada parte del segundo año frente al primero: [fuera de punta, hora punta, potencia]
-//   <= 1.00 → verde · hasta 1.10 → ámbar · > 1.10 → rojo
-// Cambia estos números para que un mes se vea más grave o más sano.
-const FACTORES: [number, number, number][] = [
-  [0.93, 1.06, 1.18], // Ene
-  [1.05, 0.97, 1.04], // Feb
-  [1.14, 1.08, 0.95], // Mar
-  [1.02, 1.22, 1.09], // Abr
-  [0.96, 1.03, 1.35], // May
-  [1.09, 0.9, 1.12], // Jun
-  [1.18, 1.05, 0.98], // Jul
-  [1.07, 1.16, 1.01], // Ago
-  [0.94, 0.99, 1.25], // Sep
-  [1.12, 1.04, 0.92], // Oct
-  [1.04, 1.11, 1.06], // Nov
-  [1.21, 0.95, 1.15], // Dic
-];
 
 // ── ETIQUETAS ──
 const Trend = ({ v }: { v: number }) => {
@@ -112,7 +114,6 @@ const Trend = ({ v }: { v: number }) => {
   return <Icon size={11} strokeWidth={3} />;
 };
 
-// Etiqueta de variación (▲ +66%) con el color del semáforo
 const Delta = ({ v }: { v: number | null }) =>
   v === null ? null : (
     <span
@@ -123,6 +124,181 @@ const Delta = ({ v }: { v: number | null }) =>
     </span>
   );
 
+const BaseBadge = () => (
+  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-300">
+    Año base
+  </span>
+);
+
+/** Aviso ámbar reutilizable (no se puede comparar, mismo mes en ambos recibos, etc.). */
+const Notice = ({ title, children }: { title?: string; children: ReactNode }) => (
+  <div
+    role="status"
+    className="mt-4 flex items-start gap-3 rounded-xl border-2 border-amber-300 bg-amber-100 px-4 py-3.5 text-amber-900"
+  >
+    <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-amber-200 text-amber-700">
+      <AlertTriangle size={18} />
+    </span>
+    <div className="min-w-0">
+      {title && <p className="text-sm font-bold">{title}</p>}
+      <p className="text-sm">{children}</p>
+    </div>
+  </div>
+);
+
+/** Estado vacío de un panel sin recibo para ese mes/año. */
+const EmptyPanel = ({
+  monthName,
+  year,
+  otherYear,
+  otherHasData,
+  className,
+}: {
+  monthName: string;
+  year: number;
+  otherYear?: number;
+  otherHasData?: boolean;
+  className: string;
+}) => (
+  <div
+    className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-amber-300 bg-amber-50 px-5 py-8 text-center ${className}`}
+  >
+    <span className="flex size-12 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+      <AlertTriangle size={24} />
+    </span>
+    <p className="text-base font-bold text-slate-900">No se puede comparar este mes</p>
+    <p className="max-w-xs text-sm text-slate-700">
+      {otherHasData && otherYear ? (
+        <>
+          Los recibos cargados no incluyen datos de{" "}
+          <span className="font-semibold">
+            {mesLargo(monthName)} de {year}
+          </span>
+          . Solo tienen datos de {mesLargo(monthName)} de {otherYear}.
+        </>
+      ) : (
+        <>
+          Los recibos cargados no incluyen datos de {mesLargo(monthName)} de {year}.
+        </>
+      )}
+    </p>
+  </div>
+);
+
+/** Variación central entre los dos paneles (pasteles y costos). */
+const VersusBadge = ({ pct, label }: { pct: number | null; label: string }) => (
+  <div className="flex items-center justify-center gap-2 md:flex-col md:self-center">
+    {pct !== null ? (
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-bold tabular-nums ring-1 ${semaforoCls(pct)}`}
+      >
+        <Trend v={pct} />
+        {signed(pct)}
+      </span>
+    ) : (
+      <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 ring-1 ring-amber-300">
+        <AlertTriangle size={12} />
+        Sin comparación
+      </span>
+    )}
+    <span className="text-[11px] text-slate-500">{label}</span>
+  </div>
+);
+
+const SemaforoLegend = ({ y1, y2, children }: { y1: number | string; y2: number | string; children?: ReactNode }) => (
+  <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+    <span className="font-semibold text-slate-800">
+      Color: ¿cómo cambió de {y1} a {y2}?
+    </span>
+    <span className="flex items-center gap-1.5">
+      <span className="size-2.5 rounded-full bg-emerald-500" /> Bajó o igual
+    </span>
+    <span className="flex items-center gap-1.5">
+      <span className="size-2.5 rounded-full bg-amber-500" /> Sube hasta 10%
+    </span>
+    <span className="flex items-center gap-1.5">
+      <span className="size-2.5 rounded-full bg-red-500" /> Sube más de 10%
+    </span>
+    {children}
+  </div>
+);
+
+const chipCls = (active: boolean) =>
+  `flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+    active ? "bg-[#0797d5] text-white shadow-xs" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+  }`;
+
+/**
+ * Fila de chips Ene-Dic. Si recibe `count`, muestra un punto por mes
+ * (verde = dato real en ambos años, ámbar = en un solo año, gris = sin datos)
+ * y una leyenda que explica los puntos.
+ */
+const MonthChips = ({
+  selected,
+  onSelect,
+  count,
+  onAll,
+}: {
+  selected: number | null;
+  onSelect: (i: number) => void;
+  count?: (i: number) => number;
+  onAll?: () => void;
+}) => (
+  <div className="mt-4">
+    <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+      {onAll && (
+        <button type="button" onClick={onAll} aria-pressed={selected === null} className={chipCls(selected === null)}>
+          Todo el año
+        </button>
+      )}
+      {MESES.map((nombre, i) => {
+        const n = count?.(i);
+        const active = i === selected;
+        return (
+          <button
+            key={nombre}
+            type="button"
+            onClick={() => onSelect(i)}
+            aria-pressed={active}
+            title={
+              n === undefined
+                ? undefined
+                : n === 2
+                  ? "Datos reales en ambos años"
+                  : n === 1
+                    ? "Dato real en un solo año"
+                    : "Sin datos"
+            }
+            className={chipCls(active)}
+          >
+            {nombre}
+            {n !== undefined && (
+              <span
+                className={`size-1.5 rounded-full ${
+                  n === 2 ? "bg-emerald-400" : n === 1 ? "bg-amber-400" : active ? "bg-white/50" : "bg-slate-300"
+                }`}
+              />
+            )}
+          </button>
+        );
+      })}
+    </div>
+    {count && (
+      <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
+        <span className="flex items-center gap-1">
+          <span className="size-1.5 rounded-full bg-emerald-400" /> Se puede comparar
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="size-1.5 rounded-full bg-amber-400" /> Solo un año
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="size-1.5 rounded-full bg-slate-300" /> Sin datos
+        </span>
+      </p>
+    )}
+  </div>
+);
+
 // ── COMPONENTE: PASTEL DE UN AÑO ──
 const PieCard = ({
   year,
@@ -131,51 +307,43 @@ const PieCard = ({
   prev,
   next,
   contractedKw,
+  isBase,
+  otherYear,
 }: {
   year: number;
   monthName: string;
+  otherYear?: number;
   d?: MonthData;
-  prev?: MonthData; // mes del año anterior: si viene, se muestran los % de variación
-  next?: MonthData; // mes del año siguiente: solo se usa para colorear el año base
+  prev?: MonthData;
+  next?: MonthData;
   contractedKw: number;
+  isBase?: boolean;
 }) => {
   const R = 64;
   const C = 2 * Math.PI * R;
   const GAP = 3;
   const total = d ? d.fp + d.hp : 0;
+  const hasData = !!d && total > 0;
   const lenFp = d && total ? (d.fp / total) * C : 0;
   const over = d ? d.kw > contractedKw : false;
 
-  // Variación de cada parte frente al año anterior (lo que se muestra en los chips)
   const delta = (a?: number, b?: number) => (a && b !== undefined ? pctChange(a, b) : null);
   const fpD = d ? delta(prev?.fp, d.fp) : null;
   const hpD = d ? delta(prev?.hp, d.hp) : null;
   const kwD = d ? delta(prev?.kw, d.kw) : null;
   const totD = d && prev ? delta(prev.fp + prev.hp, d.fp + d.hp) : null;
 
-  // Estado usado SOLO para colorear: el año base toma el estado del cambio hacia el año siguiente,
-  // así ambos pasteles muestran el mismo color (verde, ámbar o rojo).
+  // El año base no tiene "anterior": se colorea comparándolo con el siguiente
   const cFp = fpD ?? (d && next ? delta(d.fp, next.fp) : null);
   const cHp = hpD ?? (d && next ? delta(d.hp, next.hp) : null);
   const cKw = kwD ?? (d && next ? delta(d.kw, next.kw) : null);
   const cTot = totD ?? (d && next ? delta(d.fp + d.hp, next.fp + next.hp) : null);
 
-  // Color = estado (semáforo) · Tono = parte (fuerte: fuera de punta, claro: hora punta)
-  const BASE = "#64748b"; // gris: solo si no hay con qué comparar
+  const BASE = "#64748b";
   const fpColor = cFp === null ? BASE : semaforoHex(cFp);
   const hpColor = cHp === null ? BASE : semaforoHex(cHp);
   const kwColor = over ? "#ef4444" : cKw === null ? BASE : semaforoHex(cKw);
 
-  const borderCls =
-    cTot === null
-      ? "border-slate-200"
-      : cTot > 10
-        ? "border-red-300"
-        : cTot > 0
-          ? "border-amber-300"
-          : "border-emerald-300";
-
-  // Qué fue lo que más subió (resumen en una línea)
   const peor = [
     { n: "Fuera de punta", v: fpD },
     { n: "Hora punta", v: hpD },
@@ -188,25 +356,18 @@ const PieCard = ({
 
   return (
     <div
-      className={`flex h-full min-w-0 flex-col items-center rounded-2xl border-2 ${borderCls} bg-white p-4 shadow-xs sm:p-5`}
+      className={`flex h-full min-w-0 flex-col items-center rounded-2xl border-2 ${semaforoBorder(cTot)} bg-white p-4 shadow-xs sm:p-5`}
     >
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <p className="text-base font-bold text-slate-800">
-          {monthName} {year}
-        </p>
-        {!prev && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-300">
-            Año base
-          </span>
-        )}
-        {d?.demo && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
-            Demo
-          </span>
-        )}
-      </div>
+      {hasData && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <p className="text-base font-bold text-slate-800">
+            {monthName} {year}
+          </p>
+          {isBase && <BaseBadge />}
+        </div>
+      )}
 
-      {d && total && totD !== null && (
+      {hasData && totD !== null && (
         <span
           className={`mt-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ring-1 ${semaforoCls(totD)}`}
         >
@@ -215,7 +376,7 @@ const PieCard = ({
         </span>
       )}
 
-      {d && total ? (
+      {hasData && d ? (
         <>
           <svg
             viewBox="0 0 190 190"
@@ -308,7 +469,7 @@ const PieCard = ({
               <p className="mt-1.5 flex items-center justify-between gap-2 text-[11px] text-slate-500">
                 <span>Límite contratado: {contractedKw} kW</span>
                 <span className={`font-semibold ${over ? "text-red-600" : "text-emerald-600"}`}>
-                  {over ? `Excede en ${(d.kw - contractedKw).toFixed(1)} kW` : "Dentro del límite"}
+                  {over ? `Excede en ${(d.kw - contractedKw).toFixed(2)} kW` : "Dentro del límite"}
                 </span>
               </p>
             </div>
@@ -323,9 +484,13 @@ const PieCard = ({
           )}
         </>
       ) : (
-        <div className="flex h-[240px] items-center text-sm text-slate-400">
-          Sin datos de {monthName} {year}
-        </div>
+        <EmptyPanel
+          monthName={monthName}
+          year={year}
+          otherYear={otherYear}
+          otherHasData={!!(prev ?? next)}
+          className="w-full flex-1"
+        />
       )}
     </div>
   );
@@ -343,7 +508,7 @@ const Kpi = ({
   label: string;
   value: string;
   sub: string;
-  pct: number; // define el color según el semáforo
+  pct: number;
 }) => (
   <div className={`${card} flex flex-col gap-3`}>
     <div className="flex items-center gap-2.5">
@@ -367,7 +532,7 @@ const SectionHead = ({ title, subtitle }: { title: string; subtitle?: string }) 
 );
 
 // ── COMPONENTE: DETALLE DEL RECIBO DE UN AÑO ──
-type CostRow = { name: string; power: boolean; value: number; demo: boolean };
+type CostRow = { name: string; power: boolean; value: number };
 type CostSide = { rows: CostRow[]; total: number };
 
 const CostPanel = ({
@@ -377,99 +542,108 @@ const CostPanel = ({
   prev,
   next,
   maxCost,
+  isBase,
+  otherYear,
 }: {
   year: number;
   monthName: string;
+  otherYear?: number;
   side: CostSide;
-  prev?: CostSide; // mismo mes del año anterior: si viene, se muestran los % de variación
-  next?: CostSide; // mismo mes del año siguiente: solo colorea el año base
+  prev?: CostSide;
+  next?: CostSide;
   maxCost: number;
+  isBase?: boolean;
 }) => {
   const find = (s: CostSide | undefined, name: string) => s?.rows.find((r) => r.name === name)?.value;
   const sumPower = (s?: CostSide) => (s ? s.rows.filter((r) => r.power).reduce((a, r) => a + r.value, 0) : 0);
-  const demo = side.rows.some((r) => r.demo);
+  const hasData = side.rows.length > 0;
 
-  // Variación mostrada (contra el año anterior) y estado usado para colorear (el año base mira al siguiente)
-  const totD = prev ? pctChange(prev.total, side.total) : null;
-  const cTot = totD ?? (next ? pctChange(side.total, next.total) : null);
-  const powD = prev ? pctChange(sumPower(prev), sumPower(side)) : null;
-  const cPow = powD ?? (next ? pctChange(sumPower(side), sumPower(next)) : null);
+  // Solo se comparan lados que realmente tienen datos
+  const hasPrev = !!prev && prev.rows.length > 0;
+  const hasNext = !!next && next.rows.length > 0;
+
+  const totD = hasPrev ? pctChange(prev!.total, side.total) : null;
+  const cTot = totD ?? (hasNext ? pctChange(side.total, next!.total) : null);
+  const powD = hasPrev ? pctChange(sumPower(prev), sumPower(side)) : null;
+  const cPow = powD ?? (hasNext ? pctChange(sumPower(side), sumPower(next)) : null);
   const powerSum = sumPower(side);
   const powerShare = side.total ? Math.round((powerSum / side.total) * 100) : 0;
 
-  const borderCls =
-    cTot === null
-      ? "border-slate-200"
-      : cTot > 10
-        ? "border-red-300"
-        : cTot > 0
-          ? "border-amber-300"
-          : "border-emerald-300";
-
   return (
-    <div className={`flex h-full min-w-0 flex-col rounded-2xl border-2 ${borderCls} bg-white p-4 shadow-xs sm:p-5`}>
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <p className="text-base font-bold text-slate-800">
-          {monthName} {year}
-        </p>
-        {!prev && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 ring-1 ring-slate-300">
-            Año base
-          </span>
-        )}
-        {demo && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500 ring-1 ring-slate-200">
-            Demo
-          </span>
-        )}
-      </div>
+    <div
+      className={`flex h-full min-w-0 flex-col rounded-2xl border-2 ${hasData ? semaforoBorder(cTot) : "border-slate-200"} bg-white p-4 shadow-xs sm:p-5`}
+    >
+      {hasData && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <p className="text-base font-bold text-slate-800">
+            {monthName} {year}
+          </p>
+          {isBase && <BaseBadge />}
+        </div>
+      )}
 
-      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
-        <span className="text-xs text-slate-500">Total facturado</span>
-        <span className="text-lg font-bold tabular-nums text-slate-900">S/ {fmt(side.total)}</span>
-        {totD !== null && (
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ${semaforoCls(totD)}`}
+      {!hasData && (
+        <EmptyPanel
+          monthName={monthName}
+          year={year}
+          otherYear={otherYear}
+          otherHasData={hasPrev || hasNext}
+          className="flex-1"
+        />
+      )}
+
+      {hasData && (
+        <>
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+            <span className="text-xs text-slate-500">Total facturado</span>
+            <span className="text-lg font-bold tabular-nums text-slate-900">S/ {fmt(side.total)}</span>
+            {totD !== null && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ring-1 ${semaforoCls(totD)}`}
+              >
+                <Trend v={totD} />
+                {signed(totD)}
+              </span>
+            )}
+          </div>
+
+          <div className="mt-4 space-y-3">
+            {side.rows.map((r) => {
+              const prevVal = hasPrev ? find(prev, r.name) : undefined;
+              const nextVal = hasNext ? find(next, r.name) : undefined;
+              const p = prevVal !== undefined ? pctChange(prevVal, r.value) : null;
+              const n = nextVal !== undefined ? pctChange(r.value, nextVal) : null;
+              const state = p ?? n;
+              const color = state === null ? "#64748b" : semaforoHex(state);
+              return (
+                <div key={r.name}>
+                  <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
+                    <span className={r.power ? "font-semibold text-red-600" : "text-slate-600"}>{r.name}</span>
+                    <span className="flex items-center font-semibold tabular-nums text-slate-900">
+                      {fmt(r.value)}
+                      <Delta v={p} />
+                    </span>
+                  </div>
+                  <div className="mt-1.5 h-2.5 rounded-full bg-slate-100">
+                    <div
+                      className="h-2.5 rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min((r.value / maxCost) * 100, 100)}%`, backgroundColor: color }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <p
+            className={`mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-3 py-2 text-xs font-medium ring-1 ${semaforoCls(cPow ?? 0)}`}
           >
-            <Trend v={totD} />
-            {signed(totD)}
-          </span>
-        )}
-      </div>
-
-      <div className="mt-4 space-y-3">
-        {side.rows.map((r) => {
-          const p = prev ? (find(prev, r.name) !== undefined ? pctChange(find(prev, r.name)!, r.value) : null) : null;
-          const n = next && find(next, r.name) !== undefined ? pctChange(r.value, find(next, r.name)!) : null;
-          const state = p ?? n;
-          const color = state === null ? "#64748b" : semaforoHex(state);
-          return (
-            <div key={r.name}>
-              <div className="flex items-center justify-between gap-2 text-xs sm:text-sm">
-                <span className={r.power ? "font-semibold text-red-600" : "text-slate-600"}>{r.name}</span>
-                <span className="flex items-center font-semibold tabular-nums text-slate-900">
-                  {fmt(r.value)}
-                  <Delta v={p} />
-                </span>
-              </div>
-              <div className="mt-1.5 h-2.5 rounded-full bg-slate-100">
-                <div
-                  className="h-2.5 rounded-full transition-all duration-700"
-                  style={{ width: `${(r.value / maxCost) * 100}%`, backgroundColor: color }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <p
-        className={`mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-3 py-2 text-xs font-medium ring-1 ${semaforoCls(cPow ?? 0)}`}
-      >
-        <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: semaforoHex(cPow ?? 0) }} />
-        Cargos por potencia: S/ {fmt(powerSum)} ({powerShare}% del recibo)
-        <Delta v={powD} />
-      </p>
+            <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: semaforoHex(cPow ?? 0) }} />
+            Cargos por potencia: S/ {fmt(powerSum)} ({powerShare}% del recibo)
+            <Delta v={powD} />
+          </p>
+        </>
+      )}
     </div>
   );
 };
@@ -479,137 +653,156 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
   const m = data.metrics;
   const [chartRef, W] = useWidth();
   const last = m.months.length - 1;
-  const excess = m.maxKw[last] - m.contractedKw;
+  const b0 = m.baseIndex ?? 0;
+  const excess = (m.maxKw[last] ?? 0) - m.contractedKw;
   const monthsOver = m.maxKw.filter((v) => v > m.contractedKw).length;
-  const totalBase = m.kwhFp[0] + m.kwhHp[0];
-  const totalNow = m.kwhFp[last] + m.kwhHp[last];
+  const totalBase = (m.kwhFp[b0] ?? 0) + (m.kwhHp[b0] ?? 0);
+  const totalNow = (m.kwhFp[last] ?? 0) + (m.kwhHp[last] ?? 0);
   const energyPct = pctChange(totalBase, totalNow);
-  const kwPct = pctChange(m.maxKw[0], m.maxKw[last]);
+  const kwPct = pctChange(m.maxKw[b0] ?? 0, m.maxKw[last] ?? 0);
 
-  // Año y mes de inicio de la serie (ej. "May-25" -> mayo 2025)
+  // El primer mes de `months` siempre lleva el año (ej. "Dic-24" o "Abr-25")
   const startMatch = (m.months[0] ?? data.baseLabel).match(/^([A-Za-zñÑ]{3})\D*(\d{2})/);
   const startMonth = Math.max(
     0,
     MESES.findIndex((n) => norm(n) === norm(startMatch?.[1] ?? "")),
   );
   const startYear = 2000 + Number(startMatch?.[2] ?? 25);
-  const year1 = startYear;
-  const year2 = startYear + 1;
+  const curIdx = startMonth + last;
+  const curMo = curIdx % 12;
+  const curYear = startYear + Math.floor(curIdx / 12);
 
-  // Datos reales indexados por año y mes calendario
+  // Solo meses con dato real (0 = sin dato)
   const byKey: Record<string, MonthData> = {};
   m.months.forEach((_, i) => {
+    const fp = m.kwhFp[i] ?? 0;
+    const hp = m.kwhHp[i] ?? 0;
+    const kw = m.maxKw[i] ?? 0;
+    if (!fp && !hp && !kw) return;
     const idx = startMonth + i;
-    byKey[`${startYear + Math.floor(idx / 12)}-${idx % 12}`] = {
-      fp: m.kwhFp[i] ?? 0,
-      hp: m.kwhHp[i] ?? 0,
-      kw: m.maxKw[i] ?? 0,
-    };
+    byKey[`${startYear + Math.floor(idx / 12)}-${idx % 12}`] = { fp, hp, kw };
   });
 
-  // Dato real si existe; si no, dato ficticio derivado del otro año
-  // para que el semáforo muestre verde, ámbar y rojo en distintos meses.
-  const getMonth = (year: number, mo: number): MonthData => {
-    const real = byKey[`${year}-${mo}`];
-    if (real) return real;
-    const [a, b, c] = FACTORES[mo];
-    if (year === year1) {
-      const r2 = byKey[`${year2}-${mo}`];
-      if (r2) return { fp: Math.round(r2.fp / a), hp: Math.round(r2.hp / b), kw: round2(r2.kw / c), demo: true };
-      return { ...baseDemo(mo), demo: true };
-    }
-    const b1 = getMonth(year1, mo);
-    return { fp: Math.round(b1.fp * a), hp: Math.round(b1.hp * b), kw: round2(b1.kw * c), demo: true };
-  };
-  const realCount = (mo: number) =>
-    Number(!!byKey[`${year1}-${mo}`]) + Number(!!byKey[`${year2}-${mo}`]);
+  const getMonth = (year: number, mo: number): MonthData | undefined => byKey[`${year}-${mo}`];
 
-  const [selMonth, setSelMonth] = useState((startMonth + last) % 12);
+  /**
+   * Para cualquier mes `mo` (0=Ene .. 11=Dic), calcula dinámicamente:
+   * - `y2` (derecha): el año de ese mes dentro de la ventana de 12 meses del recibo actual
+   *   (ej. si el recibo actual es Abr 2026: Ene..Abr => 2026, May..Dic => 2025).
+   * - `y1` (izquierda): SIEMPRE un año menos (`y2 - 1`), garantizando Año-1 vs Año.
+   */
+  const pairForMonth = (mo: number) => {
+    const y2 = mo <= curMo ? curYear : curYear - 1;
+    const y1 = y2 - 1;
+    return { y1, y2 };
+  };
+
+  const realCount = (mo: number) => {
+    const { y1, y2 } = pairForMonth(mo);
+    return Number(!!byKey[`${y1}-${mo}`]) + Number(!!byKey[`${y2}-${mo}`]);
+  };
+
+  // Mes inicial: el más reciente que se pueda comparar (datos en ambos años).
+  // Si ninguno es comparable, se usa el mes del recibo actual.
+  const defaultMonth = () => {
+    for (let k = 0; k < 12; k++) {
+      const mo = (((curMo - k) % 12) + 12) % 12;
+      if (realCount(mo) === 2) return mo;
+    }
+    return curMo;
+  };
+
+  const [selMonth, setSelMonth] = useState(defaultMonth);
   const [chartMonth, setChartMonth] = useState<number | null>(null);
 
-  const d1 = getMonth(year1, selMonth);
-  const d2 = getMonth(year2, selMonth);
-  const t1 = d1.fp + d1.hp;
-  const t2 = d2.fp + d2.hp;
+  const { y1: selY1, y2: selY2 } = pairForMonth(selMonth);
+  const d1 = getMonth(selY1, selMonth);
+  const d2 = getMonth(selY2, selMonth);
+  const t1 = d1 ? d1.fp + d1.hp : 0;
+  const t2 = d2 ? d2.fp + d2.hp : 0;
   const varPct = t1 && t2 ? pctChange(t1, t2) : null;
-  const usesDemo = !!d1.demo || !!d2.demo;
 
-  // Gráfico de línea en SVG (Ene-Dic, un año contra otro), adaptable al ancho
+  const pieNotice = buildCompareNotice(MESES[selMonth], selY1, selY2, !!d1, !!d2);
+
+  // ── Los dos recibos corresponden al mismo mes y año ──
+  const baseIdx = startMonth + b0;
+  const baseMo = baseIdx % 12;
+  const baseYr = startYear + Math.floor(baseIdx / 12);
+  const sameMonthBills = baseIdx === curIdx;
+
+  // ── Gráfico de potencia máxima (Año base vs. Año actual mes a mes) ──
   const small = W < 480;
   const H = small ? 250 : 320;
   const pl = small ? 30 : 40;
   const pr = 20;
   const pt = 28;
   const pb = 30;
-  const series = [year1, year2].map((yr) => ({
-    year: yr,
-    pts: MESES.map((_, mo) => ({ mo, ...getMonth(yr, mo) })),
-  }));
-  // Escala vertical dinámica: nunca se corta un valor alto
+  const series = [
+    {
+      label: "Año base",
+      pts: MESES.flatMap((_, mo) => {
+        const { y1 } = pairForMonth(mo);
+        const d = getMonth(y1, mo);
+        return d ? [{ mo, ...d }] : [];
+      }),
+    },
+    {
+      label: "Año actual",
+      pts: MESES.flatMap((_, mo) => {
+        const { y2 } = pairForMonth(mo);
+        const d = getMonth(y2, mo);
+        return d ? [{ mo, ...d }] : [];
+      }),
+    },
+  ];
   const maxSeries = Math.max(...series.flatMap((s) => s.pts.map((p) => p.kw)), m.contractedKw);
   const YMAX = Math.max(70, Math.ceil((maxSeries * 1.1) / 10) * 10);
   const yTicks = Array.from({ length: Math.floor(YMAX / 20) + 1 }, (_, i) => i * 20);
   const x = (i: number) => pl + (i * (W - pl - pr)) / 11;
   const y = (v: number) => pt + (1 - v / YMAX) * (H - pt - pb);
   const lineColors = ["#94a3b8", "#0797d5"];
-  const labelMonth = chartMonth ?? (startMonth + last) % 12;
-  const labelPts = chartMonth !== null ? series.map((s) => s.pts[chartMonth]) : [series[1].pts[labelMonth]];
+  const labelMonth = chartMonth ?? curMo;
+  const labelPts =
+    chartMonth !== null
+      ? series.flatMap((s) => s.pts.filter((p) => p.mo === chartMonth))
+      : series[1].pts.filter((p) => p.mo === labelMonth);
 
-  // Cargos por potencia del recibo actual (para la «Lectura clave»)
   const powerTotal = m.costItems.filter((c) => c.power).reduce((s, c) => s + c.value, 0);
   const powerPct = m.totalBill ? Math.round((powerTotal / m.totalBill) * 100) : 0;
 
-  // Detalle del recibo por mes y año (siempre el MISMO mes en ambos años).
-  // Real: solo el mes del recibo actual (y el base si el comparativo trae `baseValue`).
-  // El resto se genera ficticio (Demo) a partir de la energía y potencia de ese mes.
-  const curMo = (startMonth + last) % 12;
-  const getCosts = (year: number, mo: number): CostRow[] => {
-    if (year === year2) {
-      if (mo === curMo) {
-        return m.costItems.map((c) => ({ name: c.name, power: !!c.power, value: c.value, demo: false }));
-      }
-      const dm = getMonth(year2, mo);
-      const eRatio = (dm.fp + dm.hp) / (totalNow || 1);
-      const kRatio = dm.kw / (m.maxKw[last] || 1);
-      return m.costItems.map((c, i) => ({
-        name: c.name,
-        power: !!c.power,
-        value: round2(c.value * (c.power ? kRatio : eRatio) * (0.97 + rnd(i * 3 + mo * 7 + 5) * 0.06)),
-        demo: true,
-      }));
-    }
-    const cur = getCosts(year2, mo);
-    return m.costItems.map((c, i) => {
-      const real = (c as { baseValue?: number }).baseValue;
-      if (mo === curMo && real !== undefined) return { name: c.name, power: !!c.power, value: real, demo: false };
-      return {
-        name: c.name,
-        power: !!c.power,
-        value: round2(cur[i].value / (0.86 + rnd(i * 5 + mo * 3 + 11) * 0.4)),
-        demo: true,
-      };
-    });
-  };
+  // ── Costos: solo existen los dos recibos reales (base y actual) ──
   const sumRows = (rows: CostRow[]) => round2(rows.reduce((s, r) => s + r.value, 0));
-  const side1: CostSide = { rows: getCosts(year1, selMonth), total: 0 };
-  const side2: CostSide = { rows: getCosts(year2, selMonth), total: 0 };
-  side1.total = sumRows(side1.rows);
-  side2.total = selMonth === curMo ? m.totalBill : sumRows(side2.rows);
+  const costRows = (pick: "value" | "baseValue"): CostRow[] =>
+    m.costItems.map((c) => ({
+      name: c.name,
+      power: !!c.power,
+      value: pick === "value" ? c.value : (c.baseValue ?? 0),
+    }));
+
+  const realSides: Record<string, CostSide> = {
+    [`${baseYr}-${baseMo}`]: {
+      rows: costRows("baseValue"),
+      total: m.baseTotalBill ?? sumRows(costRows("baseValue")),
+    },
+    [`${curYear}-${curMo}`]: { rows: costRows("value"), total: m.totalBill },
+  };
+
+  const EMPTY: CostSide = { rows: [], total: 0 };
+  const side1 = realSides[`${selY1}-${selMonth}`] ?? EMPTY;
+  const side2 = realSides[`${selY2}-${selMonth}`] ?? EMPTY;
   const costVar = side1.total && side2.total ? pctChange(side1.total, side2.total) : null;
-  const costDemo = side1.rows.some((r) => r.demo) || side2.rows.some((r) => r.demo);
   const maxCost = Math.max(...side1.rows.map((r) => r.value), ...side2.rows.map((r) => r.value), 1);
+
+  const costNotice = buildCompareNotice(
+    MESES[selMonth],
+    selY1,
+    selY2,
+    side1.rows.length > 0,
+    side2.rows.length > 0,
+  );
 
   const titulo =
     energyPct > 10 ? "la factura se disparó" : energyPct > 0 ? "la factura subió" : "la factura bajó";
-
-  const chip = (active: boolean) =>
-    `flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-      active
-        ? "bg-[#0797d5] text-white shadow-xs"
-        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-    }`;
-  // En móvil los filtros se desplazan en horizontal; desde sm se acomodan en varias líneas
-  const chipRow = "-mx-1 mt-4 flex gap-1.5 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible";
 
   return (
     <div className="w-full min-w-0 text-slate-900">
@@ -624,6 +817,14 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
         </h2>
       </header>
 
+      {/* Los dos recibos son del mismo mes y año */}
+      {sameMonthBills && (
+        <Notice title="No se puede comparar">
+          Los recibos cargados corresponden al mismo mes y año ({mesLargo(MESES[curMo])} de {curYear}), por eso no hay
+          otro periodo contra el cual comparar.
+        </Notice>
+      )}
+
       {/* Lectura clave para finanzas */}
       {excess > 0 && (
         <div className="mt-4 flex gap-3 rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-slate-700">
@@ -632,7 +833,7 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
             <span className="font-semibold text-slate-900">Lectura clave: </span>
             los cargos por potencia suman S/ {fmt(powerTotal)} ({powerPct}% del recibo de{" "}
             {data.currentLabel}) y la demanda máxima supera en {excess.toFixed(2)} kW lo contratado (
-            {m.contractedKw} kW), con {monthsOver} meses por encima del límite.
+            {m.contractedKw} kW), con {monthsOver} {monthsOver === 1 ? "mes" : "meses"} por encima del límite.
           </p>
         </div>
       )}
@@ -650,106 +851,55 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
           icon={Gauge}
           label="Potencia máxima"
           value={signed(kwPct)}
-          sub={`${fmt(m.maxKw[0])} a ${fmt(m.maxKw[last])} kW`}
+          sub={`${fmt(m.maxKw[b0] ?? 0)} a ${fmt(m.maxKw[last] ?? 0)} kW`}
           pct={kwPct}
         />
         <Kpi
           icon={AlertTriangle}
           label={excess > 0 ? "Sobre lo contratado" : "Margen disponible"}
           value={`${excess > 0 ? "+" : ""}${excess.toFixed(2)} kW`}
-          sub={`Límite ${m.contractedKw} kW · ${monthsOver} meses sobre el límite`}
+          sub={`Límite ${m.contractedKw} kW · ${monthsOver} ${monthsOver === 1 ? "mes" : "meses"} sobre el límite`}
           pct={excess > 0 ? 100 : 0}
         />
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:mt-5 sm:gap-5">
-        {/* Pasteles: mes vs mes */}
+        {/* Pasteles: mes vs mes (siempre Año-1 vs Año) */}
         <section className={card}>
           <SectionHead
-            title={`${MESES[selMonth]} ${year1} vs. ${MESES[selMonth]} ${year2}`}
+            title={`${MESES[selMonth]} ${selY1} vs. ${MESES[selMonth]} ${selY2}`}
             subtitle="Distribución de la energía consumida: fuera de punta y hora punta"
           />
 
-          <div className={chipRow}>
-            {MESES.map((nombre, i) => (
-              <button
-                key={nombre}
-                type="button"
-                onClick={() => setSelMonth(i)}
-                aria-pressed={i === selMonth}
-                title={
-                  realCount(i) === 2
-                    ? "Datos reales en ambos años"
-                    : realCount(i) === 1
-                      ? "Dato real en un solo año (el otro es ficticio)"
-                      : "Datos ficticios (demo)"
-                }
-                className={chip(i === selMonth)}
-              >
-                {nombre}
-                <span
-                  className={`size-1.5 rounded-full ${
-                    realCount(i) === 2
-                      ? "bg-emerald-400"
-                      : realCount(i) === 1
-                        ? "bg-amber-400"
-                        : i === selMonth
-                          ? "bg-white/50"
-                          : "bg-slate-300"
-                  }`}
-                />
-              </button>
-            ))}
-          </div>
+          <MonthChips selected={selMonth} onSelect={setSelMonth} count={realCount} />
+
+          {pieNotice && <Notice title="No se puede comparar este mes">{pieNotice}</Notice>}
 
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr] md:gap-4">
             <PieCard
-              year={year1}
+              isBase
+              otherYear={selY2}
+              year={selY1}
               monthName={MESES[selMonth]}
               d={d1}
               next={d2}
               contractedKw={m.contractedKw}
             />
-            <div className="flex items-center justify-center gap-2 md:flex-col md:self-center">
-              {varPct !== null ? (
-                <span
-                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-bold tabular-nums ring-1 ${semaforoCls(varPct)}`}
-                >
-                  <Trend v={varPct} />
-                  {signed(varPct)}
-                </span>
-              ) : (
-                <span className="text-xs text-slate-400">—</span>
-              )}
-              <span className="text-[11px] text-slate-500">energía total</span>
-            </div>
-            <PieCard year={year2} monthName={MESES[selMonth]} d={d2} prev={d1} contractedKw={m.contractedKw} />
+            <VersusBadge pct={varPct} label="energía total" />
+            <PieCard
+              year={selY2}
+              otherYear={selY1}
+              monthName={MESES[selMonth]}
+              d={d2}
+              prev={d1}
+              contractedKw={m.contractedKw}
+            />
           </div>
 
-          {usesDemo && (
-            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
-              Los pasteles marcados como «Demo» usan datos ficticios y se reemplazarán cuando cargues los
-              recibos reales de ese mes.
-            </p>
-          )}
-
-          {/* Leyenda: color = estado, tono = parte del consumo */}
+          {/* Leyenda */}
           <div className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-4 text-xs text-slate-600 sm:grid-cols-2">
             <div>
-              <p className="mb-2 font-semibold text-slate-800">
-                Color: ¿cómo cambió de {year1} a {year2}?
-              </p>
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-emerald-500" /> Bajó o igual
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-amber-500" /> Sube hasta 10%
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-full bg-red-500" /> Sube más de 10%
-                </span>
-              </div>
+              <SemaforoLegend y1={selY1} y2={selY2} />
             </div>
             <div>
               <p className="mb-2 font-semibold text-slate-800">Tono: ¿qué parte del consumo?</p>
@@ -765,40 +915,28 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
           </div>
         </section>
 
-        {/* Potencia máxima Ene-Dic, con filtro por mes */}
+        {/* Potencia máxima Ene-Dic */}
         <section className={card}>
           <SectionHead
-            title={`Potencia máxima mensual (kW): ${year1} vs. ${year2}`}
+            title="Potencia máxima mensual (kW): Año base vs. Año actual"
             subtitle="La línea roja punteada marca la potencia contratada"
           />
 
-          <div className={chipRow}>
-            <button type="button" onClick={() => setChartMonth(null)} className={chip(chartMonth === null)}>
-              Todo el año
-            </button>
-            {MESES.map((nombre, i) => (
-              <button
-                key={nombre}
-                type="button"
-                onClick={() => setChartMonth(i)}
-                aria-pressed={i === chartMonth}
-                className={chip(i === chartMonth)}
-              >
-                {nombre}
-              </button>
-            ))}
-          </div>
+          <MonthChips
+            selected={chartMonth}
+            onSelect={setChartMonth}
+            onAll={() => setChartMonth(null)}
+            count={realCount}
+          />
 
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-            {series.map((s, k) => (
-              <span key={s.year} className="flex items-center gap-1.5">
-                <span className="h-1 w-4 rounded" style={{ backgroundColor: lineColors[k] }} />
-                {s.year}
-              </span>
-            ))}
             <span className="flex items-center gap-1.5">
-              <span className="size-2.5 rounded-full border-2 border-slate-400 bg-white" />
-              Dato ficticio (demo)
+              <span className="h-1 w-4 rounded" style={{ backgroundColor: lineColors[0] }} />
+              Año anterior (Izquierda)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-1 w-4 rounded" style={{ backgroundColor: lineColors[1] }} />
+              Año siguiente (Derecha)
             </span>
           </div>
 
@@ -808,7 +946,7 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
               height={H}
               className="block"
               role="img"
-              aria-label={`Potencia máxima mensual de ${year1} y ${year2}; el límite contratado es ${m.contractedKw} kW`}
+              aria-label={`Potencia máxima mensual comparada; el límite contratado es ${m.contractedKw} kW`}
             >
               {chartMonth !== null && (
                 <rect
@@ -849,29 +987,28 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
               </text>
 
               {series.map((s, k) => (
-                <g key={s.year}>
-                  <polyline
-                    points={s.pts.map((p) => `${x(p.mo)},${y(p.kw)}`).join(" ")}
-                    fill="none"
-                    stroke={lineColors[k]}
-                    strokeWidth={k === 0 ? 2 : 2.75}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                  />
-                  {s.pts.map((p) => {
-                    const color = p.kw > m.contractedKw ? "#ef4444" : lineColors[k];
-                    return (
-                      <circle
-                        key={p.mo}
-                        cx={x(p.mo)}
-                        cy={y(p.kw)}
-                        r={p.mo === chartMonth ? 6.5 : small ? 3.5 : 4.5}
-                        fill={p.demo ? "#ffffff" : color}
-                        stroke={p.demo ? color : "#ffffff"}
-                        strokeWidth="2"
-                      />
-                    );
-                  })}
+                <g key={s.label}>
+                  {s.pts.length > 1 && (
+                    <polyline
+                      points={s.pts.map((p) => `${x(p.mo)},${y(p.kw)}`).join(" ")}
+                      fill="none"
+                      stroke={lineColors[k]}
+                      strokeWidth={k === 0 ? 2 : 2.75}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  )}
+                  {s.pts.map((p) => (
+                    <circle
+                      key={p.mo}
+                      cx={x(p.mo)}
+                      cy={y(p.kw)}
+                      r={p.mo === chartMonth ? 6.5 : small ? 3.5 : 4.5}
+                      fill={p.kw > m.contractedKw ? "#ef4444" : lineColors[k]}
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                  ))}
                 </g>
               ))}
 
@@ -914,63 +1051,41 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
       {/* Detalle del recibo: mismo mes, año contra año */}
       <section className={`${card} mt-4 sm:mt-5`}>
         <SectionHead
-          title={`En qué se va el recibo: ${MESES[selMonth]} ${year1} vs. ${MESES[selMonth]} ${year2}`}
+          title={`En qué se va el recibo: ${MESES[selMonth]} ${selY1} vs. ${MESES[selMonth]} ${selY2}`}
           subtitle="Desglose de cada concepto facturado en el mismo mes de ambos años"
         />
 
-        <div className={chipRow}>
-          {MESES.map((nombre, i) => (
-            <button
-              key={nombre}
-              type="button"
-              onClick={() => setSelMonth(i)}
-              aria-pressed={i === selMonth}
-              className={chip(i === selMonth)}
-            >
-              {nombre}
-            </button>
-          ))}
-        </div>
+        <MonthChips selected={selMonth} onSelect={setSelMonth} count={realCount} />
+
+        {costNotice && <Notice title="No se puede comparar este mes">{costNotice}</Notice>}
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr] md:gap-4">
-          <CostPanel year={year1} monthName={MESES[selMonth]} side={side1} next={side2} maxCost={maxCost} />
-          <div className="flex items-center justify-center gap-2 md:flex-col md:self-center">
-            {costVar !== null ? (
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-bold tabular-nums ring-1 ${semaforoCls(costVar)}`}
-              >
-                <Trend v={costVar} />
-                {signed(costVar)}
-              </span>
-            ) : (
-              <span className="text-xs text-slate-400">—</span>
-            )}
-            <span className="text-[11px] text-slate-500">total facturado</span>
-          </div>
-          <CostPanel year={year2} monthName={MESES[selMonth]} side={side2} prev={side1} maxCost={maxCost} />
+          <CostPanel
+            isBase
+            otherYear={selY2}
+            year={selY1}
+            monthName={MESES[selMonth]}
+            side={side1}
+            next={side2}
+            maxCost={maxCost}
+          />
+          <VersusBadge pct={costVar} label="total facturado" />
+          <CostPanel
+            year={selY2}
+            otherYear={selY1}
+            monthName={MESES[selMonth]}
+            side={side2}
+            prev={side1}
+            maxCost={maxCost}
+          />
         </div>
 
-        {costDemo && (
-          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
-            Los recibos marcados como «Demo» usan montos ficticios y se reemplazarán cuando cargues los recibos
-            reales de ese mes.
-          </p>
-        )}
-
-        <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl bg-slate-50 p-4 text-xs text-slate-600">
-          <span className="font-semibold text-slate-800">Color: ¿cómo cambió de {year1} a {year2}?</span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-emerald-500" /> Bajó o igual
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-amber-500" /> Sube hasta 10%
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-red-500" /> Sube más de 10%
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="font-semibold text-red-600">Rojo en el nombre</span> = cargo por potencia
-          </span>
+        <div className="mt-4 rounded-xl bg-slate-50 p-4 text-xs text-slate-600">
+          <SemaforoLegend y1={selY1} y2={selY2}>
+            <span className="flex items-center gap-1.5">
+              <span className="font-semibold text-red-600">Rojo en el nombre</span> = cargo por potencia
+            </span>
+          </SemaforoLegend>
         </div>
       </section>
     </div>
@@ -978,11 +1093,10 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
 };
 
 // ── MODAL: IMPORTAR RECIBOS DE LUZ ──
+// Ya no se piden periodos: la IA lee el mes y año reales de cada PDF en el servidor.
 type ImportPayload = {
   code: string;
   title: string;
-  baseLabel: string;
-  currentLabel: string;
   fileA: File;
   fileB: File;
 };
@@ -1043,8 +1157,6 @@ const ImportBillsModal = ({
 }) => {
   const [code, setCode] = useState("");
   const [title, setTitle] = useState("");
-  const [baseLabel, setBaseLabel] = useState("");
-  const [currentLabel, setCurrentLabel] = useState("");
   const [fileA, setFileA] = useState<File | null>(null);
   const [fileB, setFileB] = useState<File | null>(null);
 
@@ -1063,8 +1175,6 @@ const ImportBillsModal = ({
     onSubmit({
       code: trimmed,
       title: title.trim(),
-      baseLabel: baseLabel.trim() || "Recibo A",
-      currentLabel: currentLabel.trim() || "Recibo B",
       fileA,
       fileB,
     });
@@ -1148,28 +1258,7 @@ const ImportBillsModal = ({
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <FieldLabel icon={CalendarDays}>Periodo base</FieldLabel>
-              <input
-                value={baseLabel}
-                onChange={(e) => setBaseLabel(e.target.value)}
-                placeholder="Ej: Abr-25"
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <FieldLabel icon={CalendarDays}>Periodo actual</FieldLabel>
-              <input
-                value={currentLabel}
-                onChange={(e) => setCurrentLabel(e.target.value)}
-                placeholder="Ej: Abr-26"
-                className={inputCls}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <FieldLabel icon={FileText}>1. Recibo base (PDF)</FieldLabel>
+              <FieldLabel icon={FileText}>1. Base de Recibo (PDF)</FieldLabel>
               <PdfPicker file={fileA} placeholder="Subir recibo base..." onPick={setFileA} />
             </div>
             <div>
@@ -1177,6 +1266,9 @@ const ImportBillsModal = ({
               <PdfPicker file={fileB} placeholder="Subir recibo actual..." onPick={setFileB} />
             </div>
           </div>
+          <p className="-mt-3 text-[11px] text-slate-400">
+            El mes y el año de cada recibo los detecta la IA automáticamente desde el PDF.
+          </p>
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
@@ -1202,7 +1294,7 @@ const ImportBillsModal = ({
   );
 };
 
-// ── VISTA: LOS DOS PDF (solo lectura, la importación se hace desde el botón de arriba) ──
+// ── VISTA: LOS DOS PDF (ver, abrir en otra pestaña o cargar/cambiar el PDF) ──
 const PdfViewer = ({ active, slotLabel }: { active: Comparison; slotLabel: Record<Slot, string> }) => (
   <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
     {(["a", "b"] as Slot[]).map((slot) => {
@@ -1212,14 +1304,42 @@ const PdfViewer = ({ active, slotLabel }: { active: Comparison; slotLabel: Recor
           key={slot}
           className="flex h-[78vh] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs"
         >
-          <div className="border-b border-slate-100 px-4 py-2.5">
-            <p className="truncate text-sm font-bold text-slate-900">
-              Recibo {slot.toUpperCase()} · {slotLabel[slot]}
-            </p>
-            {bill && <p className="truncate text-[11px] text-slate-400">{bill.name}</p>}
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-2.5">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold text-slate-900">
+                Recibo {slot.toUpperCase()} · {slotLabel[slot]}
+              </p>
+              {bill && <p className="truncate text-[11px] text-slate-400">{bill.name}</p>}
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
+              {bill?.url && (
+                <a
+                  href={bill.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-[#0797d5] hover:bg-sky-100"
+                >
+                  Abrir PDF ↗
+                </a>
+              )}
+              <label className="cursor-pointer rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-100">
+                {bill ? "Cambiar PDF" : "Subir PDF"}
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f && isPdf(f)) billingStore.setBill(active.id, slot, f);
+                  }}
+                />
+              </label>
+            </div>
           </div>
 
-          {bill ? (
+          {bill?.url ? (
             <iframe
               src={`${bill.url}#toolbar=1&navpanes=0`}
               title={`Recibo ${slot.toUpperCase()} ${slotLabel[slot]}`}
@@ -1228,11 +1348,9 @@ const PdfViewer = ({ active, slotLabel }: { active: Comparison; slotLabel: Recor
           ) : (
             <div className="m-4 flex flex-1 flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 px-4 text-center">
               <FileText size={28} className="text-slate-300" />
-              <p className="mt-2 text-sm font-bold text-slate-700">
-                Aún no hay PDF para {slotLabel[slot]}
-              </p>
+              <p className="mt-2 text-sm font-bold text-slate-700">Aún no hay PDF para {slotLabel[slot]}</p>
               <p className="mt-1 text-xs text-slate-400">
-                Usa el botón «Importar Recibos de Luz» para cargarlo.
+                Usa el botón «Subir PDF» de arriba o «Importar Recibos de Luz».
               </p>
             </div>
           )}
@@ -1243,7 +1361,9 @@ const PdfViewer = ({ active, slotLabel }: { active: Comparison; slotLabel: Recor
 );
 
 // ── PÁGINA ──
-const comparisonTitle = (c: Comparison) => `${c.baseLabel} vs. ${c.currentLabel}`;
+// Mientras la IA lee los PDF todavía no se conocen los meses reales
+const comparisonTitle = (c: Comparison) =>
+  c.status === "processing" ? "Analizando recibos..." : `${c.baseLabel} vs. ${c.currentLabel}`;
 
 const BillingDashboardPage = () => {
   const { publicCode } = useParams<{ publicCode: string }>();
@@ -1254,7 +1374,11 @@ const BillingDashboardPage = () => {
   const [showPdfs, setShowPdfs] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  // El sidebar enlaza con ?comparison=<id>; si no viene, se usa el primero
+  // Carga los comparativos de la empresa actual
+  useEffect(() => {
+    billingStore.fetchAll(publicCode);
+  }, [publicCode]);
+
   const active = comparisons.find((c) => c.id === searchParams.get("comparison")) ?? comparisons[0];
 
   const selectComparison = (id: string) => setSearchParams({ comparison: id }, { replace: true });
@@ -1266,18 +1390,19 @@ const BillingDashboardPage = () => {
     setImportOpen(false);
   };
 
-  // Sin comparativos aún: evita que la página falle
+  const importModal = importOpen && (
+    <ImportBillsModal
+      companyCode={publicCode}
+      existingCodes={comparisons.map((c) => c.code)}
+      onClose={() => setImportOpen(false)}
+      onSubmit={handleImport}
+    />
+  );
+
   if (!active) {
     return (
       <div className="flex min-h-[calc(100vh-4rem)] flex-col gap-4 bg-slate-50 p-4 sm:p-6">
-        {importOpen && (
-          <ImportBillsModal
-            companyCode={publicCode}
-            existingCodes={[]}
-            onClose={() => setImportOpen(false)}
-            onSubmit={handleImport}
-          />
-        )}
+        {importModal}
         <div className="m-auto text-center">
           <Receipt size={32} className="mx-auto text-slate-300" />
           <p className="mt-3 text-sm font-semibold text-slate-700">Aún no hay comparativos de recibos</p>
@@ -1295,18 +1420,15 @@ const BillingDashboardPage = () => {
     );
   }
 
-  const slotLabel: Record<Slot, string> = { a: active.baseLabel, b: active.currentLabel };
+  const slotLabel: Record<Slot, string> =
+    active.status === "processing"
+      ? { a: "Analizando...", b: "Analizando..." }
+      : { a: active.baseLabel, b: active.currentLabel };
+  const hasMetrics = active.metrics.months.length > 0;
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col gap-4 bg-slate-50 p-4 sm:gap-5 sm:p-6">
-      {importOpen && (
-        <ImportBillsModal
-          companyCode={publicCode}
-          existingCodes={comparisons.map((c) => c.code)}
-          onClose={() => setImportOpen(false)}
-          onSubmit={handleImport}
-        />
-      )}
+      {importModal}
 
       {/* ── CABECERA ── */}
       <div>
@@ -1391,16 +1513,43 @@ const BillingDashboardPage = () => {
       {/* ── CONTENIDO ── */}
       {showPdfs ? (
         <PdfViewer active={active} slotLabel={slotLabel} />
+      ) : active.status === "processing" ? (
+        <div className={`${card} flex flex-col items-center gap-3 py-16 text-center`}>
+          <div className="size-8 animate-spin rounded-full border-4 border-slate-200 border-t-[#0797d5]" />
+          <p className="text-sm font-semibold text-slate-700">Leyendo los recibos con IA…</p>
+          <p className="text-xs text-slate-500">Puede tardar hasta un minuto. Puedes ver los PDF mientras tanto.</p>
+        </div>
+      ) : active.status === "error" ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+          <p className="font-semibold">No se pudo armar el comparativo</p>
+          <p className="mt-1">{active.error}</p>
+          <button
+            type="button"
+            onClick={() => billingStore.remove(active.id)}
+            className="mt-3 cursor-pointer rounded-full bg-white px-4 py-1.5 text-xs font-semibold ring-1 ring-red-200"
+          >
+            Descartar
+          </button>
+        </div>
       ) : (
         <>
-          {active.source === "demo" && (
-            <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800">
-              <Info size={14} className="mt-0.5 shrink-0" />
-              Datos de demostración: los valores del comparativo aún no se leen de los PDF importados.
+          {active.warnings?.map((w) => (
+            <p
+              key={w}
+              className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-800"
+            >
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {w}
             </p>
+          ))}
+          {hasMetrics ? (
+            <VersusDashboard key={active.id} data={active} />
+          ) : (
+            <div className={`${card} flex flex-col items-center gap-2 py-16 text-center`}>
+              <BarChart3 size={28} className="text-slate-300" />
+              <p className="text-sm font-semibold text-slate-700">Este comparativo no tiene datos para mostrar</p>
+              <p className="text-xs text-slate-500">Revisa los dos PDF o importa los recibos de nuevo.</p>
+            </div>
           )}
-          {/* key: reinicia el mes seleccionado al cambiar de comparativo */}
-          <VersusDashboard key={active.id} data={active} />
         </>
       )}
     </div>

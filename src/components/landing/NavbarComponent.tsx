@@ -5,8 +5,9 @@ import {
     User2
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-// 1. Reemplazamos Link por NavLink
+// 1. Reemplazamos Link por NavLink (y aseguramos NavLink si deseas usar estilos activos)
 import { Link, useNavigate } from "react-router-dom";
+import Voltguard_PDF from "../../../public/pdfs/VoltGuard_PDF.pdf";
 import { useAuth } from "../../shared/hooks/useAuth";
 
 const NavbarComponent = () => {
@@ -52,7 +53,7 @@ const NavbarComponent = () => {
 
     // 2. Definimos una función estilizadora reutilizable para los enlaces activos
     // const navLinkStyles = ({ isActive }: { isActive: boolean }) => `
-    //     px-4 py-1.5 rounded-full text-sm font-semibold relative group transition-all duration-200
+    //     px-4 py-2 rounded-2xl text-sm font-semibold relative group transition-all duration-200 flex items-center gap-2
     //     ${isActive
     //         ? "text-[#0797d5] bg-[#0797d5]/6"
     //         : "text-slate-600 hover:text-[#0797d5] hover:bg-[#0797d5]/6"
@@ -101,52 +102,9 @@ const NavbarComponent = () => {
                     </div>
                 </Link>
 
-                {/* ── NAV LINKS ──────────────────────────────────────────── */}
-                {/* <nav
-                    className="hidden md:flex flex-2 items-center justify-center gap-1"
-                    style={{
-                        opacity: mounted ? 1 : 0,
-                        transform: mounted ? "translateY(0)" : "translateY(-8px)",
-                        transition: "opacity 0.5s ease 0.15s, transform 0.5s ease 0.15s",
-                    }}
-                >
-                    <NavLink to="/" end className={navLinkStyles}>
-                        {({ isActive }) => (
-                            <>
-                                Inicio
-                                <span className={`absolute bottom-0.5 left-1/2 h-0.5 rounded-full bg-[#0797d5] transition-all duration-300 
-                                    ${isActive ? "w-4/5 left-[10%]" : "w-0 group-hover:w-4/5 group-hover:left-[10%]"}`}
-                                />
-                            </>
-                        )}
-                    </NavLink>
-
-                    <NavLink to="/plans" className={navLinkStyles}>
-                        {({ isActive }) => (
-                            <>
-                                Planes
-                                <span className={`absolute bottom-0.5 left-1/2 h-0.5 rounded-full bg-[#0797d5] transition-all duration-300 
-                                    ${isActive ? "w-4/5 left-[10%]" : "w-0 group-hover:w-4/5 group-hover:left-[10%]"}`}
-                                />
-                            </>
-                        )}
-                    </NavLink>
-
-                    <NavLink to="/success-stories" className={navLinkStyles}>
-                        {({ isActive }) => (
-                            <>
-                                Casos de éxito
-                                <span className={`absolute bottom-0.5 left-1/2 h-0.5 rounded-full bg-[#0797d5] transition-all duration-300 
-                                    ${isActive ? "w-4/5 left-[10%]" : "w-0 group-hover:w-4/5 group-hover:left-[10%]"}`}
-                                />
-                            </>
-                        )}
-                    </NavLink>
-                </nav> */}
-
                 {/* ── RIGHT ─────────────────────────────────────────────── */}
                 <div
-                    className="flex flex-1 justify-end"
+                    className="flex flex-1 justify-end items-center gap-3"
                     style={{
                         opacity: mounted ? 1 : 0,
                         transform: mounted ? "translateX(0)" : "translateX(16px)",
@@ -171,119 +129,131 @@ const NavbarComponent = () => {
                             />
                         </button>
                     ) : (
-                        <div className="relative z-50" ref={dropdownRef}>
-                            {/* TRIGGER */}
-                            <button
-                                onClick={() => setIsMenuOpen((prev) => !prev)}
-                                className={`
-                                    flex items-center gap-3 rounded-2xl border bg-white px-3 py-2 shadow-sm
-                                    transition-all duration-300 cursor-pointer
-                                    ${isMenuOpen
-                                        ? "border-[#0797d5]/30 ring-4 ring-[#0797d5]/10"
-                                        : "border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-md"
-                                    }
-                                `}
+                        <div className="flex items-center gap-3">
+                            {/* ENLACE CATÁLOGO AL LADO DEL AVATAR */}
+                            <a
+                                href={Voltguard_PDF}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 rounded-2xl text-sm font-semibold text-slate-600 hover:text-[#0797d5] hover:bg-[#0797d5]/6 transition-all duration-200 flex items-center gap-2"
                             >
-                                <div className="relative flex size-11 items-center justify-center rounded-2xl
-                                    bg-gradient-to-br from-[#0797d5] to-[#8ccf2f]
-                                    text-sm font-bold text-white shadow-sm overflow-hidden">
-                                    {initials}
-                                    {isMenuOpen && (
-                                        <span className="absolute inset-0 rounded-2xl animate-ping
-                                            bg-white/20 opacity-75" />
-                                    )}
-                                </div>
-                            </button>
+                                Catálogo
+                            </a>
 
-                            {/* DROPDOWN */}
-                            <div
-                                className={`
-                                    absolute right-0 top-[calc(100%+12px)] w-72 overflow-hidden
-                                    rounded-3xl border border-slate-200 bg-white shadow-2xl
-                                    transition-all duration-250 origin-top-right
-                                    ${isMenuOpen
-                                        ? "opacity-100 translate-y-0 scale-100"
-                                        : "pointer-events-none opacity-0 -translate-y-3 scale-95"
-                                    }
-                                `}
-                            >
-                                {/* HEADER */}
-                                <div className="border-b border-slate-100 bg-slate-50 p-5">
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex size-14 items-center justify-center rounded-2xl
-                                            bg-gradient-to-br from-[#0797d5] to-[#8ccf2f]
-                                            text-lg font-bold text-white shadow">
-                                            {initials}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="truncate font-bold text-slate-950">
-                                                {firstname} {lastname}
-                                            </p>
-                                            <div className="mt-2 inline-flex rounded-full bg-[#8ccf2f]/15
-                                                px-2.5 py-1 text-xs font-semibold text-[#3aaa35]">
-                                                {role}
+                            <div className="relative z-50" ref={dropdownRef}>
+                                {/* TRIGGER */}
+                                <button
+                                    onClick={() => setIsMenuOpen((prev) => !prev)}
+                                    className={`
+                                        flex items-center gap-3 rounded-2xl border bg-white px-3 py-2 shadow-sm
+                                        transition-all duration-300 cursor-pointer
+                                        ${isMenuOpen
+                                            ? "border-[#0797d5]/30 ring-4 ring-[#0797d5]/10"
+                                            : "border-slate-200 hover:bg-slate-50 hover:border-slate-300 hover:shadow-md"
+                                        }
+                                    `}
+                                >
+                                    <div className="relative flex size-11 items-center justify-center rounded-2xl
+                                        bg-gradient-to-br from-[#0797d5] to-[#8ccf2f]
+                                        text-sm font-bold text-white shadow-sm overflow-hidden">
+                                        {initials}
+                                        {isMenuOpen && (
+                                            <span className="absolute inset-0 rounded-2xl animate-ping
+                                                bg-white/20 opacity-75" />
+                                        )}
+                                    </div>
+                                </button>
+
+                                {/* DROPDOWN */}
+                                <div
+                                    className={`
+                                        absolute right-0 top-[calc(100%+12px)] w-72 overflow-hidden
+                                        rounded-3xl border border-slate-200 bg-white shadow-2xl
+                                        transition-all duration-250 origin-top-right
+                                        ${isMenuOpen
+                                            ? "opacity-100 translate-y-0 scale-100"
+                                            : "pointer-events-none opacity-0 -translate-y-3 scale-95"
+                                        }
+                                    `}
+                                >
+                                    {/* HEADER */}
+                                    <div className="border-b border-slate-100 bg-slate-50 p-5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex size-14 items-center justify-center rounded-2xl
+                                                bg-gradient-to-br from-[#0797d5] to-[#8ccf2f]
+                                                text-lg font-bold text-white shadow">
+                                                {initials}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="truncate font-bold text-slate-950">
+                                                    {firstname} {lastname}
+                                                </p>
+                                                <div className="mt-2 inline-flex rounded-full bg-[#8ccf2f]/15
+                                                    px-2.5 py-1 text-xs font-semibold text-[#3aaa35]">
+                                                    {role}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* MENU ITEMS */}
-                                <div className="p-2">
-                                    {[
-                                        {
-                                            icon: LayoutDashboard,
-                                            label: "Dashboard",
-                                            path: "/dashboard",
-                                            delay: "0ms",
-                                        },
-                                        {
-                                            icon: User2,
-                                            label: "Mi perfil",
-                                            path: "/dashboard/profile",
-                                            delay: "40ms",
-                                        },
-                                    ].map(({ icon: Icon, label, path, delay }) => (
+                                    {/* MENU ITEMS */}
+                                    <div className="p-2">
+                                        {[
+                                            {
+                                                icon: LayoutDashboard,
+                                                label: "Dashboard",
+                                                path: "/dashboard",
+                                                delay: "0ms",
+                                            },
+                                            {
+                                                icon: User2,
+                                                label: "Mi perfil",
+                                                path: "/dashboard/profile",
+                                                delay: "40ms",
+                                            },
+                                        ].map(({ icon: Icon, label, path, delay }) => (
+                                            <button
+                                                key={path}
+                                                onClick={() => { setIsMenuOpen(false); navigate(path); }}
+                                                style={{
+                                                    opacity: isMenuOpen ? 1 : 0,
+                                                    transform: isMenuOpen ? "translateX(0)" : "translateX(-8px)",
+                                                    transition: `opacity 0.25s ease ${delay}, transform 0.25s ease ${delay}`,
+                                                }}
+                                                className="flex w-full items-center gap-3 rounded-2xl px-4 py-3
+                                                    text-sm font-medium text-slate-700
+                                                    hover:bg-slate-100 hover:text-slate-950
+                                                    hover:pl-5 transition-all duration-200 group cursor-pointer"
+                                            >
+                                                <Icon
+                                                    size={18}
+                                                    className="text-slate-400 group-hover:text-[#0797d5] transition-colors duration-200"
+                                                />
+                                                {label}
+                                            </button>
+                                        ))}
+
+                                        <div className="my-2 border-t border-slate-100" />
+
                                         <button
-                                            key={path}
-                                            onClick={() => { setIsMenuOpen(false); navigate(path); }}
+                                            onClick={handleLogout}
                                             style={{
                                                 opacity: isMenuOpen ? 1 : 0,
                                                 transform: isMenuOpen ? "translateX(0)" : "translateX(-8px)",
-                                                transition: `opacity 0.25s ease ${delay}, transform 0.25s ease ${delay}`,
+                                                transition: "opacity 0.25s ease 80ms, transform 0.25s ease 80ms",
                                             }}
                                             className="flex w-full items-center gap-3 rounded-2xl px-4 py-3
-                                                text-sm font-medium text-slate-700
-                                                hover:bg-slate-100 hover:text-slate-950
+                                                text-sm font-medium text-red-500
+                                                hover:bg-red-50 hover:text-red-600
                                                 hover:pl-5 transition-all duration-200 group cursor-pointer"
                                         >
-                                            <Icon
+                                            <LogOut
                                                 size={18}
-                                                className="text-slate-400 group-hover:text-[#0797d5] transition-colors duration-200"
+                                                className="transition-transform duration-200 group-hover:translate-x-0.5"
                                             />
-                                            {label}
+                                            Cerrar sesión
                                         </button>
-                                    ))}
-
-                                    <div className="my-2 border-t border-slate-100" />
-
-                                    <button
-                                        onClick={handleLogout}
-                                        style={{
-                                            opacity: isMenuOpen ? 1 : 0,
-                                            transform: isMenuOpen ? "translateX(0)" : "translateX(-8px)",
-                                            transition: "opacity 0.25s ease 80ms, transform 0.25s ease 80ms",
-                                        }}
-                                        className="flex w-full items-center gap-3 rounded-2xl px-4 py-3
-                                            text-sm font-medium text-red-500
-                                            hover:bg-red-50 hover:text-red-600
-                                            hover:pl-5 transition-all duration-200 group cursor-pointer"
-                                    >
-                                        <LogOut
-                                            size={18}
-                                            className="transition-transform duration-200 group-hover:translate-x-0.5"
-                                        />
-                                        Cerrar sesión
-                                    </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

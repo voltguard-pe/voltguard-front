@@ -22,6 +22,25 @@ interface CarbonEmissionsSectionProps {
 const FACTOR_EMISION_G_KWH = 210; // Factor del Sistema Eléctrico Interconectado Nacional (SEIN)
 
 const formatGramos = (g: number) => Math.round(g).toLocaleString("es-PE");
+// Calcula min, max y paso "redondo" (1, 2 o 5 × 10^n) con un máximo de divisiones
+const calcularEjeY = (lo: number, hi: number, maxTicks = 10) => {
+  const range = Math.max(hi - lo, 1);
+  const baseExp = Math.floor(Math.log10(range)) - 2;
+
+  for (let e = baseExp; e <= baseExp + 4; e++) {
+    for (const m of [1, 2, 5]) {
+      const step = m * Math.pow(10, e);
+      if (step < 1) continue; // trabajamos en gramos enteros
+      const min = Math.floor(lo / step) * step;
+      const max = Math.ceil(hi / step) * step;
+      const count = Math.round((max - min) / step) + 1;
+      if (count <= maxTicks) return { step, min, max };
+    }
+  }
+  const min = Math.floor(lo);
+  const max = Math.ceil(hi);
+  return { step: Math.max(max - min, 1), min, max };
+};
 
 const CustomCarbonTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -90,20 +109,26 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
     seriesKeys.forEach((key) => {
       if (visibleCarbonSeries[key] === false) onToggleCarbonDay(key);
     });
-  };
+  }
 
   const totalG = emisionesData.reduce((acc, curr) => acc + curr.gCO2, 0);
   const promedioGDiario = emisionesData.length > 0 ? totalG / emisionesData.length : 0;
 
-  // En gráficos de barras, la línea base debe ser SIEMPRE 0 para evitar distorsión visual
-  const rawValues = emisionesData.map((d) => d.gCO2);
-  const maxVal = rawValues.length > 0 ? Math.max(...rawValues) : 1000;
+ const rawValues = emisionesData.map((d) => d.gCO2);
+const maxVal = rawValues.length > 0 ? Math.max(...rawValues) : 1000;
+const minVal = rawValues.length > 0 ? Math.min(...rawValues) : 0;
 
-  // Calculamos el tope del eje Y con 20% de holgura para que quepan las etiquetas superiores
-  const yMax = Math.ceil((maxVal * 1.2) / 100) * 100;
-  const yMid = Math.round(yMax / 2);
-  const yTicks = [0, yMid, yMax];
+// Si todos los valores son iguales, usamos un rango mínimo para poder dibujar el eje
+const spread = maxVal - minVal || maxVal * 0.05 || 10;
 
+// Poco margen abajo (resalta diferencias) y algo más arriba (caben las etiquetas)
+const rawMin = Math.max(0, minVal - spread * 0.15);
+const rawMax = maxVal + spread * 0.25;
+
+const { step, min: yMin, max: yMax } = calcularEjeY(rawMin, rawMax);
+
+const yTicks: number[] = [];
+for (let t = yMin; t <= yMax; t += step) yTicks.push(Math.round(t));
   return (
     <section className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-sm font-sans mt-6 transition-all duration-300 hover:border-slate-300">
       {/* Cabecera */}
@@ -248,7 +273,7 @@ export const CarbonEmissionsSection: React.FC<CarbonEmissionsSectionProps> = ({
                 </XAxis>
 
                 <YAxis
-                  domain={[0, yMax]}
+                  domain={[yMin, yMax]}
                   ticks={yTicks}
                   interval={0}
                   tickLine={false}

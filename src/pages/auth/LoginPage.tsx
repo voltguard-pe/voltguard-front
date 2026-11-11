@@ -48,26 +48,35 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      // // 1. Ejecutar el login en el backend
-      // await login(formData);
-      
-      // // 2. Obtener los datos del perfil cargado
-      // const user = await getProfile();
-
-      // 1. Ejecutar el login (guarda el token internamente en localStorage)
       const response = await login(formData);
-      
-      // 2. Extraer el usuario retornado directamente por el backend
       const user = response.data.user;
 
-
-      
-      // 3. Impactar el contexto global de manera limpia y apagar loaders
       handleLoginSuccess(user);
-      
-      // 4. Pequeña holgura de 60ms para que las rutas asimilen el cambio de "auth" antes de navegar
+
+      // 1. Determinar hacia dónde navegar de forma segura
+      let targetUrl = "/dashboard";
+
+      if (redirect && redirect.startsWith("/dashboard/boards/")) {
+        // Extraemos el companyId de la URL: /dashboard/boards/:companyId/:boardId
+        const segments = redirect.split("/").filter(Boolean);
+        const urlCompanyId = segments[2]; // segments = ["dashboard", "boards", ":companyId", ":boardId"]
+
+        // Obtén el companyId del usuario actual (adapta según el nombre de la propiedad en tu backend)
+        const userCompanyId = user.companyId || user.company?._id || user.company?.id;
+
+        // Solo redirigir si la empresa coincide con la del usuario logueado
+        if (urlCompanyId && userCompanyId && urlCompanyId === userCompanyId) {
+          targetUrl = redirect;
+        } else {
+          targetUrl = "/dashboard";
+        }
+      } else if (redirect && redirect !== "/dashboard") {
+        targetUrl = redirect;
+      }
+
+      // 2. Navegar a la ruta limpia o autorizada
       setTimeout(() => {
-        navigate(redirect, { replace: true });
+        navigate(targetUrl, { replace: true });
       }, 60);
 
     } catch (error: any) {

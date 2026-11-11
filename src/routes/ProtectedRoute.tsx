@@ -24,14 +24,14 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   }
 
   if (!auth) {
+    // Si estamos deslogueando, no capturar la ruta previa
     const redirectTo = location.pathname + location.search;
 
-    return (
-      <Navigate
-        to={`/auth?redirect=${encodeURIComponent(redirectTo)}`}
-        replace
-      />
-    );
+    // Evitar redirigir de vuelta a rutas raíz oauth
+    const isAuthOrRoot = location.pathname === "/" || location.pathname.startsWith("/auth");
+    const target = isAuthOrRoot ? "/auth" : `/auth?redirect=${encodeURIComponent(redirectTo)}`;
+
+    return <Navigate to={target} replace />;
   }
 
   if (!allowedRoles.includes(auth.role)) {

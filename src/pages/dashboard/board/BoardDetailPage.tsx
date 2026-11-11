@@ -919,8 +919,8 @@ const BoardDetailPage = () => {
   const tieneEventosItic = iticEvents.length > 0;
   const mostrarItic = isSuperAdmin || tieneEventosItic;
 
-  const tieneReciboLuz = energiaMensualRecibo.length > 0 || billHistory.length > 0;
-  const mostrarReciboLuz = isSuperAdmin || tieneReciboLuz;
+  //const tieneReciboLuz = energiaMensualRecibo.length > 0 || billHistory.length > 0;
+  const mostrarReciboLuz = false; // Desactivado temporalmente
 
   // Termografía: verifica si existe imagen térmica, óptica o registros de termografía
   const tieneTermografia = Boolean(

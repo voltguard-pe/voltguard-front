@@ -16,7 +16,7 @@ import {
   LogOut,
   MoreVertical,
   Plus,
-  // Receipt,
+  Receipt,
   ShieldCheck,
   // Sun,
   User2,
@@ -25,7 +25,7 @@ import {
   Zap,
   KeyRound,
   Sparkles,
-  // type LucideIcon,
+  type LucideIcon,
   BadgeDollarSign
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -49,26 +49,28 @@ interface SidebarComponentProps {
 
 const SESSION_FOLDERS_KEY = "voltguard_sidebar_session_folders";
 
-// const STATIC_MODULES: {
-//   id: string;
-//   name: string;
-//   color: string;
-//   createTitle: string;
-//   newPath: (code: string) => string;
-//   viewPath: (code: string) => string;
-//   viewText: string;
-//   icon: LucideIcon;
-//   activeColor: string;
-//   hasExtraNewBtn?: boolean;
-// }[] = [
-//     { id: "billing", name: "Facturación", color: "text-amber-500", createTitle: "Subir Recibo de Luz", newPath: (c) => `/dashboard/companies/${c}/billing`, viewPath: (c) => `/dashboard/companies/${c}/billing`, viewText: "Recibo de Luz", icon: Receipt, activeColor: "text-amber-600 bg-amber-50" },
-//     { id: "medical-reports", name: "Reporte Médico", color: "text-rose-500", createTitle: "Nuevo Reporte Médico", newPath: (c) => `/dashboard/companies/${c}/medical-reports/new`, viewPath: (c) => `/dashboard/companies/${c}/medical-reports`, viewText: "Ver reportes médicos", icon: FileHeart, activeColor: "text-rose-600 bg-rose-50" },
-//     // { id: "solar-panels", name: "Paneles Solares", color: "text-amber-600", createTitle: "Nuevo Panel Solar", newPath: (c) => `/dashboard/companies/${c}/solar/new`, viewPath: (c) => `/dashboard/companies/${c}/solar`, viewText: "Instalaciones solares", icon: Sun, activeColor: "text-amber-600 bg-amber-50" },
-//     { id: "substations", name: "Subestación", color: "text-indigo-500", createTitle: "Nueva Subestación", newPath: (c) => `/dashboard/companies/${c}/substations/new`, viewPath: (c) => `/dashboard/companies/${c}/substations`, viewText: "Subestaciones", icon: Cpu, activeColor: "text-indigo-600 bg-indigo-50" },
-//     { id: "cells", name: "Celdas", color: "text-cyan-600", createTitle: "Nueva Celda", newPath: (c) => `/dashboard/companies/${c}/cells/new`, viewPath: (c) => `/dashboard/companies/${c}/cells`, viewText: "Celdas de media tensión", icon: Box, activeColor: "text-cyan-600 bg-cyan-50" },
-//     { id: "capacitor-banks", name: "Banco de Condensadores", color: "text-violet-500", createTitle: "Nuevo Banco de Condensadores", newPath: (c) => `/dashboard/companies/${c}/capacitors/new`, viewPath: (c) => `/dashboard/companies/${c}/capacitors`, viewText: "Bancos registrados", icon: FileCheck2, activeColor: "text-violet-600 bg-violet-50" },
-//     { id: "ups", name: "UPS", color: "text-teal-600", createTitle: "Nuevo Sistema UPS", newPath: (c) => `/dashboard/companies/${c}/ups/new`, viewPath: (c) => `/dashboard/companies/${c}/ups`, viewText: "Equipos UPS", icon: BatteryCharging, activeColor: "text-teal-600 bg-teal-50", hasExtraNewBtn: true },
-//   ];
+// Módulos estáticos visibles. Solo Facturación está activo;
+// los demás quedan comentados por si los necesitas después.
+const STATIC_MODULES: {
+  id: string;
+  name: string;
+  color: string;
+  createTitle: string;
+  newPath: (code: string) => string;
+  viewPath: (code: string) => string;
+  viewText: string;
+  icon: LucideIcon;
+  activeColor: string;
+  hasExtraNewBtn?: boolean;
+}[] = [
+    { id: "billing", name: "Facturación", color: "text-amber-500", createTitle: "Subir Recibo de Luz", newPath: (c) => `/dashboard/companies/${c}/billing`, viewPath: (c) => `/dashboard/companies/${c}/billing`, viewText: "Recibo de Luz", icon: Receipt, activeColor: "text-amber-600 bg-amber-50" },
+    // { id: "medical-reports", name: "Reporte Médico", color: "text-rose-500", createTitle: "Nuevo Reporte Médico", newPath: (c) => `/dashboard/companies/${c}/medical-reports/new`, viewPath: (c) => `/dashboard/companies/${c}/medical-reports`, viewText: "Ver reportes médicos", icon: FileHeart, activeColor: "text-rose-600 bg-rose-50" },
+    // { id: "solar-panels", name: "Paneles Solares", color: "text-amber-600", createTitle: "Nuevo Panel Solar", newPath: (c) => `/dashboard/companies/${c}/solar/new`, viewPath: (c) => `/dashboard/companies/${c}/solar`, viewText: "Instalaciones solares", icon: Sun, activeColor: "text-amber-600 bg-amber-50" },
+    // { id: "substations", name: "Subestación", color: "text-indigo-500", createTitle: "Nueva Subestación", newPath: (c) => `/dashboard/companies/${c}/substations/new`, viewPath: (c) => `/dashboard/companies/${c}/substations`, viewText: "Subestaciones", icon: Cpu, activeColor: "text-indigo-600 bg-indigo-50" },
+    // { id: "cells", name: "Celdas", color: "text-cyan-600", createTitle: "Nueva Celda", newPath: (c) => `/dashboard/companies/${c}/cells/new`, viewPath: (c) => `/dashboard/companies/${c}/cells`, viewText: "Celdas de media tensión", icon: Box, activeColor: "text-cyan-600 bg-cyan-50" },
+    // { id: "capacitor-banks", name: "Banco de Condensadores", color: "text-violet-500", createTitle: "Nuevo Banco de Condensadores", newPath: (c) => `/dashboard/companies/${c}/capacitors/new`, viewPath: (c) => `/dashboard/companies/${c}/capacitors`, viewText: "Bancos registrados", icon: FileCheck2, activeColor: "text-violet-600 bg-violet-50" },
+    // { id: "ups", name: "UPS", color: "text-teal-600", createTitle: "Nuevo Sistema UPS", newPath: (c) => `/dashboard/companies/${c}/ups/new`, viewPath: (c) => `/dashboard/companies/${c}/ups`, viewText: "Equipos UPS", icon: BatteryCharging, activeColor: "text-teal-600 bg-teal-50", hasExtraNewBtn: true },
+  ];
 
 const NORMATIVAS = [
   { title: "NFPA 70E", desc: "Seguridad eléctrica", tooltip: "Normativa NFPA 70E - Seguridad Eléctrica", logo: "/logos/nfpa-70e.png", fallback: "NFPA 70E", hover: "hover:border-amber-300 hover:bg-amber-50/40", accent: "text-amber-700" },
@@ -86,6 +88,7 @@ const URL_MODULE_KEYS: [string, string][] = [
   ["/cells", "cells"],
   ["/capacitors", "capacitor-banks"],
   ["/ups", "ups"],
+  ["/billing", "billing"],
 ];
 
 const navItemClass = (isActive: boolean) =>
@@ -474,46 +477,46 @@ const SidebarComponent = ({
       //     </div>
       //   ),
       // },
-      // ...STATIC_MODULES.map((m) => {
-      //   const IconComponent = m.icon;
-      //   return {
-      //     id: m.id,
-      //     name: m.name,
-      //     color: m.color,
-      //     count: 0,
-      //     loading: false,
-      //     createTitle: m.createTitle,
-      //     onCreate: () => navigate(m.newPath(code)),
-      //     children: (
-      //       <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
-      //         <NavLink
-      //           to={m.viewPath(code)}
-      //           onClick={onClose}
-      //           className={({ isActive }) =>
-      //             `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? `${m.activeColor} font-bold` : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-      //             }`
-      //           }
-      //         >
-      //           <IconComponent size={12} className={`shrink-0 ${m.color}`} />
-      //           <span className="truncate">{m.viewText}</span>
-      //         </NavLink>
-      //         {m.hasExtraNewBtn && (
-      //           <NavLink
-      //             to={m.newPath(code)}
-      //             onClick={onClose}
-      //             className={({ isActive }) =>
-      //               `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? "bg-teal-50 text-teal-700 font-bold" : "text-slate-500 hover:bg-slate-100 italic"
-      //               }`
-      //             }
-      //           >
-      //             <Plus size={12} className="shrink-0 text-slate-400" />
-      //             <span className="truncate">Agregar equipo UPS</span>
-      //           </NavLink>
-      //         )}
-      //       </div>
-      //     ),
-      //   };
-      // }),
+      ...STATIC_MODULES.map((m) => {
+        const IconComponent = m.icon;
+        return {
+          id: m.id,
+          name: m.name,
+          color: m.color,
+          count: 0,
+          loading: false,
+          createTitle: m.createTitle,
+          onCreate: () => navigate(m.newPath(code)),
+          children: (
+            <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+              <NavLink
+                to={m.viewPath(code)}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? `${m.activeColor} font-bold` : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  }`
+                }
+              >
+                <IconComponent size={12} className={`shrink-0 ${m.color}`} />
+                <span className="truncate">{m.viewText}</span>
+              </NavLink>
+              {m.hasExtraNewBtn && (
+                <NavLink
+                  to={m.newPath(code)}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? "bg-teal-50 text-teal-700 font-bold" : "text-slate-500 hover:bg-slate-100 italic"
+                    }`
+                  }
+                >
+                  <Plus size={12} className="shrink-0 text-slate-400" />
+                  <span className="truncate">Agregar equipo UPS</span>
+                </NavLink>
+              )}
+            </div>
+          ),
+        };
+      }),
     ];
 
     return (

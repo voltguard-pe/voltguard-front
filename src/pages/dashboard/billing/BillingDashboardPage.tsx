@@ -50,6 +50,8 @@ const useWidth = () => {
 
 const card = "rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:p-6";
 
+const SHOW_COST_DETAIL = false; // pon true para volver a mostrar "En qué se va el recibo"
+
 // ── UTILIDADES: MES vs MES ──
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 const MESES_LARGO = [
@@ -1049,45 +1051,47 @@ const VersusDashboard = ({ data }: { data: Comparison }) => {
       </div>
 
       {/* Detalle del recibo: mismo mes, año contra año */}
-      <section className={`${card} mt-4 sm:mt-5`}>
-        <SectionHead
-          title={`En qué se va el recibo: ${MESES[selMonth]} ${selY1} vs. ${MESES[selMonth]} ${selY2}`}
-          subtitle="Desglose de cada concepto facturado en el mismo mes de ambos años"
-        />
-
-        <MonthChips selected={selMonth} onSelect={setSelMonth} count={realCount} />
-
-        {costNotice && <Notice title="No se puede comparar este mes">{costNotice}</Notice>}
-
-        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr] md:gap-4">
-          <CostPanel
-            isBase
-            otherYear={selY2}
-            year={selY1}
-            monthName={MESES[selMonth]}
-            side={side1}
-            next={side2}
-            maxCost={maxCost}
+      {SHOW_COST_DETAIL && (
+        <section className={`${card} mt-4 sm:mt-5`}>
+          <SectionHead
+            title={`En qué se va el recibo: ${MESES[selMonth]} ${selY1} vs. ${MESES[selMonth]} ${selY2}`}
+            subtitle="Desglose de cada concepto facturado en el mismo mes de ambos años"
           />
-          <VersusBadge pct={costVar} label="total facturado" />
-          <CostPanel
-            year={selY2}
-            otherYear={selY1}
-            monthName={MESES[selMonth]}
-            side={side2}
-            prev={side1}
-            maxCost={maxCost}
-          />
-        </div>
 
-        <div className="mt-4 rounded-xl bg-slate-50 p-4 text-xs text-slate-600">
-          <SemaforoLegend y1={selY1} y2={selY2}>
-            <span className="flex items-center gap-1.5">
-              <span className="font-semibold text-red-600">Rojo en el nombre</span> = cargo por potencia
-            </span>
-          </SemaforoLegend>
-        </div>
-      </section>
+          <MonthChips selected={selMonth} onSelect={setSelMonth} count={realCount} />
+
+          {costNotice && <Notice title="No se puede comparar este mes">{costNotice}</Notice>}
+
+          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto_1fr] md:gap-4">
+            <CostPanel
+              isBase
+              otherYear={selY2}
+              year={selY1}
+              monthName={MESES[selMonth]}
+              side={side1}
+              next={side2}
+              maxCost={maxCost}
+            />
+            <VersusBadge pct={costVar} label="total facturado" />
+            <CostPanel
+              year={selY2}
+              otherYear={selY1}
+              monthName={MESES[selMonth]}
+              side={side2}
+              prev={side1}
+              maxCost={maxCost}
+            />
+          </div>
+
+          <div className="mt-4 rounded-xl bg-slate-50 p-4 text-xs text-slate-600">
+            <SemaforoLegend y1={selY1} y2={selY2}>
+              <span className="flex items-center gap-1.5">
+                <span className="font-semibold text-red-600">Rojo en el nombre</span> = cargo por potencia
+              </span>
+            </SemaforoLegend>
+          </div>
+        </section>
+      )}
     </div>
   );
 };

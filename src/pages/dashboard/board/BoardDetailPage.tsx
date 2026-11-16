@@ -68,15 +68,9 @@ const BoardDetailPage = () => {
   const rawRole = (auth?.role || "USER").toUpperCase();
   const rawPlan = (auth?.plan || "basico").toLowerCase();
 
-  const effectiveRole = rawRole === "SUPERADMIN"
-    ? "SUPERADMIN"
-    : rawPlan === "empresarial"
-      ? "ADMIN"
-      : "USER";
-
-  const isSuperAdmin = effectiveRole === "SUPERADMIN" || rawRole === "SUPERADMIN";
-  const isEmpresarial = isSuperAdmin || rawPlan === "empresarial";
-  const isAdmin = auth?.role === "ADMIN"
+  const isSuperAdmin = rawRole === "SUPERADMIN";
+  const isAdmin = rawRole === "ADMIN";
+  const isEmpresarial = isSuperAdmin || isAdmin || rawPlan === "empresarial";
 
   const navigate = useNavigate();
   const { publicCode, code } = useParams();
@@ -923,13 +917,13 @@ const BoardDetailPage = () => {
   const mostrarReciboLuz = false; // Desactivado temporalmente
 
   // Termografía: verifica si existe imagen térmica, óptica o registros de termografía
-  const tieneTermografia = Boolean(
-    board?.images?.termografia?.length ||
-    (board as any)?.thermography ||
-    (board as any)?.images?.termografica ||
-    (board as any)?.images?.optica
-  );
-  const mostrarTermografia = isSuperAdmin || tieneTermografia;
+  //const tieneTermografia = Boolean(
+    //board?.images?.termografia?.length ||
+    //(board as any)?.thermography ||
+    //(board as any)?.images?.termografica ||
+    //(board as any)?.images?.optica
+  //);
+  //const mostrarTermografia = isSuperAdmin || tieneTermografia;
 
   // const companyName = typeof board.company === "object" ? board.company.name : "Sin empresa";
 
@@ -1266,7 +1260,7 @@ const BoardDetailPage = () => {
           renderInsulationMeasurements()
         )}
 
-        {isEmpresarial && board?._id && mostrarTermografia && (
+        {isEmpresarial && board?._id && (
           <ThermographySection
             boardId={board._id}
             originalImageUrl={board.images?.termografia?.[0]}

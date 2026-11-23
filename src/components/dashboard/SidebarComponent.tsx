@@ -9,7 +9,7 @@ import {
   // Cpu,
   // FileCheck2,
   // FileHeart,
-  // FileText,
+  FileText, // ← descomentado para la carpeta "Informes"
   Folder,
   FolderOpen,
   LayoutDashboard,
@@ -47,9 +47,12 @@ interface SidebarComponentProps {
   onOpenCreateGroundingModal?: (companyCode: string) => void;
 }
 
+// Un documento cuenta como informe si su category es "informe".
+const isReport = (d: DocumentResponseDTO) => (d as any).category === "informe";
+
 const SESSION_FOLDERS_KEY = "voltguard_sidebar_session_folders";
 
-// Módulos estáticos visibles. Solo Facturación está activo;
+// Módulos estáticos visibles. Facturación e Informes están activos;
 // los demás quedan comentados por si los necesitas después.
 const STATIC_MODULES: {
   id: string;
@@ -64,6 +67,9 @@ const STATIC_MODULES: {
   hasExtraNewBtn?: boolean;
 }[] = [
     { id: "billing", name: "Facturación", color: "text-amber-500", createTitle: "Subir Recibo de Luz", newPath: (c) => `/dashboard/companies/${c}/billing`, viewPath: (c) => `/dashboard/companies/${c}/billing`, viewText: "Recibo de Luz", icon: Receipt, activeColor: "text-amber-600 bg-amber-50" },
+    // ── NUEVA CARPETA: INFORMES ──
+    // (reemplazada por la carpeta dinámica "reports" en moduleFolders)
+    // { id: "reports", name: "Informes", color: "text-violet-500", createTitle: "Nuevo Informe", newPath: (c) => `/dashboard/companies/${c}/reports/new`, viewPath: (c) => `/dashboard/companies/${c}/reports`, viewText: "Ver informes", icon: FileText, activeColor: "text-violet-600 bg-violet-50" },
     // { id: "medical-reports", name: "Reporte Médico", color: "text-rose-500", createTitle: "Nuevo Reporte Médico", newPath: (c) => `/dashboard/companies/${c}/medical-reports/new`, viewPath: (c) => `/dashboard/companies/${c}/medical-reports`, viewText: "Ver reportes médicos", icon: FileHeart, activeColor: "text-rose-600 bg-rose-50" },
     // { id: "solar-panels", name: "Paneles Solares", color: "text-amber-600", createTitle: "Nuevo Panel Solar", newPath: (c) => `/dashboard/companies/${c}/solar/new`, viewPath: (c) => `/dashboard/companies/${c}/solar`, viewText: "Instalaciones solares", icon: Sun, activeColor: "text-amber-600 bg-amber-50" },
     // { id: "substations", name: "Subestación", color: "text-indigo-500", createTitle: "Nueva Subestación", newPath: (c) => `/dashboard/companies/${c}/substations/new`, viewPath: (c) => `/dashboard/companies/${c}/substations`, viewText: "Subestaciones", icon: Cpu, activeColor: "text-indigo-600 bg-indigo-50" },
@@ -89,6 +95,7 @@ const URL_MODULE_KEYS: [string, string][] = [
   ["/capacitors", "capacitor-banks"],
   ["/ups", "ups"],
   ["/billing", "billing"],
+  ["/reports", "reports"], // ← nueva: abre "Informes" al entrar a esa ruta
 ];
 
 const navItemClass = (isActive: boolean) =>
@@ -303,7 +310,9 @@ const SidebarComponent = ({
     const boards = companyBoards[code] || [];
     const pozos = companyGrounding[code] || [];
     // const solarInstallations = companySolar[code] || [];
-    // const documents = companyDocuments[code] || [];
+    const allDocs = companyDocuments[code] || [];
+    const documents = allDocs.filter((d) => !isReport(d));
+    const reports = allDocs.filter(isReport);
 
     const moduleFolders = [
       {
@@ -354,7 +363,8 @@ const SidebarComponent = ({
                       e.stopPropagation();
                       navigate(`/dashboard/boards/${code}/${b.code}/edit`);
                     }}
-                    className="opacity-0 group/item:opacity-100 p-0.5 mr-1 text-slate-400 hover:text-slate-700 cursor-pointer focus:outline-none"
+                    // FIX: antes decía "group/item:opacity-100" (clase inválida, el botón nunca se veía)
+                    className="opacity-0 group-hover/item:opacity-100 p-0.5 mr-1 text-slate-400 hover:text-slate-700 cursor-pointer focus:outline-none"
                   >
                     <MoreVertical size={12} />
                   </button>
@@ -433,50 +443,94 @@ const SidebarComponent = ({
       //     </div>
       //   ),
       // },
-      // {
-      //   id: "documents",
-      //   name: "Documentos ITSE",
-      //   color: "text-amber-500",
-      //   count: documents.length,
-      //   loading: loadingDocuments[code],
-      //   createTitle: "Gestionar Documentos",
-      //   onCreate: () => navigate(`/dashboard/documents?company=${code}`),
-      //   children: (
-      //     <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
-      //       {isSuperAdmin && (
-      //         <NavLink
-      //           to={`/dashboard/documents?company=${code}`}
-      //           onClick={onClose}
-      //           end
-      //           className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer focus:outline-none"
-      //         >
-      //           <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
-      //           <span className="truncate italic">Ver todos ({documents.length})</span>
-      //         </NavLink>
-      //       )}
-      //       {loadingDocuments[code] ? (
-      //         <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando documentos...</p>
-      //       ) : documents.length === 0 ? (
-      //         <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin documentos subidos</p>
-      //       ) : (
-      //         documents.map((d) => (
-      //           <NavLink
-      //             key={d._id}
-      //             to={`/dashboard/documents/view/${d._id}`}
-      //             onClick={onClose}
-      //             className={({ isActive }) =>
-      //               `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? "text-amber-600 font-bold bg-amber-50" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
-      //               }`
-      //             }
-      //           >
-      //             <FileText size={12} className="shrink-0 text-amber-500" />
-      //             <span className="truncate">{d.title}</span>
-      //           </NavLink>
-      //         ))
-      //       )}
-      //     </div>
-      //   ),
-      // },
+      {
+        id: "documents",
+        name: "Documentos ITSE",
+        color: "text-amber-500",
+        count: documents.length,
+        loading: loadingDocuments[code],
+        createTitle: "Gestionar Documentos",
+        onCreate: () => navigate(`/dashboard/documents?company=${code}`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            {isSuperAdmin && (
+              <NavLink
+                to={`/dashboard/documents?company=${code}`}
+                onClick={onClose}
+                end
+                className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer focus:outline-none"
+              >
+                <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
+                <span className="truncate italic">Ver todos ({documents.length})</span>
+              </NavLink>
+            )}
+            {loadingDocuments[code] ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando documentos...</p>
+            ) : documents.length === 0 ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin documentos subidos</p>
+            ) : (
+              documents.map((d) => (
+                <NavLink
+                  key={d._id}
+                  to={`/dashboard/documents/view/${d._id}`}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? "text-amber-600 font-bold bg-amber-50" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    }`
+                  }
+                >
+                  <FileText size={12} className="shrink-0 text-amber-500" />
+                  <span className="truncate">{d.title}</span>
+                </NavLink>
+              ))
+            )}
+          </div>
+        ),
+      },
+      {
+        id: "reports",
+        name: "Informes",
+        color: "text-violet-500",
+        count: reports.length,
+        loading: loadingDocuments[code],
+        createTitle: "Gestionar Informes",
+        onCreate: () => navigate(`/dashboard/reports?company=${code}`),
+        children: (
+          <div className="ml-3 border-l border-slate-200 pl-2 my-0.5 space-y-0.5">
+            {isSuperAdmin && (
+              <NavLink
+                to={`/dashboard/reports?company=${code}`}
+                onClick={onClose}
+                end
+                className="flex items-center gap-2 rounded-md px-2 py-1 text-[11px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 cursor-pointer focus:outline-none"
+              >
+                <LayoutDashboard size={12} className="shrink-0 text-slate-400" />
+                <span className="truncate italic">Ver todos ({reports.length})</span>
+              </NavLink>
+            )}
+            {loadingDocuments[code] ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando informes...</p>
+            ) : reports.length === 0 ? (
+              <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin informes subidos</p>
+            ) : (
+              reports.map((r) => (
+                <NavLink
+                  key={r._id}
+                  to={`/dashboard/reports/view/${r._id}`}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 rounded-md px-2 py-1 text-[11px] transition-colors cursor-pointer focus:outline-none ${isActive ? "text-violet-600 font-bold bg-violet-50" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    }`
+                  }
+                >
+                  <FileText size={12} className="shrink-0 text-violet-500" />
+                  <span className="truncate">{r.title}</span>
+                </NavLink>
+              ))
+            )}
+          </div>
+        ),
+      },
       ...STATIC_MODULES.map((m) => {
         const IconComponent = m.icon;
         return {
@@ -523,7 +577,8 @@ const SidebarComponent = ({
       <div className={`${isNested ? "ml-3 border-l border-slate-200 pl-2 my-1" : ""} space-y-1`}>
         {moduleFolders.map((folder) => {
           const folderKey = `${code}-${folder.id}`;
-          const isOpen = Boolean(expandedFolders[folderKey]);
+          // FIX: se renombra para no tapar la prop "isOpen" del sidebar
+          const isFolderOpen = Boolean(expandedFolders[folderKey]);
 
           return (
             <div key={folder.id}>
@@ -532,10 +587,11 @@ const SidebarComponent = ({
                   onClick={() => toggleFolder(folderKey)}
                   className="flex flex-1 items-center gap-2 cursor-pointer min-w-0 text-left focus:outline-none"
                 >
-                  {isOpen ? <ChevronDown size={13} className="shrink-0 text-slate-400" /> : <ChevronRight size={13} className="shrink-0 text-slate-400" />}
-                  {isOpen ? <FolderOpen size={15} className={`shrink-0 ${folder.color}`} /> : <Folder size={15} className={`shrink-0 ${folder.color}`} />}
+                  {isFolderOpen ? <ChevronDown size={13} className="shrink-0 text-slate-400" /> : <ChevronRight size={13} className="shrink-0 text-slate-400" />}
+                  {isFolderOpen ? <FolderOpen size={15} className={`shrink-0 ${folder.color}`} /> : <Folder size={15} className={`shrink-0 ${folder.color}`} />}
                   <span className="truncate text-xs font-semibold text-slate-700">{folder.name}</span>
-                  <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.2 text-[10px] text-slate-500 font-mono">
+                  {/* FIX: py-0.2 no existe en Tailwind, ahora py-0.5 */}
+                  <span className="ml-auto mr-1 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 font-mono">
                     {folder.loading ? "..." : folder.count}
                   </span>
                 </button>
@@ -546,12 +602,13 @@ const SidebarComponent = ({
                     e.stopPropagation();
                     folder.onCreate();
                   }}
-                  className={`opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:${folder.color} hover:bg-white rounded transition-all cursor-pointer focus:outline-none`}
+                  // FIX: "hover:${folder.color}" se arma dinámicamente y Tailwind no lo genera
+                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-700 hover:bg-white rounded transition-all cursor-pointer focus:outline-none"
                 >
                   <Plus size={14} />
                 </button>
               </div>
-              {isOpen && folder.children}
+              {isFolderOpen && folder.children}
             </div>
           );
         })}
@@ -588,6 +645,7 @@ const SidebarComponent = ({
               </Link>
               <button
                 onClick={onClose}
+                aria-label="Cerrar menú"
                 className="cursor-pointer rounded-xl p-1.5 text-slate-400 transition-colors duration-200 hover:bg-slate-100 hover:text-slate-800 lg:hidden focus:outline-none"
               >
                 <X size={18} />

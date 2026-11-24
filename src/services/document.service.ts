@@ -41,3 +41,35 @@ export const getDocumentById = async (documentId: string): Promise<DocumentRespo
   const { data } = await clientAxios.get(`/document/${documentId}`);
   return data;
 };
+
+// ── INFORMES ──
+export const getReportsByCompany = async (companyPublicCode: string): Promise<DocumentResponseDTO[]> => {
+  const res = await clientAxios.get(`/reports/company/${companyPublicCode}`);
+  return res.data;
+};
+
+export const getReportById = async (id: string): Promise<DocumentResponseDTO> => {
+  const res = await clientAxios.get(`/reports/${id}`);
+  return res.data;
+};
+
+export const uploadReport = async (
+  companyPublicCode: string,
+  title: string,
+  file: File
+): Promise<DocumentResponseDTO> => {
+  const formData = new FormData();
+  formData.append("companyPublicCode", companyPublicCode);
+  formData.append("title", title);
+  formData.append("file", file);
+
+  const res = await clientAxios.post("/reports", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return res.data;
+};
+
+export const deleteReport = async (id: string): Promise<{ message: string }> => {
+  const res = await clientAxios.delete(`/reports/${id}`);
+  return res.data;
+};

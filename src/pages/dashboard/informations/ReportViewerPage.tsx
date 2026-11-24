@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Download, ExternalLink, FileText, Loader2 } from "lucide-react";
-import { getDocumentById } from "../../../services/document.service";
+import { getReportById } from "../../../services/document.service";
 import type { DocumentResponseDTO } from "../../../shared/types/BoardProps";
 
 const ReportViewerPage = () => {
@@ -13,7 +13,7 @@ const ReportViewerPage = () => {
     useEffect(() => {
         if (!id) return;
         setLoading(true);
-        getDocumentById(id)
+        getReportById(id)
             .then((data) => setReport(data))
             .catch((err) => console.error("Error cargando informe:", err))
             .finally(() => setLoading(false));

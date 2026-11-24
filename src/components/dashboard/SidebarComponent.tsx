@@ -33,7 +33,7 @@ import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useSidebar } from "../../contexts/SidebarContext";
 import { publicGetCompanyBoards } from "../../services/board.service";
 import { getCompanies } from "../../services/company.service";
-import { getDocumentsByCompany } from "../../services/document.service";
+import { getDocumentsByCompany, getReportsByCompany } from "../../services/document.service";
 import { getCompanyPozosList } from "../../services/spat.service";
 import { useAuth } from "../../shared/hooks/useAuth";
 import type { DocumentResponseDTO, PublicCompanyBoardsItemDTO } from "../../shared/types/BoardProps";
@@ -46,9 +46,6 @@ interface SidebarComponentProps {
   onOpenCreateBoardModal?: (companyCode: string) => void;
   onOpenCreateGroundingModal?: (companyCode: string) => void;
 }
-
-// Un documento cuenta como informe si su category es "informe".
-const isReport = (d: DocumentResponseDTO) => (d as any).category === "informe";
 
 const SESSION_FOLDERS_KEY = "voltguard_sidebar_session_folders";
 
@@ -144,6 +141,9 @@ const SidebarComponent = ({
   // const [loadingDocuments, setLoadingDocuments] = useState<Record<string, boolean>>({});
   const [loadingDocuments, setLoadingDocuments] = useState<Record<string, boolean>>({});
 
+  const [companyReports, setCompanyReports] = useState<Record<string, DocumentResponseDTO[]>>({});
+  const [loadingReports, setLoadingReports] = useState<Record<string, boolean>>({});
+
   console.log(loadingSolar)
   console.log(loadingDocuments)
 
@@ -198,6 +198,14 @@ const SidebarComponent = ({
         .then((docs) => setCompanyDocuments((prev) => ({ ...prev, [publicCode]: docs || [] })))
         .catch((err) => console.error("Error cargando documentos:", err))
         .finally(() => setLoadingDocuments((prev) => ({ ...prev, [publicCode]: false })));
+    }
+
+    if (force || !companyReports[publicCode]) {
+      setLoadingReports((prev) => ({ ...prev, [publicCode]: true }));
+      getReportsByCompany(publicCode)
+        .then((list) => setCompanyReports((prev) => ({ ...prev, [publicCode]: list || [] })))
+        .catch((err) => console.error("Error cargando informes:", err))
+        .finally(() => setLoadingReports((prev) => ({ ...prev, [publicCode]: false })));
     }
   };
 
@@ -310,9 +318,8 @@ const SidebarComponent = ({
     const boards = companyBoards[code] || [];
     const pozos = companyGrounding[code] || [];
     // const solarInstallations = companySolar[code] || [];
-    const allDocs = companyDocuments[code] || [];
-    const documents = allDocs.filter((d) => !isReport(d));
-    const reports = allDocs.filter(isReport);
+    const documents = companyDocuments[code] || [];
+    const reports = companyReports[code] || [];
 
     const moduleFolders = [
       {
@@ -492,7 +499,7 @@ const SidebarComponent = ({
         name: "Informes",
         color: "text-violet-500",
         count: reports.length,
-        loading: loadingDocuments[code],
+        loading: loadingReports[code],
         createTitle: "Gestionar Informes",
         onCreate: () => navigate(`/dashboard/reports?company=${code}`),
         children: (
@@ -508,7 +515,7 @@ const SidebarComponent = ({
                 <span className="truncate italic">Ver todos ({reports.length})</span>
               </NavLink>
             )}
-            {loadingDocuments[code] ? (
+            {loadingReports[code] ? (
               <p className="px-2 py-1 text-[10px] italic text-slate-400">Cargando informes...</p>
             ) : reports.length === 0 ? (
               <p className="px-2 py-1 text-[10px] italic text-slate-400">Sin informes subidos</p>

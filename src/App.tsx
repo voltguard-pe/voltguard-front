@@ -48,6 +48,8 @@ import PublicRoute from './routes/PublicRouter'
 import ScrollToTop from './shared/components/ScrollToTop'
 import { SalesDashboardView } from './pages/dashboard/sales/SalesDashboardView'
 import { SubscriptionDetailPage } from './pages/dashboard/sales/SubscriptionDetailPage'
+import ReportDashboardPage from "./pages/dashboard/informations/ReportDashboardPage";
+import ReportViewerPage from "./pages/dashboard/informations/ReportViewerPage";
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <div className="p-6">
@@ -173,6 +175,8 @@ function App() {
                   <Route path="companies/:publicCode/edit" element={<CompaniesEditPage />} />
 
                   <Route path="documents" element={<DocumentDashboardPage />} />
+                  <Route path="reports" element={<ReportDashboardPage />} />
+<Route path="reports/view/:id" element={<ReportViewerPage />} />
                 </Route>
 
                 <Route element={<ProtectedRoute allowedRoles={["SUPERADMIN"]} />}>
